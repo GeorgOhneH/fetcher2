@@ -1,13 +1,13 @@
-use std::iter::FromIterator;
+
 
 use proc_macro_error::{abort, ResultExt};
-use quote::ToTokens;
+
 use syn::Token;
 use syn::{
-    self, parenthesized,
-    parse::{Parse, ParseBuffer, ParseStream},
+    self,
+    parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    Attribute, Expr, ExprLit, Ident, Lit, LitBool, LitStr,
+    Attribute, Expr, Ident, LitStr,
 };
 
 #[allow(clippy::large_enum_variant)]

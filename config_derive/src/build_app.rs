@@ -1,17 +1,15 @@
 use crate::parse::{parse_clap_attributes, ConfigAttr};
-use proc_macro2::Span;
+
 use proc_macro2::TokenStream;
-use proc_macro_error::abort_call_site;
-use proc_macro_error::proc_macro_error;
-use proc_macro_error::{abort, emit_call_site_warning};
+
+
+use proc_macro_error::{abort};
 use quote::{quote, quote_spanned};
-use syn::spanned::Spanned;
 use syn::{
-    self, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute, Data, DataEnum,
-    DataStruct, DeriveInput, Field, Fields, GenericArgument, Ident, LitStr, NestedMeta, Path,
-    PathArguments, TypePath,
+    self, punctuated::Punctuated, token::Comma,
+    Field, LitStr,
 };
-use syn::{AttributeArgs, Meta, Type};
+
 use crate::derives::{SupportedTypes, convert_type};
 
 pub fn gen_build_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {

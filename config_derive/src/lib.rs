@@ -3,10 +3,9 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use quote::quote;
+
 use syn::{
-    self, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute, Data, DataEnum,
-    DataStruct, DeriveInput, Field, Fields, Ident,
+    self, parse_macro_input, DeriveInput,
 };
 mod derives;
 mod parse;

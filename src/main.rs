@@ -6,8 +6,7 @@
 
 use clap::{AppSettings, Clap};
 use config::{
-    Config, ConfigArg, ConfigArgBool, ConfigArgString, InactiveBehavior,
-    SupportedTypes,
+    Config, ConfigArg, InactiveBehavior
 };
 use config_derive::Config;
 
