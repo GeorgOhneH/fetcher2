@@ -185,7 +185,7 @@ impl ConfigArg {
 }
 
 pub trait Config {
-    fn parse() -> Self;
+    //fn parse() -> Self;
     fn build_app() -> ConfigStruct;
 }
 
