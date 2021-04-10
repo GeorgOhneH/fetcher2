@@ -6,7 +6,6 @@ pub enum InactiveBehavior {
     Hide,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct ConfigArg {
     required: bool,
@@ -47,7 +46,6 @@ impl ConfigArg {
         &mut self.ty
     }
 }
-
 
 pub struct ConfigArgBuilder {
     inner: ConfigArg,

@@ -5,12 +5,12 @@
 #![allow(dead_code)]
 
 use clap::{AppSettings, Clap};
-use config::{Config, ConfigArg, InactiveBehavior};
+use config::{Config, InactiveBehavior};
 use config_derive::Config;
 
 #[derive(Config, Debug, Clone)]
 struct TestConfig3 {
-    #[config(default= "1")]
+    #[config(default = "1")]
     input: String,
 }
 
@@ -41,7 +41,6 @@ struct TestConfig {
     s: Option<TestConfig3>,
     ss: TestConfig2,
 }
-
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Kevin K. <kbknapp@gmail.com>")]
