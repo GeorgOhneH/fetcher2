@@ -6,8 +6,8 @@ use proc_macro_error::proc_macro_error;
 
 use syn::{self, parse_macro_input, DeriveInput};
 mod build_app;
-mod derives;
 mod config_attr;
+mod derives;
 mod parse_from_app;
 mod update_app;
 

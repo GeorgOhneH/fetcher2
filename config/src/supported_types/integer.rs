@@ -52,7 +52,7 @@ impl ConfigArgIntegerBuilder {
         }
     }
     pub fn default(mut self, value: isize) -> Self {
-        self.inner.set(Some(value));
+        self.inner.set(Some(value)).unwrap();
         self
     }
 

@@ -1,8 +1,7 @@
-
 use proc_macro_error::abort_call_site;
 
-use proc_macro2::{TokenTree, Spacing, Span, Punct, TokenStream};
-use quote::{quote, TokenStreamExt, ToTokens};
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens, TokenStreamExt};
 
 use proc_macro_error::abort;
 
@@ -10,7 +9,7 @@ use crate::build_app::gen_build_app_fn;
 use syn::Type;
 use syn::{
     self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
-    Fields, GenericArgument, Ident, PathArguments, TypePath
+    Fields, GenericArgument, Ident, PathArguments, TypePath,
 };
 
 pub enum SupportedTypes {
@@ -35,7 +34,6 @@ impl SupportedTypes {
     }
 }
 
-
 impl ToTokens for SupportedTypes {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use SupportedTypes::*;
@@ -50,12 +48,11 @@ impl ToTokens for SupportedTypes {
                 tokens.append(Ident::new("Vec<", Span::call_site()));
                 sup_typ.to_tokens(tokens);
                 tokens.append(Ident::new(">", Span::call_site()));
-            },
+            }
             Struct(type_path) => type_path.to_tokens(tokens),
             CheckableStruct(type_path) => type_path.to_tokens(tokens),
         }
     }
-
 }
 
 pub fn derive_config(input: &DeriveInput) -> TokenStream {
@@ -116,7 +113,7 @@ pub fn convert_type(ty: &Type) -> SupportedTypes {
                     abort!(ty, "Option can not be in Vec")
                 }
                 Vec(Box::new(inner_ty))
-            },
+            }
             "Option" => {
                 let inner_supported_type = convert_type(inner_ty);
                 match inner_supported_type {
@@ -127,7 +124,7 @@ pub fn convert_type(ty: &Type) -> SupportedTypes {
                     _ => abort!(ty, "Can not be inside an Option"),
                 }
             }
-            _ => abort!(ty, "Not Supported type")
+            _ => abort!(ty, "Not Supported type"),
         }
     } else {
         match ty {
@@ -139,7 +136,7 @@ pub fn convert_type(ty: &Type) -> SupportedTypes {
                     _ => SupportedTypes::Struct(type_path.clone()),
                 }
             }
-            _ => abort!(ty, "Not Supported type")
+            _ => abort!(ty, "Not Supported type"),
         }
     }
 }

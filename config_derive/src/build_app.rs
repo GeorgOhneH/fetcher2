@@ -49,11 +49,7 @@ fn gen_arg(field: &Field, typ: &SupportedTypes) -> TokenStream {
     }
 }
 
-fn gen_type(
-    field: &Field,
-    typ: &SupportedTypes,
-    config_attrs: &Vec<ConfigAttr>,
-) -> TokenStream {
+fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>) -> TokenStream {
     let field_name = field.ident.as_ref().expect("Unreachable");
     let span = field_name.span();
     let args = attrs_to_sub_args(config_attrs);
@@ -90,7 +86,7 @@ fn gen_type(
                     )
                 )
             }
-        },
+        }
         SupportedTypes::Struct(ty) => {
             if !args.is_empty() {
                 abort!(ty, "Sub args are not allowed for ConfigStructs")
@@ -102,7 +98,7 @@ fn gen_type(
                     ))
                 }
             }
-        },
+        }
         SupportedTypes::CheckableStruct(ty) => {
             quote_spanned! {span=>
                 ::config::SupportedTypes::CheckableStruct(Box::new(
@@ -113,7 +109,7 @@ fn gen_type(
                     .build()
                 ))
             }
-        },
+        }
     }
 }
 

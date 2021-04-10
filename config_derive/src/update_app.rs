@@ -1,9 +1,6 @@
-use crate::config_attr::{parse_clap_attributes, ConfigAttr};
+use proc_macro2::TokenStream;
 
-use proc_macro2::{Ident, Span, TokenStream};
-
-use proc_macro_error::abort;
-use quote::{quote, quote_spanned};
+use quote::quote;
 use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
 
 use crate::derives::{convert_type, SupportedTypes};
@@ -123,10 +120,10 @@ fn gen_set(
                     Err(err) => Err(err),
                 }
             }}
-        },
+        }
         SupportedTypes::Struct(ty_path) => {
             let path = &ty_path.path;
-            let struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
+            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
                     ::config::SupportedTypes::Struct(ref mut config_struct) => {
@@ -135,10 +132,10 @@ fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
         SupportedTypes::CheckableStruct(ty_path) => {
             let path = &ty_path.path;
-            let struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
+            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
                     ::config::SupportedTypes::CheckableStruct(ref mut config_check_struct) => {
@@ -156,6 +153,6 @@ fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
     }
 }
