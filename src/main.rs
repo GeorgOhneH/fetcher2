@@ -5,37 +5,43 @@
 #![allow(dead_code)]
 
 use clap::{AppSettings, Clap};
-use config::{
-    Config, ConfigArg, InactiveBehavior
-};
+use config::{Config, ConfigArg, InactiveBehavior};
 use config_derive::Config;
 
-#[derive(Config)]
-#[config(version = "1.0", author = "Kevin K. <kbknapp@gmail.com>")]
-struct TestConfig2 {
+#[derive(Config, Debug, Clone)]
+struct TestConfig3 {
+    #[config(default= "1")]
+    input: String,
 }
 
-/// This doc string acts as a help message when the user runs '--help'
-/// as do all doc strings on fields
-#[derive(Config)]
-#[config(version = "1.0", author = "Kevin K. <kbknapp@gmail.com>")]
+#[derive(Config, Debug, Clone)]
+struct TestConfig2 {
+    #[config()]
+    input: Option<TestConfig3>,
+}
+
+#[derive(Config, Clone, Debug)]
 struct TestConfig {
-    /// Sets a custom config file. Could have been an Option<T> with no default too
-    config: Option<bool>,
-    /// Some input. Because this isn't an Option<T> it's required to be used
-    #[config(default="hello")]
-    input: String,
-    /// A level of verbosity, and can be used multiple times
-    #[config(min = 3, max = 4, active_fn = |app| false)]
-    verbose: i32,
-    /// help test
+    #[config(default = 0)]
+    config: isize,
+
+    #[config()]
+    input: Option<String>,
+    //
+    #[config(default = 4, min = 3, max = 4, active_fn = |app| false)]
+    verbose: isize,
 
     #[config(
         gui_name = "blabla",
         inactive_behavior = InactiveBehavior::Hide,
     )]
-    vec: Vec<TestConfig2>, //
+    vec: Vec<TestConfig2>,
+
+    #[config(checked = true)]
+    s: Option<TestConfig3>,
+    ss: TestConfig2,
 }
+
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Kevin K. <kbknapp@gmail.com>")]
@@ -43,6 +49,10 @@ struct TestConfig {
 struct Opts {}
 
 fn main() {
-    let a = TestConfig::build_app();
-    println!("{:#?}", a)
+    let mut app = TestConfig::build_app();
+    println!("{:#?}", app);
+    let s = TestConfig::parse_from_app(&app);
+    println!("{:#?}", s);
+    let x = s.unwrap().update_app(&mut app);
+    println!("{:#?}", x);
 }

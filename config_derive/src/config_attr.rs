@@ -1,5 +1,3 @@
-
-
 use proc_macro_error::{abort, ResultExt};
 
 use syn::Token;
