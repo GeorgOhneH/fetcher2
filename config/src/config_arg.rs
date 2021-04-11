@@ -63,7 +63,7 @@ impl ConfigArgBuilder {
         self
     }
 
-    pub fn doc(mut self, hint_text: String) -> Self {
+    pub fn hint_text(mut self, hint_text: String) -> Self {
         self.inner.hint_text = Some(hint_text);
         self
     }

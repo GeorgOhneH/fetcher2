@@ -127,12 +127,15 @@ fn attrs_to_sub_args(config_attrs: &Vec<ConfigAttr>) -> TokenStream {
     quote! {#(.#args)*}
 }
 fn attrs_to_args(config_attrs: &Vec<ConfigAttr>) -> TokenStream {
+    use ConfigAttr::*;
+
     let args: Vec<TokenStream> = config_attrs
         .iter()
         .filter_map(|config_attr| match config_attr {
-            ConfigAttr::GuiName(name, value) => Some(quote! {#name(#value.to_string())}),
-            ConfigAttr::ActiveFn(name, expr) => Some(quote! {#name(#expr)}),
-            ConfigAttr::InactiveBehavior(name, expr) => Some(quote! {#name(#expr)}),
+            GuiName(name, value) => Some(quote! {#name(#value.to_string())}),
+            ActiveFn(name, expr) => Some(quote! {#name(#expr)}),
+            InactiveBehavior(name, expr) => Some(quote! {#name(#expr)}),
+            DocString(str) => Some(quote! {hint_text(#str.to_string())}),
             _ => None,
         })
         .collect();

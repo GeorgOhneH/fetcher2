@@ -9,11 +9,11 @@ impl ConfigArgBool {
     fn new() -> Self {
         Self { value: None }
     }
-    fn get(&self) -> Option<&bool> {
+    pub fn get(&self) -> Option<&bool> {
         Option::from(&self.value)
     }
 
-    fn set(&mut self, value: Option<bool>) {
+    pub fn set(&mut self, value: Option<bool>) {
         self.value = value;
     }
 }

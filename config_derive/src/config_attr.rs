@@ -1,15 +1,19 @@
-use proc_macro_error::{abort, ResultExt};
+use proc_macro_error::{abort, ResultExt, emit_call_site_warning};
 
-use syn::Token;
 use syn::{
     self,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     Attribute, Expr, Ident, LitStr,
 };
+use syn::{MetaNameValue, Token};
+use proc_macro2::Span;
 
 #[allow(clippy::large_enum_variant)]
 pub enum ConfigAttr {
+
+    DocString(LitStr),
+
     // single-identifier attributes
     OtherSingle(Ident),
 
@@ -75,13 +79,41 @@ impl Parse for ConfigAttr {
     }
 }
 
+fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute]){
+    use syn::Lit::*;
+    use syn::Meta::*;
+    let doc_parts: Vec<String> = attrs
+        .iter()
+        .filter_map(|attr| {
+            emit_call_site_warning! { " efigef"}
+            if let Ok(NameValue(MetaNameValue { lit: Str(s), .. })) = attr.parse_meta() {
+                //emit_call_site_warning! { " efigef"}
+                Some(s.value().trim().to_string())
+
+            } else {
+                // non #[doc = "..."] attributes are not our concern
+                // we leave them for rustc to handle
+                None
+            }
+        })
+        .collect();
+
+    let doc_str = doc_parts.join("\n").trim().to_string();
+    if !doc_str.is_empty() {
+        config_attrs.push(ConfigAttr::DocString(LitStr::new(&doc_str, Span::call_site())));
+    }
+}
+
 pub fn parse_clap_attributes(all_attrs: &[Attribute]) -> Vec<ConfigAttr> {
-    all_attrs
+    let mut config_attrs: Vec<ConfigAttr> = all_attrs
         .iter()
         .filter(|attr| attr.path.is_ident("config"))
         .flat_map(|attr| {
             attr.parse_args_with(Punctuated::<ConfigAttr, Token![,]>::parse_terminated)
                 .unwrap_or_abort()
         })
-        .collect()
+        .collect();
+
+    push_hint_text_comment(&mut config_attrs, all_attrs);
+    config_attrs
 }

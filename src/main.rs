@@ -23,23 +23,41 @@ struct TestConfig2 {
 #[derive(Config, Clone, Debug)]
 struct TestConfig {
     #[config(default = 0)]
+    // goiadgoeagofgeosafo
+    // efoheofhef
+    // efh
     config: isize,
 
     #[config()]
+    // goiadgoeagofgeosafo
+    // efoheofhef
+    // efh
     input: Option<String>,
-    //
+    // goiadgoeagofgeosafo
+    // efoheofhef
+    /// efh
     #[config(default = 4, min = 3, max = 4, active_fn = |app| false)]
     verbose: isize,
+    /// goiadgoeagofgeosafo
+    /// efoheofhef
+    /// efh
+    verbose3: bool,
 
     #[config(
         gui_name = "blabla",
         inactive_behavior = InactiveBehavior::Hide,
     )]
-    vec: Vec<TestConfig2>,
+    // vec: Vec<TestConfig2>,
+    //
+    // #[config(checked = true)]
+    // s: Option<TestConfig3>,
+    /// ss: TestConfig2,
 
-    #[config(checked = true)]
-    s: Option<TestConfig3>,
-    ss: TestConfig2,
+    /// zteifgs
+    #[config(default = true,)]
+    #[doc = "iefgoisf"]
+    /// test1
+    efsa: bool,
 }
 
 #[derive(Clap)]
