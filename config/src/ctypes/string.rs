@@ -1,11 +1,11 @@
 use crate::*;
 
 #[derive(Debug, Clone)]
-pub struct ConfigArgString {
+pub struct CString {
     value: Option<String>,
 }
 
-impl ConfigArgString {
+impl CString {
     fn new() -> Self {
         Self { value: None }
     }
@@ -19,21 +19,21 @@ impl ConfigArgString {
     }
 }
 
-pub struct ConfigArgStringBuilder {
-    inner: ConfigArgString,
+pub struct CStringBuilder {
+    inner: CString,
 }
 
-impl ConfigArgStringBuilder {
+impl CStringBuilder {
     pub fn new() -> Self {
         Self {
-            inner: ConfigArgString::new(),
+            inner: CString::new(),
         }
     }
     pub fn default(mut self, value: String) -> Self {
         self.inner.set(Some(value));
         self
     }
-    pub fn build(self) -> ConfigArgString {
+    pub fn build(self) -> CString {
         self.inner
     }
 }

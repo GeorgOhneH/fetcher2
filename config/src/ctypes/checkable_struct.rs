@@ -1,24 +1,24 @@
 use crate::*;
 
 #[derive(Debug, Clone)]
-pub struct ConfigCheckableStruct {
-    inner: ConfigStruct,
+pub struct CCheckableStruct {
+    inner: CStruct,
     checked: bool,
 }
 
-impl ConfigCheckableStruct {
-    fn new(config_struct: ConfigStruct) -> Self {
+impl CCheckableStruct {
+    fn new(config_struct: CStruct) -> Self {
         Self {
             inner: config_struct,
             checked: true,
         }
     }
 
-    pub fn get_inner(&self) -> &ConfigStruct {
+    pub fn get_inner(&self) -> &CStruct {
         &self.inner
     }
 
-    pub fn get_inner_mut(&mut self) -> &mut ConfigStruct {
+    pub fn get_inner_mut(&mut self) -> &mut CStruct {
         &mut self.inner
     }
 
@@ -31,21 +31,21 @@ impl ConfigCheckableStruct {
     }
 }
 
-pub struct ConfigCheckableStructBuilder {
-    inner: ConfigCheckableStruct,
+pub struct CCheckableStructBuilder {
+    inner: CCheckableStruct,
 }
 
-impl ConfigCheckableStructBuilder {
-    pub fn new(config_struct: ConfigStruct) -> Self {
+impl CCheckableStructBuilder {
+    pub fn new(config_struct: CStruct) -> Self {
         Self {
-            inner: ConfigCheckableStruct::new(config_struct),
+            inner: CCheckableStruct::new(config_struct),
         }
     }
     pub fn checked(mut self, checked: bool) -> Self {
         self.inner.set_checked(checked);
         self
     }
-    pub fn build(self) -> ConfigCheckableStruct {
+    pub fn build(self) -> CCheckableStruct {
         self.inner
     }
 }

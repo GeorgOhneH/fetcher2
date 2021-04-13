@@ -2,11 +2,11 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug, Clone)]
-pub struct ValueRequiredError {
+pub struct RequiredError {
     path: String,
 }
 
-impl ValueRequiredError {
+impl RequiredError {
     pub fn new(path: String) -> Self {
         Self { path }
     }
@@ -17,20 +17,20 @@ impl ValueRequiredError {
     }
 }
 
-impl fmt::Display for ValueRequiredError {
+impl fmt::Display for RequiredError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Value {} was not set, but required", self.path)
     }
 }
 
-impl Error for ValueRequiredError {}
+impl Error for RequiredError {}
 
 #[derive(Debug, Clone)]
-pub struct ValueError {
+pub struct MsgError {
     msg: String,
 }
 
-impl ValueError {
+impl MsgError {
     pub fn new(msg: String) -> Self {
         Self { msg }
     }
@@ -40,10 +40,10 @@ impl ValueError {
     }
 }
 
-impl fmt::Display for ValueError {
+impl fmt::Display for MsgError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ValueError with msg: {}", self.msg)
     }
 }
 
-impl Error for ValueError {}
+impl Error for MsgError {}

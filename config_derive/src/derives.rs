@@ -5,12 +5,13 @@ use quote::{quote, ToTokens, TokenStreamExt};
 
 use proc_macro_error::abort;
 
-use crate::build_app::gen_build_app_fn;
-use syn::Type;
+use crate::build_app::{gen_struct_build_app_fn, gen_enum_build_app_fn};
+use crate::config_attr::{parse_config_attributes, ConfigAttr};
 use syn::{
     self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
     Fields, GenericArgument, Ident, PathArguments, TypePath,
 };
+use syn::{DataEnum, Type};
 
 pub enum SupportedTypes {
     String,
@@ -22,13 +23,14 @@ pub enum SupportedTypes {
     Vec(Box<SupportedTypes>),
     Struct(TypePath),
     CheckableStruct(TypePath), // aka OtherStruct
+    Enum(TypePath),
 }
 
 impl SupportedTypes {
     pub fn is_inside_option(&self) -> bool {
         use SupportedTypes::*;
         match self {
-            String | Integer | Bool | Vec(_) | Struct(_) => false,
+            String | Integer | Bool | Vec(_) | Struct(_) | Enum(_) => false,
             OtherString | OtherInteger | OtherBool | CheckableStruct(_) => true,
         }
     }
@@ -51,6 +53,7 @@ impl ToTokens for SupportedTypes {
             }
             Struct(type_path) => type_path.to_tokens(tokens),
             CheckableStruct(type_path) => type_path.to_tokens(tokens),
+            Enum(type_path) => type_path.to_tokens(tokens),
         }
     }
 }
@@ -67,7 +70,8 @@ pub fn derive_config(input: &DeriveInput) -> TokenStream {
             fields: Fields::Unit,
             ..
         }) => gen_for_struct(ident, &Punctuated::<Field, Comma>::new(), &input.attrs),
-        _ => abort_call_site!("`#[derive(Config)]` only supports non-tuple structs"),
+        Data::Enum(ref e) => gen_for_enum(ident, &input.attrs, e),
+        _ => abort_call_site!("`#[derive(Config)]` only supports non-tuple structs and enums"),
     }
 }
 
@@ -76,9 +80,9 @@ fn gen_for_struct(
     fields: &Punctuated<Field, Comma>,
     _attrs: &[Attribute],
 ) -> TokenStream {
-    let build_app_fn = gen_build_app_fn(fields);
-    let parse_fn = crate::parse_from_app::gen_parse_fn(fields);
-    let update_app_fn = crate::update_app::gen_update_app_fn(fields);
+    let build_app_fn = gen_struct_build_app_fn(fields);
+    let parse_fn = crate::parse_from_app::gen_struct_parse_fn(fields);
+    let update_app_fn = crate::update_app::gen_struct_update_app_fn(fields);
 
     quote! {
         #[allow(dead_code, unreachable_code, unused_variables)]
@@ -102,25 +106,51 @@ fn gen_for_struct(
     }
 }
 
-pub fn convert_type(ty: &Type) -> SupportedTypes {
-    use SupportedTypes::*;
+fn gen_for_enum(name: &Ident, attrs: &[Attribute], e: &DataEnum) -> TokenStream {
+    let build_app_fn = gen_enum_build_app_fn(e);
+    let parse_fn = crate::parse_from_app::gen_enum_parse_fn(e);
+    let update_app_fn = crate::update_app::gen_enum_update_app_fn(e);
+
+    quote! {
+        #[allow(dead_code, unreachable_code, unused_variables)]
+        #[allow(
+            clippy::style,
+            clippy::complexity,
+            clippy::pedantic,
+            clippy::restriction,
+            clippy::perf,
+            clippy::deprecated,
+            clippy::nursery,
+            clippy::cargo
+        )]
+        #[deny(clippy::correctness)]
+        impl ::config::ConfigEnum for #name {
+            #build_app_fn
+            #parse_fn
+            #update_app_fn
+        }
+
+    }
+}
+
+pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
     if let Some((name, inner_ty)) = extract_type_from_bracket(ty) {
         //emit_call_site_warning!(name.to_string());
         match &*name.to_string() {
             "Vec" => {
-                let inner_ty = convert_type(inner_ty);
+                let inner_ty = parse_type(inner_ty, attrs);
                 if inner_ty.is_inside_option() {
                     abort!(ty, "Option can not be in Vec")
                 }
-                Vec(Box::new(inner_ty))
+                SupportedTypes::Vec(Box::new(inner_ty))
             }
             "Option" => {
-                let inner_supported_type = convert_type(inner_ty);
+                let inner_supported_type = parse_type(inner_ty, attrs);
                 match inner_supported_type {
-                    Struct(type_path) => CheckableStruct(type_path),
-                    String => OtherString,
-                    Integer => OtherInteger,
-                    Bool => OtherBool,
+                    SupportedTypes::Struct(type_path) => SupportedTypes::CheckableStruct(type_path),
+                    SupportedTypes::String => SupportedTypes::OtherString,
+                    SupportedTypes::Integer => SupportedTypes::OtherInteger,
+                    SupportedTypes::Bool => SupportedTypes::OtherBool,
                     _ => abort!(ty, "Can not be inside an Option"),
                 }
             }
@@ -133,7 +163,26 @@ pub fn convert_type(ty: &Type) -> SupportedTypes {
                     "String" => SupportedTypes::String,
                     "isize" => SupportedTypes::Integer,
                     "bool" => SupportedTypes::Bool,
-                    _ => SupportedTypes::Struct(type_path.clone()),
+                    _ => {
+                        let type_args: Vec<String> = parse_config_attributes(attrs)
+                            .iter()
+                            .filter_map(|config_attr| {
+                                if let ConfigAttr::Type(_, lit) = config_attr {
+                                    Some(lit.value())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        if type_args.len() != 1 {
+                            abort!(ty, "Field must have exactly one type attribute")
+                        }
+                        match &*type_args[0] {
+                            "struct" => SupportedTypes::Struct(type_path.clone()),
+                            "enum" => SupportedTypes::Enum(type_path.clone()),
+                            _ => abort!(ty, "Not Supported type. Use 'struct' or 'enum'"),
+                        }
+                    }
                 }
             }
             _ => abort!(ty, "Not Supported type"),

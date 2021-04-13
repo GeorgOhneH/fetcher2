@@ -19,6 +19,7 @@ pub enum ConfigAttr {
 
     // ident = "string literal"
     GuiName(Ident, LitStr),
+    Type(Ident, LitStr),
     OtherLitStr(Ident, LitStr),
 
     // ident = arbitrary_expr
@@ -50,6 +51,7 @@ impl Parse for ConfigAttr {
 
                 match &*name_str {
                     "gui_name" => Ok(GuiName(name, lit)),
+                    "ty" => Ok(Type(name, lit)),
 
                     _ => Ok(OtherLitStr(name, lit)),
                 }
@@ -85,7 +87,6 @@ fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute
     let doc_parts: Vec<String> = attrs
         .iter()
         .filter_map(|attr| {
-            emit_call_site_warning! { " efigef"}
             if let Ok(NameValue(MetaNameValue { lit: Str(s), .. })) = attr.parse_meta() {
                 //emit_call_site_warning! { " efigef"}
                 Some(s.value().trim().to_string())
@@ -104,7 +105,7 @@ fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute
     }
 }
 
-pub fn parse_clap_attributes(all_attrs: &[Attribute]) -> Vec<ConfigAttr> {
+pub fn parse_config_attributes(all_attrs: &[Attribute]) -> Vec<ConfigAttr> {
     let mut config_attrs: Vec<ConfigAttr> = all_attrs
         .iter()
         .filter(|attr| attr.path.is_ident("config"))

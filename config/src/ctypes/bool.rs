@@ -1,11 +1,11 @@
 use crate::*;
 
 #[derive(Debug, Clone)]
-pub struct ConfigArgBool {
+pub struct CBool {
     value: Option<bool>,
 }
 
-impl ConfigArgBool {
+impl CBool {
     fn new() -> Self {
         Self { value: None }
     }
@@ -18,21 +18,21 @@ impl ConfigArgBool {
     }
 }
 
-pub struct ConfigArgBoolBuilder {
-    inner: ConfigArgBool,
+pub struct CBoolBuilder {
+    inner: CBool,
 }
 
-impl ConfigArgBoolBuilder {
+impl CBoolBuilder {
     pub fn new() -> Self {
         Self {
-            inner: ConfigArgBool::new(),
+            inner: CBool::new(),
         }
     }
     pub fn default(mut self, value: bool) -> Self {
         self.inner.set(Some(value));
         self
     }
-    pub fn build(self) -> ConfigArgBool {
+    pub fn build(self) -> CBool {
         self.inner
     }
 }

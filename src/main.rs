@@ -1,63 +1,52 @@
-// (Full example with detailed comments in examples/01d_quick_example.rs)
-//
-// This example demonstrates clap's full 'custom derive' style of creating arguments which is the
-// simplest method of use, but sacrifices some flexibility.
 #![allow(dead_code)]
 
 use clap::{AppSettings, Clap};
-use config::{Config, InactiveBehavior};
+use config::{Config, ConfigEnum, InactiveBehavior};
 use config_derive::Config;
 
-#[derive(Config, Debug, Clone)]
-struct TestConfig3 {
-    #[config(default = "1")]
-    input: String,
-}
 
 #[derive(Config, Debug, Clone)]
 struct TestConfig2 {
-    #[config()]
-    input: Option<TestConfig3>,
+    #[config(default = "we23")]
+    input: Vec<String>,
 }
 
 #[derive(Config, Clone, Debug)]
-struct TestConfig {
-    #[config(default = 0)]
-    // goiadgoeagofgeosafo
-    // efoheofhef
-    // efh
-    config: isize,
+enum ConfigEnum2 {
+    Hello,
+    #[config( ty = "struct")]
+    Blabla(TestConfig2),
+}
 
-    #[config()]
-    // goiadgoeagofgeosafo
-    // efoheofhef
-    // efh
-    input: Option<String>,
-    // goiadgoeagofgeosafo
-    // efoheofhef
-    /// efh
-    #[config(default = 4, min = 3, max = 4, active_fn = |app| false)]
-    verbose: isize,
-    /// goiadgoeagofgeosafo
-    /// efoheofhef
-    /// efh
-    verbose3: bool,
+
+
+#[derive(Config, Clone, Debug)]
+struct TestConfig {
+    #[config(default = 0, min = -1, max = 2)]
+    int: isize,
+    #[config(default = 0, max = 2)]
+    option_int: Option<isize>,
+
+    #[config(default = "1023")]
+    option_str: Option<String>,
 
     #[config(
-        gui_name = "blabla",
-        inactive_behavior = InactiveBehavior::Hide,
+        default = "hello",
+        inactive_behavior=InactiveBehavior::GrayOut,
+        active_fn=|_app| false,
+        gui_name= "ifg",
     )]
-    // vec: Vec<TestConfig2>,
-    //
-    // #[config(checked = true)]
-    // s: Option<TestConfig3>,
-    /// ss: TestConfig2,
+    str: String,
 
-    /// zteifgs
-    #[config(default = true,)]
-    #[doc = "iefgoisf"]
-    /// test1
-    efsa: bool,
+    /// This is a hint text
+    #[config(default=true)]
+    verbose3: bool,
+
+    #[config(ty = "struct")]
+    nested: TestConfig2,
+
+    #[config(ty = "enum")]
+    config_emi: ConfigEnum2,
 }
 
 #[derive(Clap)]

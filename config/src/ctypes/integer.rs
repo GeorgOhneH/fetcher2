@@ -1,13 +1,13 @@
 use crate::*;
 
 #[derive(Debug, Clone)]
-pub struct ConfigArgInteger {
+pub struct CInteger {
     value: Option<isize>,
     min: isize,
     max: isize,
 }
 
-impl ConfigArgInteger {
+impl CInteger {
     fn new() -> Self {
         Self {
             value: None,
@@ -16,11 +16,11 @@ impl ConfigArgInteger {
         }
     }
 
-    pub fn is_valid(&self, value: &Option<isize>) -> Result<(), ValueError> {
+    pub fn is_valid(&self, value: &Option<isize>) -> Result<(), MsgError> {
         match value {
             None => Ok(()),
             Some(int) if self.min <= *int && *int <= self.max => Ok(()),
-            _ => Err(ValueError::new(format!(
+            _ => Err(MsgError::new(format!(
                 "Value must be between {} and {}",
                 self.min, self.max
             ))),
@@ -31,7 +31,7 @@ impl ConfigArgInteger {
         Option::from(&self.value)
     }
 
-    pub fn set(&mut self, value: Option<isize>) -> Result<(), ValueError> {
+    pub fn set(&mut self, value: Option<isize>) -> Result<(), MsgError> {
         if let Err(err) = self.is_valid(&value) {
             Err(err)
         } else {
@@ -41,14 +41,14 @@ impl ConfigArgInteger {
     }
 }
 
-pub struct ConfigArgIntegerBuilder {
-    inner: ConfigArgInteger,
+pub struct CIntegerBuilder {
+    inner: CInteger,
 }
 
-impl ConfigArgIntegerBuilder {
+impl CIntegerBuilder {
     pub fn new() -> Self {
         Self {
-            inner: ConfigArgInteger::new(),
+            inner: CInteger::new(),
         }
     }
     pub fn default(mut self, value: isize) -> Self {
@@ -70,7 +70,7 @@ impl ConfigArgIntegerBuilder {
         self.inner.min = min;
         self
     }
-    pub fn build(self) -> ConfigArgInteger {
+    pub fn build(self) -> CInteger {
         self.inner
     }
 }
