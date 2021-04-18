@@ -1,4 +1,5 @@
 use crate::*;
+use serde_yaml::{Value, Sequence, Mapping};
 
 #[derive(Debug, Clone)]
 pub struct CStruct {
@@ -32,6 +33,34 @@ impl CStruct {
             Some(config_arg) => Some(config_arg.get_mut()),
             None => None,
         }
+    }
+
+    pub fn load_from_string(&mut self, str: &str) -> Result<(), RequiredError> {
+        match serde_yaml::from_str::<Value>(&str) {
+            Ok(Value::Mapping(map)) => {
+                self.consume_map(map)
+            },
+            Ok(_) => Err(RequiredError::new("Must be in a Mapping".to_owned())),
+            Err(_) => Err(RequiredError::new("Loading failed".to_owned())),
+        }
+    }
+
+    pub(crate) fn consume_map(&mut self, mut map: Mapping) -> Result<(), RequiredError> {
+        let mut result = Ok(());
+        for (key, ckwarg) in self.inner.iter_mut() {
+            match map.remove(&Value::String(key.to_string())) {
+                Some(value) => {
+                    match ckwarg.consume_value(value) {
+                        Ok(()) => (),
+                        Err(err) => result = Err(err)
+                    }
+                },
+                None => {
+                    result = Err(RequiredError::new("Missing value(s)".to_owned()))
+                },
+            }
+        }
+        result
     }
 }
 
@@ -99,6 +128,10 @@ impl CKwarg {
 
     pub fn get_mut(&mut self) -> &mut CTypes {
         &mut self.ty
+    }
+
+    pub fn consume_value(&mut self, mut value: Value) -> Result<(), RequiredError> {
+        self.ty.consume_value(value)
     }
 }
 

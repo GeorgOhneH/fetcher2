@@ -1,16 +1,17 @@
-use crate::{CTypes, MsgError};
+use crate::{CTypes, MsgError, RequiredError};
+use serde_yaml::Sequence;
 
 #[derive(Debug, Clone)]
 pub struct CVec {
     inner: Vec<CTypes>,
-    template: CTypes,
+    template: Box<CTypes>,
 }
 
 impl CVec {
     fn new(template: CTypes) -> Self {
         Self {
             inner: Vec::new(),
-            template,
+            template: Box::new(template),
         }
     }
 
@@ -42,6 +43,19 @@ impl CVec {
             self.inner = vec;
             Ok(())
         }
+    }
+
+    pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), RequiredError> {
+        self.inner.clear();
+        let mut result = Ok(());
+        for value in seq {
+            let mut template_copy = self.get_template().clone();
+            match template_copy.consume_value(value) {
+                Ok(()) => self.inner.push(template_copy),
+                Err(err) => result = Err(err),
+            }
+        }
+        result
     }
 }
 

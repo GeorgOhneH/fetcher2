@@ -2,7 +2,9 @@ use proc_macro2::TokenStream;
 
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr, DataEnum, Fields, FieldsUnnamed};
+use syn::{
+    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
+};
 
 use crate::derives::{parse_type, SupportedTypes};
 use syn::spanned::Spanned;
@@ -26,7 +28,7 @@ pub fn gen_enum_update_app_fn(e: &DataEnum) -> TokenStream {
 }
 
 fn gen_carg(e: &DataEnum) -> TokenStream {
-    let data_expanded_members = e.variants.iter().enumerate().map(|(idx, var)| {
+    let data_expanded_members = e.variants.iter().map(|var| {
         let name = &var.ident;
         let name_lit = LitStr::new(&name.to_string(), var.ident.span());
         match &var.fields {
@@ -36,7 +38,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
                 if let SupportedTypes::Struct(_) = typ {
                     quote! {
                         Self::#name(cstruct) => {
-                            let carg = cenum.set_selected_mut(#idx).unwrap();
+                            let carg = cenum.set_selected_mut(#name_lit.to_string()).unwrap();
                             #typ::update_app(cstruct, carg.get_mut().unwrap())
                         }
                     }
@@ -47,7 +49,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
             Fields::Unit => {
                 quote! {
                     Self::#name => {
-                        cenum.set_selected(#idx).unwrap();
+                        cenum.set_selected(#name_lit.to_string()).unwrap();
                         Ok(())
                     }
                 }
@@ -78,7 +80,7 @@ fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
         .collect();
 
     quote! {
-        let results = vec![#(
+        let results: Vec<Result<(), ::config::MsgError>> = vec![#(
             #setters
         ),*];
         for result in results {
@@ -105,7 +107,7 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OtherString => quote! {{
+        SupportedTypes::OptionString => quote! {{
             match #match_arg {
                 ::config::CTypes::String(ref mut config_arg_string) => {
                     Ok(config_arg_string.set(#set_arg))
@@ -121,7 +123,7 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OtherInteger => quote! {{
+        SupportedTypes::OptionInteger => quote! {{
             match #match_arg {
                 ::config::CTypes::Integer(ref mut config_arg_int) => {
                     config_arg_int.set(#set_arg)
@@ -137,7 +139,7 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OtherBool => quote! {{
+        SupportedTypes::OptionBool => quote! {{
             match #match_arg {
                 ::config::CTypes::Bool(ref mut config_arg_bool) => {
                     Ok(config_arg_bool.set(#set_arg))
@@ -168,7 +170,7 @@ fn gen_set(
                     Err(err) => Err(err),
                 }
             }}
-        },
+        }
         SupportedTypes::Struct(ty_path) => {
             let path = &ty_path.path;
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
@@ -180,7 +182,7 @@ fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
         SupportedTypes::CheckableStruct(ty_path) => {
             let path = &ty_path.path;
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
@@ -201,7 +203,7 @@ fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
         SupportedTypes::Enum(ty_path) => {
             let path = &ty_path.path;
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
@@ -213,6 +215,24 @@ fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
+        SupportedTypes::OptionEnum(ty_path) => {
+            let path = &ty_path.path;
+            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
+            quote! {{
+                match #match_arg {
+                    ::config::CTypes::Enum(ref mut cenum) => {
+                        match #set_arg {
+                            Some(h) => #ty_path::update_app(h, cenum),
+                            None =>{
+                                cenum.unselect();
+                                Ok(())
+                            },
+                        }
+                    },
+                    _ => panic!("This should never happen"),
+                }
+            }}
+        }
     }
 }

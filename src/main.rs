@@ -1,17 +1,23 @@
 #![allow(dead_code)]
 
 use clap::{AppSettings, Clap};
-use config::{Config, ConfigEnum, InactiveBehavior};
+use config::{Config, ConfigEnum, InactiveBehavior, CStruct};
 use config_derive::Config;
+use serde::{Serialize, Deserialize};
+use serde_yaml::Value;
+mod sites;
+mod queue;
+mod session;
+mod errors;
 
 
-#[derive(Config, Debug, Clone)]
+#[derive(Config, Debug, Clone, Serialize)]
 struct TestConfig2 {
     #[config(default = "we23")]
     input: Vec<String>,
 }
 
-#[derive(Config, Clone, Debug)]
+#[derive(Config, Clone, Debug, Serialize)]
 enum ConfigEnum2 {
     Hello,
     #[config( ty = "struct")]
@@ -20,7 +26,8 @@ enum ConfigEnum2 {
 
 
 
-#[derive(Config, Clone, Debug)]
+
+#[derive(Config, Debug, Clone, Serialize)]
 struct TestConfig {
     #[config(default = 0, min = -1, max = 2)]
     int: isize,
@@ -46,8 +53,13 @@ struct TestConfig {
     nested: TestConfig2,
 
     #[config(ty = "enum")]
-    config_emi: ConfigEnum2,
+    config_emi: Option<ConfigEnum2>,
+
+    #[config(ty = "enum")]
+    config_emi2: ConfigEnum2,
 }
+
+
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Kevin K. <kbknapp@gmail.com>")]
@@ -55,10 +67,26 @@ struct TestConfig {
 struct Opts {}
 
 fn main() {
-    let mut app = TestConfig::build_app();
+    let mut app: CStruct = TestConfig::build_app();
     println!("{:#?}", app);
-    let s = TestConfig::parse_from_app(&app);
+    match app.get_mut("config_emi2").unwrap().get_mut() {
+        ::config::CTypes::Enum(cenum) => cenum.set_selected("Blabla".to_owned()),
+        _ => panic!("iefs")
+    };
+    match app.get_mut("config_emi").unwrap().get_mut() {
+        ::config::CTypes::Enum(cenum) => cenum.set_selected("Blabla".to_owned()),
+        _ => panic!("iefs")
+    };
+    let mut s: TestConfig = TestConfig::parse_from_app(&app).unwrap();
+
+    let parsed = serde_yaml::to_string(&s).unwrap();
     println!("{:#?}", s);
-    let x = s.unwrap().update_app(&mut app);
+    println!("{}", parsed);
+
+    let r = app.load_from_string(&parsed);
+    println!("{:#?}", r);
+
+
+    let x = s.update_app(&mut app);
     println!("{:#?}", x);
 }

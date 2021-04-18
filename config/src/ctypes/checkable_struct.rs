@@ -1,4 +1,5 @@
 use crate::*;
+use serde_yaml::Mapping;
 
 #[derive(Debug, Clone)]
 pub struct CCheckableStruct {
@@ -28,6 +29,11 @@ impl CCheckableStruct {
 
     pub fn is_checked(&self) -> bool {
         self.checked
+    }
+
+    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), RequiredError> {
+        self.set_checked(true);
+        self.inner.consume_map(map)
     }
 }
 

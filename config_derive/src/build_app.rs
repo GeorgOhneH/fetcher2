@@ -122,21 +122,21 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
     let span = field_name.span();
     let args = attrs_to_sub_args(config_attrs);
     match typ {
-        SupportedTypes::Bool | SupportedTypes::OtherBool => quote_spanned! {span=>
+        SupportedTypes::Bool | SupportedTypes::OptionBool => quote_spanned! {span=>
             ::config::CTypes::Bool(
                 ::config::CBoolBuilder::new()
                 #args
                 .build()
             )
         },
-        SupportedTypes::String | SupportedTypes::OtherString => quote_spanned! {span=>
+        SupportedTypes::String | SupportedTypes::OptionString => quote_spanned! {span=>
             ::config::CTypes::String(
                 ::config::CStringBuilder::new()
                 #args
                 .build()
             )
         },
-        SupportedTypes::Integer | SupportedTypes::OtherInteger => quote_spanned! {span=>
+        SupportedTypes::Integer | SupportedTypes::OptionInteger => quote_spanned! {span=>
             ::config::CTypes::Integer(
                 ::config::CIntegerBuilder::new()
                 #args
@@ -148,10 +148,8 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
             let sub_arg = gen_type(field, sub_type, config_attrs);
             quote_spanned! {span=>
                 ::config::CTypes::Vec(
-                    Box::new(
-                        ::config::CVecBuilder::new(#sub_arg)
-                        .build()
-                    )
+                    ::config::CVecBuilder::new(#sub_arg)
+                    .build()
                 )
             }
         }
@@ -160,25 +158,25 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
                 abort!(ty, "Sub args are not allowed for ConfigStructs")
             } else {
                 quote_spanned! {span=>
-                    ::config::CTypes::Struct(Box::new(
+                    ::config::CTypes::Struct(
                         #ty::build_app()
                         #args
-                    ))
+                    )
                 }
             }
         }
         SupportedTypes::CheckableStruct(ty) => {
             quote_spanned! {span=>
-                ::config::CTypes::CheckableStruct(Box::new(
+                ::config::CTypes::CheckableStruct(
                     ::config::CCheckableStructBuilder::new(
                         #ty::build_app()
                     )
                     #args
                     .build()
-                ))
+                )
             }
         }
-        SupportedTypes::Enum(ty) => {
+        SupportedTypes::Enum(ty) | SupportedTypes::OptionEnum(ty) => {
             if !args.is_empty() {
                 abort!(ty, "Sub args are not allowed for Enum")
             } else {

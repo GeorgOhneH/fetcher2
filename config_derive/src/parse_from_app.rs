@@ -20,13 +20,13 @@ pub fn gen_struct_parse_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
 pub fn gen_enum_parse_fn(e: &DataEnum) -> TokenStream {
     let augmentation = gen_carg(e);
     quote! {
-        fn parse_from_app(cenum: &::config::CEnum) -> Result<Self, ::config::RequiredError> {
+        fn parse_from_app(cenum: &::config::CEnum) -> Result<Option<Self>, ::config::RequiredError> {
             let selected = cenum.get_selected();
             match selected {
                 Some(carg) => {
                     #augmentation
                 },
-                None => Err(::config::RequiredError::new("Nothing selected".to_string())),
+                None => Ok(None),
             }
         }
     }
@@ -45,7 +45,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
                         #name_lit => {
                             let config = #typ::parse_from_app(carg.get().unwrap());
                             match config {
-                                Ok(s) => Ok(Self::#name(s)),
+                                Ok(s) => Ok(Some(Self::#name(s))),
                                 Err(err) => Err(err),
                             }
                         }
@@ -56,7 +56,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
             }
             Fields::Unit => {
                 quote! {
-                    #name_lit => Ok(Self::#name)
+                    #name_lit => Ok(Some(Self::#name))
                 }
             }
             _ => abort!(var.fields, "Only Structs are allowed"),
@@ -140,19 +140,19 @@ fn gen_option_arg(
     field_name_str: &LitStr,
 ) -> TokenStream {
     match typ {
-        SupportedTypes::String | SupportedTypes::OtherString => quote! {{
+        SupportedTypes::String | SupportedTypes::OptionString => quote! {{
             match #match_arg {
                 ::config::CTypes::String(value_arg) => Ok(value_arg.get()),
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::Integer | SupportedTypes::OtherInteger => quote! {{
+        SupportedTypes::Integer | SupportedTypes::OptionInteger => quote! {{
             match #match_arg {
                 ::config::CTypes::Integer(value_arg) => Ok(value_arg.get()),
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::Bool | SupportedTypes::OtherBool => quote! {{
+        SupportedTypes::Bool | SupportedTypes::OptionBool => quote! {{
             match #match_arg {
                 ::config::CTypes::Bool(value_arg) => Ok(value_arg.get()),
                 _ => panic!("This should never happen"),
@@ -209,13 +209,13 @@ fn gen_option_arg(
                 }
             }}
         }
-        SupportedTypes::Enum(ty_path) => {
+        SupportedTypes::Enum(ty_path) | SupportedTypes::OptionEnum(ty_path) => {
             let path = &ty_path.path;
             let enum_name_str = LitStr::new(&quote! {#path}.to_string(), span.clone());
             quote! {{
                 match #match_arg {
                     ::config::CTypes::Enum(cenum) => match #ty_path::parse_from_app(cenum) {
-                        Ok(value) => Ok(Some(value)),
+                        Ok(value) => Ok(value),
                         Err(err) => Err(err.add(#enum_name_str)),
                     },
                     _ => panic!("This should never happen"),

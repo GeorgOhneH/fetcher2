@@ -15,15 +15,16 @@ use syn::{DataEnum, Type};
 
 pub enum SupportedTypes {
     String,
-    OtherString,
+    OptionString,
     Integer,
-    OtherInteger,
+    OptionInteger,
     Bool,
-    OtherBool,
+    OptionBool,
     Vec(Box<SupportedTypes>),
     Struct(TypePath),
-    CheckableStruct(TypePath), // aka OtherStruct
+    CheckableStruct(TypePath), // aka OptionStruct
     Enum(TypePath),
+    OptionEnum(TypePath),
 }
 
 impl SupportedTypes {
@@ -31,7 +32,7 @@ impl SupportedTypes {
         use SupportedTypes::*;
         match self {
             String | Integer | Bool | Vec(_) | Struct(_) | Enum(_) => false,
-            OtherString | OtherInteger | OtherBool | CheckableStruct(_) => true,
+            OptionString | OptionInteger | OptionBool | CheckableStruct(_) | OptionEnum(_) => true,
         }
     }
 }
@@ -41,11 +42,11 @@ impl ToTokens for SupportedTypes {
         use SupportedTypes::*;
         match self {
             String => tokens.append(Ident::new("String", Span::call_site())),
-            OtherString => tokens.append(Ident::new("Option<String>", Span::call_site())),
+            OptionString => tokens.append(Ident::new("Option<String>", Span::call_site())),
             Integer => tokens.append(Ident::new("isize", Span::call_site())),
-            OtherInteger => tokens.append(Ident::new("Option<isize>", Span::call_site())),
+            OptionInteger => tokens.append(Ident::new("Option<isize>", Span::call_site())),
             Bool => tokens.append(Ident::new("bool", Span::call_site())),
-            OtherBool => tokens.append(Ident::new("Other<bool>", Span::call_site())),
+            OptionBool => tokens.append(Ident::new("Other<bool>", Span::call_site())),
             Vec(sup_typ) => {
                 tokens.append(Ident::new("Vec<", Span::call_site()));
                 sup_typ.to_tokens(tokens);
@@ -54,6 +55,7 @@ impl ToTokens for SupportedTypes {
             Struct(type_path) => type_path.to_tokens(tokens),
             CheckableStruct(type_path) => type_path.to_tokens(tokens),
             Enum(type_path) => type_path.to_tokens(tokens),
+            OptionEnum(type_path) => type_path.to_tokens(tokens),
         }
     }
 }
@@ -148,9 +150,10 @@ pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
                 let inner_supported_type = parse_type(inner_ty, attrs);
                 match inner_supported_type {
                     SupportedTypes::Struct(type_path) => SupportedTypes::CheckableStruct(type_path),
-                    SupportedTypes::String => SupportedTypes::OtherString,
-                    SupportedTypes::Integer => SupportedTypes::OtherInteger,
-                    SupportedTypes::Bool => SupportedTypes::OtherBool,
+                    SupportedTypes::String => SupportedTypes::OptionString,
+                    SupportedTypes::Integer => SupportedTypes::OptionInteger,
+                    SupportedTypes::Bool => SupportedTypes::OptionBool,
+                    SupportedTypes::Enum(ty_path) => SupportedTypes::OptionEnum(ty_path),
                     _ => abort!(ty, "Can not be inside an Option"),
                 }
             }

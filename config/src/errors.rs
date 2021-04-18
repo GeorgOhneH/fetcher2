@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::fmt;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequiredError {
     path: String,
 }
@@ -25,7 +26,7 @@ impl fmt::Display for RequiredError {
 
 impl Error for RequiredError {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MsgError {
     msg: String,
 }
@@ -45,5 +46,3 @@ impl fmt::Display for MsgError {
         write!(f, "ValueError with msg: {}", self.msg)
     }
 }
-
-impl Error for MsgError {}
