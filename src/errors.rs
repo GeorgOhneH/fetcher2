@@ -1,1 +1,3 @@
-pub struct Error {} 
+
+#[derive(Clone, Debug)]
+pub struct Error {}

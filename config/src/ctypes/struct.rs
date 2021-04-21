@@ -1,5 +1,5 @@
 use crate::*;
-use serde_yaml::{Value, Sequence, Mapping};
+use serde_yaml::{Value, Mapping};
 
 #[derive(Debug, Clone)]
 pub struct CStruct {
@@ -130,7 +130,7 @@ impl CKwarg {
         &mut self.ty
     }
 
-    pub fn consume_value(&mut self, mut value: Value) -> Result<(), RequiredError> {
+    pub fn consume_value(&mut self, value: Value) -> Result<(), RequiredError> {
         self.ty.consume_value(value)
     }
 }

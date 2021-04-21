@@ -148,7 +148,7 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
             let sub_arg = gen_type(field, sub_type, config_attrs);
             quote_spanned! {span=>
                 ::config::CTypes::Vec(
-                    ::config::CVecBuilder::new(#sub_arg)
+                    ::config::CVecBuilder::new(|| #sub_arg)
                     .build()
                 )
             }

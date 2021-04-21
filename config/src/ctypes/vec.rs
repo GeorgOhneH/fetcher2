@@ -1,17 +1,20 @@
 use crate::{CTypes, MsgError, RequiredError};
 use serde_yaml::Sequence;
+use lazy_static::lazy_static;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct CVec {
     inner: Vec<CTypes>,
-    template: Box<CTypes>,
+    template_fn: fn() -> CTypes,
 }
 
+
 impl CVec {
-    fn new(template: CTypes) -> Self {
+    fn new(template_fn: fn() -> CTypes) -> Self {
         Self {
             inner: Vec::new(),
-            template: Box::new(template),
+            template_fn
         }
     }
 
@@ -19,14 +22,15 @@ impl CVec {
         &self.inner
     }
 
-    pub fn get_template(&self) -> &CTypes {
-        &self.template
+    pub fn get_template(&self) -> CTypes {
+        (self.template_fn)()
     }
 
     pub fn is_valid(&self, vec: &Vec<CTypes>) -> Result<(), MsgError> {
+        let template = self.get_template();
         let r = vec
             .iter()
-            .all(|ty| std::mem::discriminant(ty) == std::mem::discriminant(&self.template));
+            .all(|ty| std::mem::discriminant(ty) == std::mem::discriminant(&template));
         if r {
             Ok(())
         } else {
@@ -49,9 +53,9 @@ impl CVec {
         self.inner.clear();
         let mut result = Ok(());
         for value in seq {
-            let mut template_copy = self.get_template().clone();
-            match template_copy.consume_value(value) {
-                Ok(()) => self.inner.push(template_copy),
+            let mut template = self.get_template();
+            match template.consume_value(value) {
+                Ok(()) => self.inner.push(template),
                 Err(err) => result = Err(err),
             }
         }
@@ -64,7 +68,7 @@ pub struct CVecBuilder {
 }
 
 impl CVecBuilder {
-    pub fn new(template: CTypes) -> Self {
+    pub fn new(template: fn() -> CTypes) -> Self {
         Self {
             inner: CVec::new(template),
         }

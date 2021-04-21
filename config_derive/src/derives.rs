@@ -108,7 +108,7 @@ fn gen_for_struct(
     }
 }
 
-fn gen_for_enum(name: &Ident, attrs: &[Attribute], e: &DataEnum) -> TokenStream {
+fn gen_for_enum(name: &Ident, _attrs: &[Attribute], e: &DataEnum) -> TokenStream {
     let build_app_fn = gen_enum_build_app_fn(e);
     let parse_fn = crate::parse_from_app::gen_enum_parse_fn(e);
     let update_app_fn = crate::update_app::gen_enum_update_app_fn(e);

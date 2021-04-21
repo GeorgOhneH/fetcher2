@@ -150,7 +150,7 @@ fn gen_set(
         SupportedTypes::Vec(sub_type) => {
             let sub_setter = gen_set(sub_type, field, quote! {temp}, quote! {value});
             quote! {{
-                let mut config_vec = match #match_arg {
+                let config_vec = match #match_arg {
                     ::config::CTypes::Vec(ref mut config_vec) => config_vec,
                     _ => panic!("This should never happen"),
                 };

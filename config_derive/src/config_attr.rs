@@ -1,4 +1,4 @@
-use proc_macro_error::{abort, ResultExt, emit_call_site_warning};
+use proc_macro_error::{abort, ResultExt};
 
 use syn::{
     self,

@@ -1,6 +1,6 @@
 use crate::*;
 use serde_yaml::{Mapping, Value};
-use std::process::id;
+
 
 #[derive(Debug, Clone)]
 pub struct CEnum {
@@ -65,7 +65,7 @@ impl CEnum {
                 _ => return Err(RequiredError::new("map key is not String".to_owned())),
             };
             self.set_selected_mut(key)
-                .map_err(|e| RequiredError::new("Key name does not exist".to_owned()))
+                .map_err(|_e| RequiredError::new("Key name does not exist".to_owned()))
                 .and_then(|carg| carg.consume_value(value))
         } else {
             panic!("Should never happen")
@@ -137,7 +137,7 @@ impl CArg {
 
             },
             None => {
-                if let Value::String(str) = value {
+                if let Value::String(_str) = value {
                     Ok(())
                 } else {
                     Err(RequiredError::new("Unit Enum must be a String".to_owned()))

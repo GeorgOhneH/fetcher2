@@ -13,3 +13,10 @@ clap = "3.0.0-beta.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
 async-trait = "0.1"
+enum_dispatch = "0.3"
+async-std = "1"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+async-recursion = "0.2"
+lazy_static = "1"
+reqwest = { version = "0.11", features = ["cookies"] }
