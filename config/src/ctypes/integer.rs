@@ -16,14 +16,14 @@ impl CInteger {
         }
     }
 
-    pub fn is_valid(&self, value: &Option<isize>) -> Result<(), MsgError> {
-        match value {
-            None => Ok(()),
-            Some(int) if self.min <= *int && *int <= self.max => Ok(()),
-            _ => Err(MsgError::new(format!(
+    pub fn is_valid(&self, value: &isize) -> Result<(), InvalidError> {
+        if self.min <= *value && *value <= self.max {
+            Ok(())
+        } else {
+            Err(InvalidError::new(format!(
                 "Value must be between {} and {}",
                 self.min, self.max
-            ))),
+            )))
         }
     }
 
@@ -31,13 +31,13 @@ impl CInteger {
         Option::from(&self.value)
     }
 
-    pub fn set(&mut self, value: Option<isize>) -> Result<(), MsgError> {
-        if let Err(err) = self.is_valid(&value) {
-            Err(err)
-        } else {
-            self.value = value;
-            Ok(())
-        }
+    pub fn set(&mut self, value: isize) -> Result<(), InvalidError> {
+        self.is_valid(&value)?;
+        self.value = Some(value);
+        Ok(())
+    }
+    pub fn unset(&mut self) {
+        self.value = None
     }
 }
 
@@ -52,7 +52,7 @@ impl CIntegerBuilder {
         }
     }
     pub fn default(mut self, value: isize) -> Self {
-        self.inner.set(Some(value)).unwrap();
+        self.inner.set(value).unwrap();
         self
     }
 

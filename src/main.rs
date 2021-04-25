@@ -1,24 +1,29 @@
 #![allow(dead_code)]
 
-use clap::{AppSettings, Clap};
-use config::{CStruct, Config, ConfigEnum, InactiveBehavior};
-use config_derive::Config;
-use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
 use async_std::channel;
 mod errors;
-mod task;
 mod session;
+mod settings;
 mod site_modules;
+mod task;
 mod template;
 
-use crate::template::Template;
-
+use crate::settings::DownloadSettings;
+use crate::template::{Template, DownloadArgs};
+use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() {
     let template = Template::new();
     let session = crate::session::Session::new();
-    let (sender, receiver) = channel::bounded(10);
-    template.run_root(session, sender).await.unwrap()
+    let dsettings = DownloadSettings {
+        username: "gshwan".to_owned(),
+        password: "".to_owned(),
+        save_path: PathBuf::new(),
+        download_args: DownloadArgs {
+            allowed_extensions: vec![],
+            forbidden_extensions: vec![]
+        },
+    };
+    template.run_root(session, &dsettings).await.unwrap()
 }

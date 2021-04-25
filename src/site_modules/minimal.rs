@@ -1,52 +1,75 @@
-use crate::errors::Error;
-use crate::task::{Task};
+use crate::errors::TemplateError;
 use crate::session::Session;
-use crate::site_modules::ModuleExt;
+use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
-use config::Config;
-use config_derive::Config;
-use serde::Serialize;
-use async_std::path::{PathBuf, Path};
+
 use async_std::channel::Sender;
-use lazy_static::lazy_static;
+use async_std::path::{Path, PathBuf};
+use config_derive::Config;
+use reqwest::multipart::Form;
+use serde::Serialize;
+
+use crate::settings::DownloadSettings;
+use std::collections::HashMap;
 use tokio::time::Duration;
+
+use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
+use url::Url;
 
 #[derive(Config, Clone, Serialize)]
 pub struct Minimal {
     pub parameters: Option<String>,
 }
 
-
 impl Minimal {
-}
-
-
-#[async_trait]
-impl ModuleExt for Minimal {
-    async fn retrieve_urls(
+    pub async fn retrieve_urls(
         &self,
-        session: &Session,
-        queue: Sender<Task>,
+        session: Session,
+        sender: Sender<Task>,
         base_path: PathBuf,
-    ) -> Result<(), Error> {
+    ) -> Result<(), TemplateError> {
         println!("Retirevinbg Urls");
-        Ok(())
-    }
-
-    async fn login(&self, session: &Session) -> Result<(), Error> {
-        println!("LOGIN MINIMAL");
+        let task = TaskBuilder::new(
+            base_path.join("hello.hello"),
+            Url::parse("https://www.google.com/").unwrap(),
+        )
+        .build();
+        sender.send(task).await.unwrap();
+        let resp = session.get("https://www.google.com/").send().await?;
+        println!("1{}", resp.status());
+        let resp = session.get("https://www.google.com/").send().await?;
+        println!("2{}", resp.status());
         tokio::time::sleep(Duration::from_secs(3)).await;
+        let resp = session.get("https://www.google.com/").send().await?;
+        println!("3{}", resp.status());
+        let task = TaskBuilder::new(
+            base_path.join("hello2.hello"),
+            Url::parse("https://www.google.com/").unwrap(),
+        )
+        .build();
+        sender.send(task).await.unwrap();
         Ok(())
     }
 
-    fn website_url(&self) -> String {
+    pub async fn login(
+        &self,
+        _session: &Session,
+        dsettings: &DownloadSettings,
+    ) -> Result<(), TemplateError> {
+        println!("LOGIN MINIMAL");
+        let url =
+            url::Url::parse("https://moodle-app2.let.ethz.ch/auth/shibboleth/login.php").unwrap();
+
+        let form = [("idp", "https://aai-logon.ethz.ch/idp/shibboleth")];
+        //crate::site_modules::aai_login::aai_login(_session, dsettings, url, &form).await
+        Ok(())
+    }
+
+    pub fn website_url(&self) -> String {
         "todo!()".to_owned()
     }
 
-    async fn folder_name(
-        &self,
-        session: &Session,
-    ) -> Result<&Path, Error> {
+    pub async fn folder_name(&self, _session: &Session) -> Result<&Path, TemplateError> {
         println!("Folder Name");
         Ok(Path::new("efgeuif"))
     }

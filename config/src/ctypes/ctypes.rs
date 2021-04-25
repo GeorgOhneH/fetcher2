@@ -6,6 +6,7 @@ pub enum CTypes {
     String(CString),
     Bool(CBool),
     Integer(CInteger),
+    Path(CPath),
     Struct(CStruct),
     CheckableStruct(CCheckableStruct),
     Vec(CVec),
@@ -13,46 +14,55 @@ pub enum CTypes {
 }
 
 impl CTypes {
-    pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), RequiredError> {
+    pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         match self {
             CTypes::String(cstring) => match value {
                 Value::String(str) => {
-                    cstring.set(Some(str));
+                    cstring.set(str);
                     Ok(())
                 }
                 Value::Null => {
-                    cstring.set(None);
+                    cstring.unset();
                     Ok(())
                 }
-                _ => Err(RequiredError::new("Expected String or Null".to_owned())),
+                _ => Err(InvalidError::new("Expected String or Null").into()),
             },
             CTypes::Bool(cbool) => match value {
                 Value::Bool(bool) => {
-                    cbool.set(Some(bool));
+                    cbool.set(bool);
                     Ok(())
                 }
                 Value::Null => {
-                    cbool.set(None);
+                    cbool.unset();
                     Ok(())
                 }
-                _ => Err(RequiredError::new("Expected Bool or Null".to_owned())),
+                _ => Err(InvalidError::new("Expected Bool or Null").into()),
+            },
+            CTypes::Path(cpath) => match value {
+                Value::String(str) => {
+                    cpath.set(str)?;
+                    Ok(())
+                }
+                Value::Null => {
+                    cpath.unset();
+                    Ok(())
+                }
+                _ => Err(InvalidError::new("Expected Bool or Null").into()),
             },
             CTypes::Integer(cinteger) => match value {
                 Value::Number(num) => match num.as_i64() {
-                    Some(int) => cinteger
-                        .set(Some(int as isize))
-                        .map_err(|_| RequiredError::new("Int not valid".to_owned())),
-                    None => Err(RequiredError::new("Not supported Number".to_owned())),
+                    Some(int) => cinteger.set(int as isize).map_err(|e| e.into()),
+                    None => Err(InvalidError::new("Not supported Number").into()),
                 },
                 Value::Null => {
-                    cinteger.set(None).unwrap();
+                    cinteger.unset();
                     Ok(())
                 }
-                _ => Err(RequiredError::new("Expected Number or Null".to_owned())),
+                _ => Err(InvalidError::new("Expected Number or Null").into()),
             },
             CTypes::Struct(cstruct) => match value {
                 Value::Mapping(map) => cstruct.consume_map(map),
-                _ => Err(RequiredError::new("Expected Mapping".to_owned())),
+                _ => Err(InvalidError::new("Expected Mapping").into()),
             },
             CTypes::CheckableStruct(ccheck_struct) => match value {
                 Value::Mapping(map) => ccheck_struct.consume_map(map),
@@ -60,11 +70,11 @@ impl CTypes {
                     ccheck_struct.set_checked(false);
                     Ok(())
                 }
-                _ => Err(RequiredError::new("Expected Mapping or Null".to_owned())),
+                _ => Err(InvalidError::new("Expected Mapping or Null").into()),
             },
             CTypes::Vec(cvec) => match value {
                 Value::Sequence(seq) => cvec.consume_sequence(seq),
-                _ => Err(RequiredError::new("Expected Sequence".to_owned())),
+                _ => Err(InvalidError::new("Expected Sequence").into()),
             },
             CTypes::Enum(cenum) => match value {
                 Value::Mapping(map) => cenum.consume_map(map),
@@ -73,16 +83,16 @@ impl CTypes {
                         if carg.is_unit() {
                             Ok(())
                         } else {
-                            Err(RequiredError::new("Enum must be unit".to_owned()))
+                            Err(InvalidError::new("Enum must be unit").into())
                         }
                     }
-                    Err(_) => Err(RequiredError::new("Key does not exit".to_owned())),
+                    Err(_) => Err(InvalidError::new("Key does not exit").into()),
                 },
                 Value::Null => {
                     cenum.unselect();
                     Ok(())
                 }
-                _ => Err(RequiredError::new("Expected Mapping".to_owned())),
+                _ => Err(InvalidError::new("Expected Mapping").into()),
             },
         }
     }

@@ -34,39 +34,38 @@ impl CEnum {
         self.selected = None
     }
 
-    pub fn set_selected(&mut self, idx: String) -> Result<&CArg, MsgError> {
+    pub fn set_selected(&mut self, idx: String) -> Result<&CArg, InvalidError> {
         match self.inner.get(&idx) {
             Some(carg) => {
                 self.selected = Some(idx);
                 Ok(carg)
             }
-            None => Err(MsgError::new("Key does not exist".to_string())),
+            None => Err(InvalidError::new("Key does not exist")),
         }
     }
 
-    pub fn set_selected_mut(&mut self, idx: String) -> Result<&mut CArg, MsgError> {
+    pub fn set_selected_mut(&mut self, idx: String) -> Result<&mut CArg, InvalidError> {
         match self.inner.get_mut(&idx) {
             Some(carg) => {
                 self.selected = Some(idx);
                 Ok(carg)
             }
-            None => Err(MsgError::new("Key does not exist".to_string())),
+            None => Err(InvalidError::new("Key does not exist")),
         }
     }
 
-    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), RequiredError> {
+    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
         if map.len() != 1 {
-            Err(RequiredError::new(
-                "Enum map has the wrong format".to_owned(),
-            ))
+            Err(InvalidError::new(
+                "Enum map has the wrong format",
+            ).into())
         } else if let Some((vkey, value)) = map.into_iter().next() {
             let key = match vkey {
                 Value::String(str) => str,
-                _ => return Err(RequiredError::new("map key is not String".to_owned())),
+                _ => return Err(InvalidError::new("map key is not String").into()),
             };
-            self.set_selected_mut(key)
-                .map_err(|_e| RequiredError::new("Key name does not exist".to_owned()))
-                .and_then(|carg| carg.consume_value(value))
+            let mut carg = self.set_selected_mut(key)?;
+            carg.consume_value(value)
         } else {
             panic!("Should never happen")
         }
@@ -126,13 +125,13 @@ impl CArg {
         self.parameter.is_none()
     }
 
-    pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), RequiredError> {
+    pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         match &mut self.parameter {
             Some(cstruct) => {
                 if let Value::Mapping(map) = value {
                     cstruct.consume_map(map)
                 } else {
-                    Err(RequiredError::new("Struct Enum must be a Mapping".to_owned()))
+                    Err(InvalidError::new("Struct Enum must be a Mapping").into())
                 }
 
             },
@@ -140,7 +139,7 @@ impl CArg {
                 if let Value::String(_str) = value {
                     Ok(())
                 } else {
-                    Err(RequiredError::new("Unit Enum must be a String".to_owned()))
+                    Err(InvalidError::new("Unit Enum must be a String").into())
                 }
             },
         }

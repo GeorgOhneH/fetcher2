@@ -13,8 +13,11 @@ impl CBool {
         Option::from(&self.value)
     }
 
-    pub fn set(&mut self, value: Option<bool>) {
-        self.value = value;
+    pub fn set(&mut self, value: bool) {
+        self.value = Some(value);
+    }
+    pub fn unset(&mut self) {
+        self.value = None
     }
 }
 
@@ -29,7 +32,7 @@ impl CBoolBuilder {
         }
     }
     pub fn default(mut self, value: bool) -> Self {
-        self.inner.set(Some(value));
+        self.inner.set(value);
         self
     }
     pub fn build(self) -> CBool {

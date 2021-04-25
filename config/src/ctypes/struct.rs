@@ -35,17 +35,16 @@ impl CStruct {
         }
     }
 
-    pub fn load_from_string(&mut self, str: &str) -> Result<(), RequiredError> {
-        match serde_yaml::from_str::<Value>(&str) {
-            Ok(Value::Mapping(map)) => {
-                self.consume_map(map)
-            },
-            Ok(_) => Err(RequiredError::new("Must be in a Mapping".to_owned())),
-            Err(_) => Err(RequiredError::new("Loading failed".to_owned())),
+    pub fn load_from_string(&mut self, str: &str) -> Result<(), ConfigError> {
+        let value = serde_yaml::from_str::<Value>(&str)?;
+        if let Value::Mapping(map) = value {
+            self.consume_map(map)
+        } else {
+            Err(RequiredError::new("Root", "Must be a mapping").into())
         }
     }
 
-    pub(crate) fn consume_map(&mut self, mut map: Mapping) -> Result<(), RequiredError> {
+    pub(crate) fn consume_map(&mut self, mut map: Mapping) -> Result<(), ConfigError> {
         let mut result = Ok(());
         for (key, ckwarg) in self.inner.iter_mut() {
             match map.remove(&Value::String(key.to_string())) {
@@ -56,7 +55,7 @@ impl CStruct {
                     }
                 },
                 None => {
-                    result = Err(RequiredError::new("Missing value(s)".to_owned()))
+                    result = Err(RequiredError::new(key, "Missing value(s)").into())
                 },
             }
         }
@@ -130,7 +129,7 @@ impl CKwarg {
         &mut self.ty
     }
 
-    pub fn consume_value(&mut self, value: Value) -> Result<(), RequiredError> {
+    pub fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         self.ty.consume_value(value)
     }
 }

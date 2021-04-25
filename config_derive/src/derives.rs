@@ -5,7 +5,7 @@ use quote::{quote, ToTokens, TokenStreamExt};
 
 use proc_macro_error::abort;
 
-use crate::build_app::{gen_struct_build_app_fn, gen_enum_build_app_fn};
+use crate::build_app::{gen_enum_build_app_fn, gen_struct_build_app_fn};
 use crate::config_attr::{parse_config_attributes, ConfigAttr};
 use syn::{
     self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
@@ -20,6 +20,8 @@ pub enum SupportedTypes {
     OptionInteger,
     Bool,
     OptionBool,
+    Path,
+    OptionPath,
     Vec(Box<SupportedTypes>),
     Struct(TypePath),
     CheckableStruct(TypePath), // aka OptionStruct
@@ -31,8 +33,9 @@ impl SupportedTypes {
     pub fn is_inside_option(&self) -> bool {
         use SupportedTypes::*;
         match self {
-            String | Integer | Bool | Vec(_) | Struct(_) | Enum(_) => false,
-            OptionString | OptionInteger | OptionBool | CheckableStruct(_) | OptionEnum(_) => true,
+            String | Integer | Bool | Vec(_) | Struct(_) | Enum(_) | Path => false,
+            OptionString | OptionInteger | OptionBool | CheckableStruct(_) | OptionEnum(_)
+            | OptionPath => true,
         }
     }
 }
@@ -47,6 +50,8 @@ impl ToTokens for SupportedTypes {
             OptionInteger => tokens.append(Ident::new("Option<isize>", Span::call_site())),
             Bool => tokens.append(Ident::new("bool", Span::call_site())),
             OptionBool => tokens.append(Ident::new("Other<bool>", Span::call_site())),
+            Path => tokens.append(Ident::new("PathBuf", Span::call_site())),
+            OptionPath => tokens.append(Ident::new("Other<PathBuf>", Span::call_site())),
             Vec(sup_typ) => {
                 tokens.append(Ident::new("Vec<", Span::call_site()));
                 sup_typ.to_tokens(tokens);
@@ -153,6 +158,7 @@ pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
                     SupportedTypes::String => SupportedTypes::OptionString,
                     SupportedTypes::Integer => SupportedTypes::OptionInteger,
                     SupportedTypes::Bool => SupportedTypes::OptionBool,
+                    SupportedTypes::Path => SupportedTypes::OptionPath,
                     SupportedTypes::Enum(ty_path) => SupportedTypes::OptionEnum(ty_path),
                     _ => abort!(ty, "Can not be inside an Option"),
                 }
@@ -166,6 +172,7 @@ pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
                     "String" => SupportedTypes::String,
                     "isize" => SupportedTypes::Integer,
                     "bool" => SupportedTypes::Bool,
+                    "PathBuf" => SupportedTypes::Path,
                     _ => {
                         let type_args: Vec<String> = parse_config_attributes(attrs)
                             .iter()

@@ -143,6 +143,13 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
                 .build()
             )
         },
+        SupportedTypes::Path | SupportedTypes::OptionPath => quote_spanned! {span=>
+            ::config::CTypes::Path(
+                ::config::CPathBuilder::new()
+                #args
+                .build()
+            )
+        },
         SupportedTypes::Vec(sub_type) => {
             //emit_call_site_warning!(format!("{:#?}", *sub_type));
             let sub_arg = gen_type(field, sub_type, config_attrs);

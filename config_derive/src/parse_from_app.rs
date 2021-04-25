@@ -116,9 +116,9 @@ fn gen_arg(
         quote! {match #option_arg {
             Ok(value) => match value {
                 Some(x) => Ok(x.clone()),
-                None => Err(::config::RequiredError::new(#field_name_str.to_string())),
+                None => Err(::config::RequiredError::new(#field_name_str, "Must be Option?")),
             },
-            Err(err) => Err(::config::RequiredError::add(err, #field_name_str)),
+            Err(err) => Err(err),
         }}
     } else {
         quote! {
@@ -127,7 +127,7 @@ fn gen_arg(
                 Some(x) => Ok(Some(x.clone())),
                 None => Ok(None),
             },
-            Err(err) => Err(::config::RequiredError::add(err, #field_name_str)),
+            Err(err) => Err(err),
             }
         }
     }
@@ -152,6 +152,12 @@ fn gen_option_arg(
                 _ => panic!("This should never happen"),
             }
         }},
+        SupportedTypes::Path | SupportedTypes::OptionPath => quote! {{
+            match #match_arg {
+                ::config::CTypes::Path(cpath) => Ok(cpath.get()),
+                _ => panic!("This should never happen"),
+            }
+        }},
         SupportedTypes::Bool | SupportedTypes::OptionBool => quote! {{
             match #match_arg {
                 ::config::CTypes::Bool(value_arg) => Ok(value_arg.get()),
@@ -173,7 +179,7 @@ fn gen_option_arg(
                 };
                 match a {
                     Ok(value) => Ok(Some(value)),
-                    Err(err) => Err(err.add("Vec")),
+                    Err(err) => Err(err),
                 }
             }}
         }
@@ -184,7 +190,7 @@ fn gen_option_arg(
                 match #match_arg {
                     ::config::CTypes::Struct(config_struct) => match #ty_path::parse_from_app(config_struct) {
                         Ok(value) => Ok(Some(value)),
-                        Err(err) => Err(err.add(#struct_name_str)),
+                        Err(err) => Err(err),
                     },
                     _ => panic!("This should never happen"),
                 }
@@ -201,7 +207,7 @@ fn gen_option_arg(
                         } else {
                             match #ty_path::parse_from_app(config_check_struct.get_inner()) {
                                 Ok(value) => Ok(Some(value)),
-                                Err(err) => Err(err.add(#struct_name_str)),
+                                Err(err) => Err(err),
                             }
                         }
                     },
@@ -216,7 +222,7 @@ fn gen_option_arg(
                 match #match_arg {
                     ::config::CTypes::Enum(cenum) => match #ty_path::parse_from_app(cenum) {
                         Ok(value) => Ok(value),
-                        Err(err) => Err(err.add(#enum_name_str)),
+                        Err(err) => Err(err),
                     },
                     _ => panic!("This should never happen"),
                 }

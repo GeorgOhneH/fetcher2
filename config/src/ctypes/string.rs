@@ -14,8 +14,11 @@ impl CString {
         Option::from(&self.value)
     }
 
-    pub fn set(&mut self, value: Option<String>) {
-        self.value = value;
+    pub fn set(&mut self, value: String) {
+        self.value = Some(value);
+    }
+    pub fn unset(&mut self) {
+        self.value = None
     }
 }
 
@@ -30,7 +33,7 @@ impl CStringBuilder {
         }
     }
     pub fn default(mut self, value: String) -> Self {
-        self.inner.set(Some(value));
+        self.inner.set(value);
         self
     }
     pub fn build(self) -> CString {

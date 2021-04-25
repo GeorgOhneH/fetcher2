@@ -12,7 +12,7 @@ use syn::spanned::Spanned;
 pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_setter(fields);
     quote! {
-        fn update_app(self, app: &mut ::config::CStruct) -> Result<(), ::config::MsgError> {
+        fn update_app(self, app: &mut ::config::CStruct) -> Result<(), ::config::InvalidError> {
             #augmentation
         }
     }
@@ -21,7 +21,7 @@ pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStrea
 pub fn gen_enum_update_app_fn(e: &DataEnum) -> TokenStream {
     let augmentation = gen_carg(e);
     quote! {
-        fn update_app(self, cenum: &mut ::config::CEnum) -> Result<(), ::config::MsgError> {
+        fn update_app(self, cenum: &mut ::config::CEnum) -> Result<(), ::config::InvalidError> {
             #augmentation
         }
     }
@@ -80,7 +80,7 @@ fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
         .collect();
 
     quote! {
-        let results: Vec<Result<(), ::config::MsgError>> = vec![#(
+        let results: Vec<Result<(), ::config::InvalidError>> = vec![#(
             #setters
         ),*];
         for result in results {
@@ -101,32 +101,59 @@ fn gen_set(
     match typ {
         SupportedTypes::String => quote! {{
             match #match_arg {
-                ::config::CTypes::String(ref mut config_arg_string) => {
-                    Ok(config_arg_string.set(Some(#set_arg)))
+                ::config::CTypes::String(ref mut cstring) => {
+                    cstring.set(#set_arg);
+                    Ok(())
                 },
                 _ => panic!("This should never happen"),
             }
         }},
         SupportedTypes::OptionString => quote! {{
             match #match_arg {
-                ::config::CTypes::String(ref mut config_arg_string) => {
-                    Ok(config_arg_string.set(#set_arg))
+                ::config::CTypes::String(ref mut cstring) => {
+                    match #set_arg {
+                        Some(str) => cstring.set(str),
+                        None => cstring.unset(),
+                    };
+                    Ok(())
                 },
                 _ => panic!("This should never happen"),
             }
         }},
         SupportedTypes::Integer => quote! {{
             match #match_arg {
-                ::config::CTypes::Integer(ref mut config_arg_int) => {
-                    config_arg_int.set(Some(#set_arg))
+                ::config::CTypes::Integer(ref mut cint) => {
+                    cint.set(#set_arg)
                 },
                 _ => panic!("This should never happen"),
             }
         }},
         SupportedTypes::OptionInteger => quote! {{
             match #match_arg {
-                ::config::CTypes::Integer(ref mut config_arg_int) => {
-                    config_arg_int.set(#set_arg)
+                ::config::CTypes::Integer(ref mut cint) => {
+                    match #set_arg {
+                        Some(int) => cint.set(int),
+                        None => cint.unset(),
+                    }
+                },
+                _ => panic!("This should never happen"),
+            }
+        }},
+        SupportedTypes::Path => quote! {{
+            match #match_arg {
+                ::config::CTypes::Path(ref mut cpath) => {
+                    cpath.set(#set_arg)
+                },
+                _ => panic!("This should never happen"),
+            }
+        }},
+        SupportedTypes::OptionPath => quote! {{
+            match #match_arg {
+                ::config::CTypes::Path(ref mut cpath) => {
+                    match #set_arg {
+                        Some(path) => cpath.set(path),
+                        None => cpath.unset(),
+                    }
                 },
                 _ => panic!("This should never happen"),
             }
@@ -134,15 +161,19 @@ fn gen_set(
         SupportedTypes::Bool => quote! {{
             match #match_arg {
                 ::config::CTypes::Bool(ref mut config_arg_bool) => {
-                    Ok(config_arg_bool.set(Some(#set_arg)))
+                    Ok(config_arg_bool.set(#set_arg))
                 },
                 _ => panic!("This should never happen"),
             }
         }},
         SupportedTypes::OptionBool => quote! {{
             match #match_arg {
-                ::config::CTypes::Bool(ref mut config_arg_bool) => {
-                    Ok(config_arg_bool.set(#set_arg))
+                ::config::CTypes::Bool(ref mut cbool) => {
+                    match #set_arg {
+                        Some(b) => cbool.set(b),
+                        None => cbool.unset(),
+                    };
+                    Ok(())
                 },
                 _ => panic!("This should never happen"),
             }
@@ -154,7 +185,7 @@ fn gen_set(
                     ::config::CTypes::Vec(ref mut config_vec) => config_vec,
                     _ => panic!("This should never happen"),
                 };
-                let a: Result<Vec<::config::CTypes>, ::config::MsgError> = #set_arg
+                let a: Result<Vec<::config::CTypes>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| value | {
                         let mut temp = config_vec.get_template().clone();

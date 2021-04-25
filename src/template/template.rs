@@ -1,15 +1,15 @@
-use crate::errors::Error;
+use crate::errors::TemplateError;
 use crate::session::Session;
 use crate::site_modules::Minimal;
-use crate::site_modules::{Module, ModuleExt};
+use crate::site_modules::{Module};
 use crate::task::Task;
-use crate::template::node::NodeType::Folder;
-use crate::template::node::RootNode;
+
+use crate::template::node::{RootNode, SiteStorage};
 use crate::template::node::{MetaData, Node, NodeType, Site};
 use async_std::channel::Sender;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
-use serde::Serialize;
+use crate::settings::DownloadSettings;
+
 
 pub struct Template {
     root: RootNode,
@@ -23,10 +23,14 @@ impl Template {
             children: vec![Node {
                 ty: NodeType::Site(Site {
                     module: Module::Minimal(Minimal { parameters: None }),
+                    storage: SiteStorage {},
+                    download_args: None,
                 }),
                 children: vec![Node {
                     ty: NodeType::Site(Site {
                         module: Module::Minimal(Minimal { parameters: None }),
+                        storage: SiteStorage {},
+                        download_args: None,
                     }),
                     children: vec![],
                     meta_data: MetaData {},
@@ -41,7 +45,7 @@ impl Template {
             root: RootNode::parse_from_app(&app).unwrap(),
         }
     }
-    pub async fn run_root(&self, session: Session, sender: Sender<Task>) -> Result<(), Error> {
-        self.root.run(session, sender).await
+    pub async fn run_root(&self, session: Session, dsettings: &DownloadSettings) -> Result<(), TemplateError> {
+        self.root.run(&session, dsettings).await
     }
 }

@@ -1,6 +1,6 @@
-use crate::{CTypes, MsgError, RequiredError};
-use serde_yaml::Sequence;
+use crate::{CTypes, InvalidError, ConfigError};
 use lazy_static::lazy_static;
+use serde_yaml::Sequence;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -9,12 +9,11 @@ pub struct CVec {
     template_fn: fn() -> CTypes,
 }
 
-
 impl CVec {
     fn new(template_fn: fn() -> CTypes) -> Self {
         Self {
             inner: Vec::new(),
-            template_fn
+            template_fn,
         }
     }
 
@@ -26,7 +25,7 @@ impl CVec {
         (self.template_fn)()
     }
 
-    pub fn is_valid(&self, vec: &Vec<CTypes>) -> Result<(), MsgError> {
+    pub fn is_valid(&self, vec: &Vec<CTypes>) -> Result<(), InvalidError> {
         let template = self.get_template();
         let r = vec
             .iter()
@@ -34,22 +33,17 @@ impl CVec {
         if r {
             Ok(())
         } else {
-            Err(MsgError::new(
-                "SupportedTypes must be the same enum".to_string(),
-            ))
+            Err(InvalidError::new("SupportedTypes must be the same enum"))
         }
     }
 
-    pub fn set(&mut self, vec: Vec<CTypes>) -> Result<(), MsgError> {
-        if let Err(err) = self.is_valid(&vec) {
-            Err(err)
-        } else {
-            self.inner = vec;
-            Ok(())
-        }
+    pub fn set(&mut self, vec: Vec<CTypes>) -> Result<(), InvalidError> {
+       self.is_valid(&vec)?;
+        self.inner = vec;
+        Ok(())
     }
 
-    pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), RequiredError> {
+    pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), ConfigError> {
         self.inner.clear();
         let mut result = Ok(());
         for value in seq {

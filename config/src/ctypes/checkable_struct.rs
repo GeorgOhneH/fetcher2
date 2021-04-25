@@ -31,7 +31,7 @@ impl CCheckableStruct {
         self.checked
     }
 
-    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), RequiredError> {
+    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
         self.set_checked(true);
         self.inner.consume_map(map)
     }
