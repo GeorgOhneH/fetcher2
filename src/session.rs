@@ -1,16 +1,15 @@
-use reqwest::{Client, RequestBuilder, IntoUrl, Method, Request, Response, ClientBuilder};
-use crate::site_modules::Module;
 use crate::errors::TemplateError;
+use crate::site_modules::Module;
+use reqwest::{Client, ClientBuilder, IntoUrl, Method, Request, RequestBuilder, Response};
 
-use tokio::sync::Mutex;
-use std::sync::Arc;
 use crate::settings::DownloadSettings;
-
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct Session {
     client: Client,
-    pub login_mutex: Arc<LoginLocks>
+    pub login_mutex: Arc<LoginLocks>,
 }
 
 #[derive(Default)]
@@ -40,10 +39,7 @@ impl Default for LoginState {
 impl Session {
     pub fn new() -> Self {
         Self {
-            client: ClientBuilder::new()
-                .cookie_store(true)
-                .build()
-                .unwrap(),
+            client: ClientBuilder::new().cookie_store(true).build().unwrap(),
             login_mutex: Arc::new(LoginLocks::default()),
         }
     }
@@ -60,14 +56,15 @@ impl Session {
         self.client.request(method, url)
     }
 
-    pub async fn execute(
-        &self,
-        request: Request
-    ) -> Result<Response, reqwest::Error> {
+    pub async fn execute(&self, request: Request) -> Result<Response, reqwest::Error> {
         self.client.execute(request).await
     }
 
-    pub async fn login(&self, module: &Module, dsettings: &DownloadSettings) -> Result<(), TemplateError> {
+    pub async fn login(
+        &self,
+        module: &Module,
+        dsettings: &DownloadSettings,
+    ) -> Result<(), TemplateError> {
         use LoginState::*;
         match module {
             Module::Minimal(minimal) => {
@@ -77,9 +74,9 @@ impl Session {
                     Failure => Err(TemplateError::PreviousLoginError),
                     Uninitiated => {
                         let r = minimal.login(&self, dsettings).await;
-                        *lock = if r.is_ok() {Success} else {Failure};
+                        *lock = if r.is_ok() { Success } else { Failure };
                         r
-                    },
+                    }
                 }
             }
         }

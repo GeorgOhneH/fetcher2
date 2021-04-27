@@ -168,11 +168,33 @@ fn gen_option_arg(
             let sub_value = gen_arg(sub_type, quote! {subtype}, span, field_name_str);
             quote! {{
                 let a: Result<Vec<#sub_type>, ::config::RequiredError> = match #match_arg {
-                    ::config::CTypes::Vec(value_arg) => value_arg
+                    ::config::CTypes::Vec(cvec) => cvec
                             .get()
                             .iter()
                             .map(|subtype| {
                                 #sub_value
+                            })
+                            .collect(),
+                    _ => panic!("This should never happen"),
+                };
+                match a {
+                    Ok(value) => Ok(Some(value)),
+                    Err(err) => Err(err),
+                }
+            }}
+        }
+        SupportedTypes::HashMap(key_ty, value_ty) => {
+            let real_key = gen_arg(key_ty, quote! {keytype}, span, field_name_str);
+            let real_value = gen_arg(value_ty, quote! {valuetype}, span, field_name_str);
+            quote! {{
+                let a: Result<HashMap<#key_ty, #value_ty>, ::config::RequiredError> = match #match_arg {
+                    ::config::CTypes::HashMap(cmap) => cmap
+                            .get()
+                            .iter()
+                            .map(|(keytype, valuetype)| {
+                                let x = #real_key?;
+                                let y = #real_value?;
+                                Ok((x, y))
                             })
                             .collect(),
                     _ => panic!("This should never happen"),

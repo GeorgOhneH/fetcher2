@@ -7,6 +7,7 @@ mod ctypes;
 mod vec;
 mod r#enum;
 mod path;
+mod map;
 
 pub use crate::ctypes::bool::*;
 pub use crate::ctypes::checkable_struct::*;
@@ -16,4 +17,5 @@ pub use crate::ctypes::string::*;
 pub use crate::ctypes::ctypes::*;
 pub use crate::ctypes::vec::*;
 pub use crate::ctypes::path::*;
+pub use crate::ctypes::map::*;
 pub use crate::ctypes::r#enum::*;

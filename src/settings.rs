@@ -1,14 +1,13 @@
+use crate::template::DownloadArgs;
 use config::Config;
 use config_derive::Config;
 use serde::Serialize;
-use crate::template::DownloadArgs;
 use std::path::PathBuf;
-
 
 #[derive(Config, Clone, Serialize)]
 pub struct Settings {
     #[config(ty = "struct")]
-    pub downs: DownloadSettings
+    pub downs: DownloadSettings,
 }
 
 #[derive(Config, Clone, Serialize)]

@@ -1,15 +1,14 @@
 use crate::errors::TemplateError;
 use crate::session::Session;
 use crate::site_modules::Minimal;
-use crate::site_modules::{Module};
+use crate::site_modules::Module;
 use crate::task::Task;
 
-use crate::template::node::{RootNode, SiteStorage};
+use crate::settings::DownloadSettings;
 use crate::template::node::{MetaData, Node, NodeType, Site};
+use crate::template::node::{RootNode, SiteStorage};
 use async_std::channel::Sender;
 use config::{Config, ConfigEnum};
-use crate::settings::DownloadSettings;
-
 
 pub struct Template {
     root: RootNode,
@@ -45,7 +44,11 @@ impl Template {
             root: RootNode::parse_from_app(&app).unwrap(),
         }
     }
-    pub async fn run_root(&self, session: Session, dsettings: &DownloadSettings) -> Result<(), TemplateError> {
+    pub async fn run_root(
+        &self,
+        session: Session,
+        dsettings: &DownloadSettings,
+    ) -> Result<(), TemplateError> {
         self.root.run(&session, dsettings).await
     }
 }

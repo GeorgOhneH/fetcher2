@@ -46,7 +46,9 @@ pub async fn aai_login<T: Serialize + ?Sized>(
     let text = session.post(url).form(form).send().await?.text().await?;
 
     let sam_text = if !text.contains("SAMLResponse") {
-        let local_storage_part = &ACTION_URL_RE.captures(&text).ok_or(TemplateError::WrongFormat)?[1];
+        let local_storage_part = &ACTION_URL_RE
+            .captures(&text)
+            .ok_or(TemplateError::WrongFormat)?[1];
         let local_storage_url = Url::parse(&BASE_URL).unwrap().join(local_storage_part)?;
         let login_page = session
             .post(local_storage_url)

@@ -117,7 +117,7 @@ fn gen_enum_arg(field: &Field, typ: &SupportedTypes) -> TokenStream {
     }
 }
 
-fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>) -> TokenStream {
+fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &[ConfigAttr]) -> TokenStream {
     let field_name = field.ident.as_ref().expect("Unreachable");
     let span = field_name.span();
     let args = attrs_to_sub_args(config_attrs);
@@ -160,6 +160,17 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
                 )
             }
         }
+        SupportedTypes::HashMap(key_ty, value_ty) => {
+            //emit_call_site_warning!(format!("{:#?}", *sub_type));
+            let key_arg = gen_type(field, key_ty, config_attrs);
+            let value_arg = gen_type(field, value_ty, config_attrs);
+            quote_spanned! {span=>
+                ::config::CTypes::HashMap(
+                    ::config::CHashMapBuilder::new(|| #key_arg, || #value_arg)
+                    .build()
+                )
+            }
+        }
         SupportedTypes::Struct(ty) => {
             if !args.is_empty() {
                 abort!(ty, "Sub args are not allowed for ConfigStructs")
@@ -198,7 +209,7 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &Vec<ConfigAttr>)
     }
 }
 
-fn attrs_to_sub_args(config_attrs: &Vec<ConfigAttr>) -> TokenStream {
+fn attrs_to_sub_args(config_attrs: &[ConfigAttr]) -> TokenStream {
     let args: Vec<TokenStream> = config_attrs
         .iter()
         .filter_map(|config_attr| match config_attr {

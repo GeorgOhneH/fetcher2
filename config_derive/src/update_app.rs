@@ -188,7 +188,7 @@ fn gen_set(
                 let a: Result<Vec<::config::CTypes>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| value | {
-                        let mut temp = config_vec.get_template().clone();
+                        let mut temp = config_vec.get_template();
                         match #sub_setter {
                             Ok(_) => Ok(temp),
                             Err(err) => Err(err),
@@ -201,7 +201,32 @@ fn gen_set(
                     Err(err) => Err(err),
                 }
             }}
-        }
+        },
+        SupportedTypes::HashMap(key_ty, value_ty) => {
+            let key_setter = gen_set(key_ty, field, quote! {key_temp}, quote! {key});
+            let value_setter = gen_set(value_ty, field, quote! {value_temp}, quote! {value});
+            quote! {{
+                let cmap = match #match_arg {
+                    ::config::CTypes::HashMap(ref mut cmap) => cmap,
+                    _ => panic!("This should never happen"),
+                };
+                let a: Result<HashMap<::config::CTypes, ::config::CTypes>, ::config::InvalidError> = #set_arg
+                    .into_iter()
+                    .map(| (key, value) | {
+                        let mut key_temp = cmap.get_key();
+                        let mut value_temp = cmap.get_value();
+                        #key_setter?;
+                        #value_setter?;
+                        Ok((key_temp, value_temp))
+                    })
+                    .collect();
+
+                match a {
+                    Ok(map) => cmap.set(map),
+                    Err(err) => Err(err),
+                }
+            }}
+        },
         SupportedTypes::Struct(ty_path) => {
             let path = &ty_path.path;
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());

@@ -1,5 +1,6 @@
 use crate::*;
 use serde_yaml::Value;
+use crate::ctypes::map::CHashMap;
 
 #[derive(Debug, Clone)]
 pub enum CTypes {
@@ -10,6 +11,7 @@ pub enum CTypes {
     Struct(CStruct),
     CheckableStruct(CCheckableStruct),
     Vec(CVec),
+    HashMap(CHashMap),
     Enum(CEnum),
 }
 
@@ -75,6 +77,10 @@ impl CTypes {
             CTypes::Vec(cvec) => match value {
                 Value::Sequence(seq) => cvec.consume_sequence(seq),
                 _ => Err(InvalidError::new("Expected Sequence").into()),
+            },
+            CTypes::HashMap(chash_map) => match value {
+                Value::Mapping(map) => chash_map.consume_map(map),
+                _ => Err(InvalidError::new("Expected Mapping").into()),
             },
             CTypes::Enum(cenum) => match value {
                 Value::Mapping(map) => cenum.consume_map(map),

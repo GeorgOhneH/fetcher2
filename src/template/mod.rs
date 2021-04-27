@@ -1,4 +1,4 @@
-mod template;
 mod node;
-pub use crate::template::template::Template;
+mod template;
 pub use crate::template::node::DownloadArgs;
+pub use crate::template::template::Template;

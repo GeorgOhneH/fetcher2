@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-
 #[derive(Error, Debug)]
 pub enum TemplateError {
     #[error("Previous login attempt was unsuccessful")]
@@ -14,4 +13,7 @@ pub enum TemplateError {
 
     #[error("Client Error")]
     ClientError(#[from] reqwest::Error),
+
+    #[error("File Error")]
+    FileError(#[from] async_std::io::Error),
 }

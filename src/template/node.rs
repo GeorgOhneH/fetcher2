@@ -3,12 +3,16 @@ use crate::session::Session;
 use crate::site_modules::Module;
 use crate::task::Task;
 use async_recursion::async_recursion;
-use async_std::path::Path;
-use async_std::path::PathBuf;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
 use config_derive::Config;
 use enum_dispatch::enum_dispatch;
+use lazy_static::lazy_static;
+use regex::Regex;
+use sha1::{Digest, Sha1};
+use std::path::Path;
+use std::path::PathBuf;
+use tokio::fs;
 
 use futures::future::try_join_all;
 
@@ -17,11 +21,15 @@ use async_std::channel::{self, Receiver, Sender};
 use futures::join;
 use futures::prelude::*;
 use serde::Serialize;
+use tokio::sync::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use futures::pin_mut;
 use futures::stream::{FuturesUnordered, TryStreamExt};
+use reqwest::header::HeaderMap;
+use std::ffi::{OsStr, OsString};
+use tokio::io::AsyncWriteExt;
+use url::Url;
 
 #[derive(Config, Clone, Serialize)]
 pub struct RootNode {
@@ -30,7 +38,11 @@ pub struct RootNode {
 }
 
 impl RootNode {
-    pub async fn run(&self, session: &Session, dsettings: &DownloadSettings) -> Result<(), TemplateError> {
+    pub async fn run(
+        &self,
+        session: &Session,
+        dsettings: &DownloadSettings,
+    ) -> Result<(), TemplateError> {
         let futures: Vec<_> = self
             .children
             .iter()
@@ -160,8 +172,8 @@ impl Site {
         session: Session,
         receiver: Receiver<Task>,
         dsettings: &DownloadSettings,
-    ) {
-        while let Ok(task) = receiver.recv().await {
+    ) -> Result<(), TemplateError> {
+        while let Ok(mut task) = receiver.recv().await {
             let download_args = self
                 .download_args
                 .as_ref()
@@ -171,10 +183,105 @@ impl Site {
                 panic!("Absolute paths are not allowed")
             }
 
-            // let path = dsettings.
+            if dsettings.save_path.is_relative() {
+                panic!("Save Path must be absolute")
+            }
 
+            if !task.has_extension {
+                if let Some(extension) = extension_from_url(&session, &task.url).await? {
+                    let mut file_name = task.path.file_name().unwrap().to_os_string();
+                    file_name.push(".");
+                    file_name.push(extension);
+                    task.path.set_file_name(file_name);
+                } else {
+                    // TODO: not panic
+                    panic!("efswwef")
+                }
+            }
+
+            let final_path: PathBuf = dsettings.save_path.join(&task.path).into();
+            let temp_path = add_to_file_stem(&final_path, "-temp");
+            let old_path = add_to_file_stem(&final_path, "-old");
+
+            if fs::metadata(&final_path).await.is_ok() {
+                return Ok(());
+            }
+
+            let mut response = session.get(task.url).send().await?;
+            if response.status() == reqwest::StatusCode::NOT_MODIFIED {
+                return Ok(());
+            }
+
+            fs::create_dir_all(final_path.parent().unwrap()).await?;
+
+            let mut hasher = Sha1::new();
+
+            let mut f = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(temp_path)
+                .await?;
+            while let Some(chunk) = response.chunk().await? {
+                hasher.update(&chunk);
+                f.write_all(&chunk).await?
+            }
+
+            f.shutdown().await?;
+            drop(f);
+
+            let result = hasher.finalize();
         }
+        Ok(())
     }
+}
+
+async fn extension_from_url(
+    session: &Session,
+    url: &Url,
+) -> Result<Option<OsString>, TemplateError> {
+    let response = session.get(url.clone()).send().await?;
+    let headers = response.headers();
+
+    if let Some(file_name) = filename_from_headers(headers) {
+        Ok(PathBuf::from(file_name)
+            .extension()
+            .map(|os_str| os_str.to_os_string()))
+    } else {
+        let extension = headers
+            .get_all("content-type")
+            .iter()
+            .filter_map(|x| x.to_str().ok())
+            .flat_map(|mime_str| mime_guess::get_mime_extensions_str(mime_str).into_iter())
+            .flatten()
+            .next()
+            .map(|x| OsString::from(x));
+        Ok(extension)
+    }
+}
+
+fn filename_from_headers(headers: &HeaderMap) -> Option<String> {
+    lazy_static! {
+        static ref FILENAME_RE: Regex = Regex::new("filename=\"(.+)\"").unwrap();
+    }
+    headers
+        .get_all("content-disposition")
+        .iter()
+        .filter_map(|x| x.to_str().ok())
+        .filter_map(|str| FILENAME_RE.captures(str))
+        .map(|capture| capture[1].to_owned())
+        .next()
+}
+
+fn add_to_file_stem(path: &PathBuf, name: &str) -> PathBuf {
+    let mut file_name = path.file_stem().unwrap().to_os_string();
+    file_name.push(name);
+
+    if let Some(extension) = path.extension() {
+        file_name.push(".");
+        file_name.push(extension);
+    };
+
+    path.with_file_name(file_name)
 }
 
 #[async_trait]
@@ -191,9 +298,18 @@ pub struct DownloadArgs {
 }
 
 #[derive(Config, Clone, Serialize, Debug)]
-pub struct SiteStorage {}
+pub struct SiteStorage {
+    #[config(ty = "struct")]
+    files: HashMap<PathBuf, FileData>
+}
 
 impl SiteStorage {}
+
+#[derive(Config, Clone, Serialize, Debug)]
+pub struct FileData {
+}
+
+impl FileData {}
 
 #[derive(Config, Clone, Serialize)]
 pub struct MetaData {}

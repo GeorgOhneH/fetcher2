@@ -13,6 +13,22 @@ use syn::{
 };
 use syn::{DataEnum, Type};
 
+pub enum HashTypes {
+    String,
+    Path,
+}
+
+
+impl ToTokens for HashTypes {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use HashTypes::*;
+        match self {
+            String => tokens.append(Ident::new("String", Span::call_site())),
+            Path => tokens.append(Ident::new("PathBuf", Span::call_site())),
+        }
+    }
+}
+
 pub enum SupportedTypes {
     String,
     OptionString,
@@ -23,6 +39,7 @@ pub enum SupportedTypes {
     Path,
     OptionPath,
     Vec(Box<SupportedTypes>),
+    HashMap(HashTypes, Box<SupportedTypes>),
     Struct(TypePath),
     CheckableStruct(TypePath), // aka OptionStruct
     Enum(TypePath),
@@ -33,7 +50,7 @@ impl SupportedTypes {
     pub fn is_inside_option(&self) -> bool {
         use SupportedTypes::*;
         match self {
-            String | Integer | Bool | Vec(_) | Struct(_) | Enum(_) | Path => false,
+            String | Integer | Bool | Vec(_) | Struct(_) | Enum(_) | Path | HashMap(_, _) => false,
             OptionString | OptionInteger | OptionBool | CheckableStruct(_) | OptionEnum(_)
             | OptionPath => true,
         }
@@ -55,6 +72,13 @@ impl ToTokens for SupportedTypes {
             Vec(sup_typ) => {
                 tokens.append(Ident::new("Vec<", Span::call_site()));
                 sup_typ.to_tokens(tokens);
+                tokens.append(Ident::new(">", Span::call_site()));
+            }
+            HashMap(key, value) => {
+                tokens.append(Ident::new("HashMap<", Span::call_site()));
+                key.to_tokens(tokens);
+                tokens.append(Ident::new(", ", Span::call_site()));
+                value.to_tokens(tokens);
                 tokens.append(Ident::new(">", Span::call_site()));
             }
             Struct(type_path) => type_path.to_tokens(tokens),
@@ -141,18 +165,25 @@ fn gen_for_enum(name: &Ident, _attrs: &[Attribute], e: &DataEnum) -> TokenStream
 }
 
 pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
-    if let Some((name, inner_ty)) = extract_type_from_bracket(ty) {
-        //emit_call_site_warning!(name.to_string());
-        match &*name.to_string() {
-            "Vec" => {
-                let inner_ty = parse_type(inner_ty, attrs);
+    if let Some((name, inner_types)) = extract_type_from_bracket(ty) {
+        match (&*name.to_string(), &inner_types[..]) {
+            ("Vec", [inner]) => {
+                let inner_ty = parse_type(inner, attrs);
                 if inner_ty.is_inside_option() {
                     abort!(ty, "Option can not be in Vec")
                 }
                 SupportedTypes::Vec(Box::new(inner_ty))
             }
-            "Option" => {
-                let inner_supported_type = parse_type(inner_ty, attrs);
+            ("HashMap", [key, value]) => {
+                let key_ty = parse_hash_type(key, attrs);
+                let value_ty = parse_type(value, attrs);
+                if value_ty.is_inside_option() {
+                    abort!(ty, "Option can not be in Hashmap")
+                }
+                SupportedTypes::HashMap(key_ty, Box::new(value_ty))
+            }
+            ("Option", [inner]) => {
+                let inner_supported_type = parse_type(inner, attrs);
                 match inner_supported_type {
                     SupportedTypes::Struct(type_path) => SupportedTypes::CheckableStruct(type_path),
                     SupportedTypes::String => SupportedTypes::OptionString,
@@ -200,29 +231,41 @@ pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
     }
 }
 
-fn extract_type_from_bracket(ty: &Type) -> Option<(&Ident, &Type)> {
-    match ty {
-        Type::Path(type_path) => {
-            match path_get_bracket_name(type_path) {
-                Some(bracket_name) => {
-                    let type_params = &type_path.path.segments.iter().next().unwrap().arguments;
-                    // It should have only on angle-bracketed param ("<String>"):
-                    let generic_arg = match type_params {
-                        PathArguments::AngleBracketed(params) => {
-                            Some(params.args.iter().next().unwrap())
-                        }
-                        _ => None,
-                    };
-                    // This argument must be a type:
-                    match generic_arg {
-                        Some(GenericArgument::Type(ty)) => Some((bracket_name, ty)),
-                        _ => None,
-                    }
+pub fn parse_hash_type(ty: &Type, attrs: &[Attribute]) -> HashTypes {
+    if let Some((name, inner_types)) = extract_type_from_bracket(ty) {
+        abort!(ty, "Not Supported type")
+    } else {
+        match ty {
+            Type::Path(type_path) if type_path.path.get_ident().is_some() => {
+                match &*type_path.path.get_ident().unwrap().to_string() {
+                    "String" => HashTypes::String,
+                    "PathBuf" => HashTypes::Path,
+                    _ => abort!(ty, "Not Supported type"),
                 }
-                _ => None,
             }
+            _ => abort!(ty, "Not Supported type"),
         }
-        _ => None,
+    }
+}
+
+fn extract_type_from_bracket(ty: &Type) -> Option<(&Ident, Vec<&Type>)> {
+    if let Type::Path(type_path) = ty {
+        let bracket_name = path_get_bracket_name(type_path)?;
+        let type_params = &type_path.path.segments.iter().next().unwrap().arguments;
+        let generic_arg: Option<Vec<_>> = match type_params {
+            PathArguments::AngleBracketed(params) => params
+                .args
+                .iter()
+                .map(|arg| match arg {
+                    GenericArgument::Type(ty) => Some(ty),
+                    _ => None,
+                })
+                .collect(),
+            _ => None,
+        };
+        generic_arg.map(|types| (bracket_name, types))
+    } else {
+        None
     }
 }
 

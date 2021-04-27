@@ -2,7 +2,7 @@ use crate::errors::TemplateError;
 use crate::session::Session;
 use crate::site_modules::minimal::Minimal;
 use crate::task::Task;
-use async_std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use config::Config;
 use config_derive::Config;

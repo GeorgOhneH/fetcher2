@@ -4,10 +4,10 @@ use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
 
 use async_std::channel::Sender;
-use async_std::path::{Path, PathBuf};
 use config_derive::Config;
 use reqwest::multipart::Form;
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 
 use crate::settings::DownloadSettings;
 use std::collections::HashMap;
@@ -39,13 +39,27 @@ impl Minimal {
         println!("1{}", resp.status());
         let resp = session.get("https://www.google.com/").send().await?;
         println!("2{}", resp.status());
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        // tokio::time::sleep(Duration::from_secs(3)).await;
         let resp = session.get("https://www.google.com/").send().await?;
         println!("3{}", resp.status());
         let task = TaskBuilder::new(
             base_path.join("hello2.hello"),
             Url::parse("https://www.google.com/").unwrap(),
         )
+        .extension(false)
+        .build();
+        sender.send(task).await.unwrap();
+        let task = TaskBuilder::new(
+            base_path.join("rsgdrf.pdf"),
+            Url::parse("http://www.orimi.com/pdf-test.pdf/").unwrap(),
+        )
+        .build();
+        sender.send(task).await.unwrap();
+        let task = TaskBuilder::new(
+            base_path.join("rs.gdrf"),
+            Url::parse("http://www.orimi.com/pdf-test.pdf/").unwrap(),
+        )
+        .extension(false)
         .build();
         sender.send(task).await.unwrap();
         Ok(())
