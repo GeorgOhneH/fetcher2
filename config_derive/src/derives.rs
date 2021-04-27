@@ -13,15 +13,15 @@ use syn::{
 };
 use syn::{DataEnum, Type};
 
-pub enum HashTypes {
+pub enum HashType {
     String,
     Path,
 }
 
 
-impl ToTokens for HashTypes {
+impl ToTokens for HashType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use HashTypes::*;
+        use HashType::*;
         match self {
             String => tokens.append(Ident::new("String", Span::call_site())),
             Path => tokens.append(Ident::new("PathBuf", Span::call_site())),
@@ -39,7 +39,7 @@ pub enum SupportedTypes {
     Path,
     OptionPath,
     Vec(Box<SupportedTypes>),
-    HashMap(HashTypes, Box<SupportedTypes>),
+    HashMap(HashType, Box<SupportedTypes>),
     Struct(TypePath),
     CheckableStruct(TypePath), // aka OptionStruct
     Enum(TypePath),
@@ -231,15 +231,15 @@ pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> SupportedTypes {
     }
 }
 
-pub fn parse_hash_type(ty: &Type, attrs: &[Attribute]) -> HashTypes {
+pub fn parse_hash_type(ty: &Type, attrs: &[Attribute]) -> HashType {
     if let Some((name, inner_types)) = extract_type_from_bracket(ty) {
         abort!(ty, "Not Supported type")
     } else {
         match ty {
             Type::Path(type_path) if type_path.path.get_ident().is_some() => {
                 match &*type_path.path.get_ident().unwrap().to_string() {
-                    "String" => HashTypes::String,
-                    "PathBuf" => HashTypes::Path,
+                    "String" => HashType::String,
+                    "PathBuf" => HashType::Path,
                     _ => abort!(ty, "Not Supported type"),
                 }
             }

@@ -6,7 +6,7 @@ use syn::{
     self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
 };
 
-use crate::derives::{parse_type, SupportedTypes};
+use crate::derives::{parse_type, SupportedTypes, HashType};
 use syn::spanned::Spanned;
 
 pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
@@ -290,5 +290,36 @@ fn gen_set(
                 }
             }}
         }
+    }
+}
+
+fn gen_set(
+    typ: &HashType,
+    field: &Field,
+    match_arg: TokenStream,
+    set_arg: TokenStream,
+) -> TokenStream {
+    match typ {
+        SupportedTypes::String => quote! {{
+            match #match_arg {
+                ::config::CTypes::String(ref mut cstring) => {
+                    cstring.set(#set_arg);
+                    Ok(())
+                },
+                _ => panic!("This should never happen"),
+            }
+        }},
+        SupportedTypes::OptionString => quote! {{
+            match #match_arg {
+                ::config::CTypes::String(ref mut cstring) => {
+                    match #set_arg {
+                        Some(str) => cstring.set(str),
+                        None => cstring.unset(),
+                    };
+                    Ok(())
+                },
+                _ => panic!("This should never happen"),
+            }
+        }},
     }
 }

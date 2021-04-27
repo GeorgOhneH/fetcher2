@@ -8,7 +8,7 @@ use syn::{
     self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
 };
 
-use crate::derives::{parse_type, SupportedTypes};
+use crate::derives::{parse_type, SupportedTypes, HashType};
 use syn::spanned::Spanned;
 
 pub fn gen_struct_build_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
@@ -162,7 +162,7 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &[ConfigAttr]) ->
         }
         SupportedTypes::HashMap(key_ty, value_ty) => {
             //emit_call_site_warning!(format!("{:#?}", *sub_type));
-            let key_arg = gen_type(field, key_ty, config_attrs);
+            let key_arg = gen_hash_type(field, key_ty, config_attrs);
             let value_arg = gen_type(field, value_ty, config_attrs);
             quote_spanned! {span=>
                 ::config::CTypes::HashMap(
@@ -206,6 +206,19 @@ fn gen_type(field: &Field, typ: &SupportedTypes, config_attrs: &[ConfigAttr]) ->
                 }
             }
         }
+    }
+}
+
+fn gen_hash_type(field: &Field, typ: &HashType, config_attrs: &[ConfigAttr]) -> TokenStream {
+    let field_name = field.ident.as_ref().expect("Unreachable");
+    let span = field_name.span();
+    match typ {
+        HashType::String => quote_spanned! {span=>
+            ::config::HashKey::String("".to_owned())
+        },
+        HashType::Path => quote_spanned! {span=>
+            ::config::HashKey::Path(PathBuf::new())
+        },
     }
 }
 

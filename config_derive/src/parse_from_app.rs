@@ -6,7 +6,7 @@ use syn::{
     self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
 };
 
-use crate::derives::{parse_type, SupportedTypes};
+use crate::derives::{parse_type, SupportedTypes, HashType};
 
 pub fn gen_struct_parse_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_kwargs(fields);
@@ -184,7 +184,7 @@ fn gen_option_arg(
             }}
         }
         SupportedTypes::HashMap(key_ty, value_ty) => {
-            let real_key = gen_arg(key_ty, quote! {keytype}, span, field_name_str);
+            let real_key = gen_hash_arg(key_ty, quote! {keytype}, span, field_name_str);
             let real_value = gen_arg(value_ty, quote! {valuetype}, span, field_name_str);
             quote! {{
                 let a: Result<HashMap<#key_ty, #value_ty>, ::config::RequiredError> = match #match_arg {
@@ -192,7 +192,7 @@ fn gen_option_arg(
                             .get()
                             .iter()
                             .map(|(keytype, valuetype)| {
-                                let x = #real_key?;
+                                let x = #real_key;
                                 let y = #real_value?;
                                 Ok((x, y))
                             })
@@ -250,5 +250,28 @@ fn gen_option_arg(
                 }
             }}
         }
+    }
+}
+
+
+fn gen_hash_arg(
+    typ: &HashType,
+    match_arg: TokenStream,
+    span: &Span,
+    field_name_str: &LitStr,
+) -> TokenStream {
+    match typ {
+        HashType::String => quote! {{
+            match #match_arg {
+                ::config::HashKey::String(str) => str.clone(),
+                _ => panic!("This should never happen"),
+            }
+        }},
+        HashType::Path => quote! {{
+            match #match_arg {
+                ::config::HashKey::Path(path) => path.clone(),
+                _ => panic!("This should never happen"),
+            }
+        }},
     }
 }
