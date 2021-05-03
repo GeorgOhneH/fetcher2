@@ -1,31 +1,31 @@
-use crate::{CTypes, InvalidError, ConfigError};
+use crate::{CType, InvalidError, ConfigError};
 use lazy_static::lazy_static;
 use serde_yaml::Sequence;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct CVec {
-    inner: Vec<CTypes>,
-    template_fn: fn() -> CTypes,
+    inner: Vec<CType>,
+    template_fn: fn() -> CType,
 }
 
 impl CVec {
-    fn new(template_fn: fn() -> CTypes) -> Self {
+    fn new(template_fn: fn() -> CType) -> Self {
         Self {
             inner: Vec::new(),
             template_fn,
         }
     }
 
-    pub fn get(&self) -> &Vec<CTypes> {
+    pub fn get(&self) -> &Vec<CType> {
         &self.inner
     }
 
-    pub fn get_template(&self) -> CTypes {
+    pub fn get_template(&self) -> CType {
         (self.template_fn)()
     }
 
-    pub fn is_valid(&self, vec: &Vec<CTypes>) -> Result<(), InvalidError> {
+    pub fn is_valid(&self, vec: &Vec<CType>) -> Result<(), InvalidError> {
         let template = self.get_template();
         let r = vec
             .iter()
@@ -37,7 +37,7 @@ impl CVec {
         }
     }
 
-    pub fn set(&mut self, vec: Vec<CTypes>) -> Result<(), InvalidError> {
+    pub fn set(&mut self, vec: Vec<CType>) -> Result<(), InvalidError> {
        self.is_valid(&vec)?;
         self.inner = vec;
         Ok(())
@@ -62,7 +62,7 @@ pub struct CVecBuilder {
 }
 
 impl CVecBuilder {
-    pub fn new(template: fn() -> CTypes) -> Self {
+    pub fn new(template: fn() -> CType) -> Self {
         Self {
             inner: CVec::new(template),
         }

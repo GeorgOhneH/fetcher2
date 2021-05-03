@@ -12,7 +12,7 @@ use serde::Serialize;
 use crate::settings::DownloadSettings;
 use async_std::channel::Sender;
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Clone, Serialize, Debug)]
 pub enum Module {
     #[config(ty = "struct")]
     Minimal(Minimal),

@@ -6,111 +6,28 @@ use syn::{
     self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
 };
 
-use crate::derives::{parse_type, SupportedTypes, HashType};
+use crate::config_type::{parse_type, ConfigHashType, ConfigType};
 use syn::spanned::Spanned;
 
-pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
-    let augmentation = gen_setter(fields);
-    quote! {
-        fn update_app(self, app: &mut ::config::CStruct) -> Result<(), ::config::InvalidError> {
-            #augmentation
-        }
-    }
-}
-
-pub fn gen_enum_update_app_fn(e: &DataEnum) -> TokenStream {
-    let augmentation = gen_carg(e);
-    quote! {
-        fn update_app(self, cenum: &mut ::config::CEnum) -> Result<(), ::config::InvalidError> {
-            #augmentation
-        }
-    }
-}
-
-fn gen_carg(e: &DataEnum) -> TokenStream {
-    let data_expanded_members = e.variants.iter().map(|var| {
-        let name = &var.ident;
-        let name_lit = LitStr::new(&name.to_string(), var.ident.span());
-        match &var.fields {
-            Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
-                let field = &unnamed[0];
-                let typ = parse_type(&field.ty, &var.attrs);
-                if let SupportedTypes::Struct(_) = typ {
-                    quote! {
-                        Self::#name(cstruct) => {
-                            let carg = cenum.set_selected_mut(#name_lit.to_string()).unwrap();
-                            #typ::update_app(cstruct, carg.get_mut().unwrap())
-                        }
-                    }
-                } else {
-                    abort!(var.fields, "Only Structs are allowed")
-                }
-            }
-            Fields::Unit => {
-                quote! {
-                    Self::#name => {
-                        cenum.set_selected(#name_lit.to_string()).unwrap();
-                        Ok(())
-                    }
-                }
-            }
-            _ => abort!(var.fields, "Only Structs are allowed"),
-        }
-    });
-
-    quote! {
-        match self {
-            #(#data_expanded_members),*
-        }
-    }
-}
-
-fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
-    let setters: Vec<TokenStream> = fields
-        .iter()
-        .map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-
-            let field_name = field.ident.as_ref().expect("Unreachable");
-            let field_name_str = LitStr::new(&field_name.to_string(), field_name.span());
-            let match_arg = quote! {app.get_ty_mut(#field_name_str).unwrap()};
-            let set_arg = quote! {self.#field_name};
-            gen_set(&typ, field, match_arg, set_arg)
-        })
-        .collect();
-
-    quote! {
-        let results: Vec<Result<(), ::config::InvalidError>> = vec![#(
-            #setters
-        ),*];
-        for result in results {
-            if let Err(err) = result {
-                return Err(err)
-            }
-        }
-        Ok(())
-    }
-}
-
-fn gen_set(
-    typ: &SupportedTypes,
+pub fn gen_set(
+    typ: &ConfigType,
     field: &Field,
     match_arg: TokenStream,
     set_arg: TokenStream,
 ) -> TokenStream {
     match typ {
-        SupportedTypes::String => quote! {{
+        ConfigType::String(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::String(ref mut cstring) => {
+                ::config::CType::String(ref mut cstring) => {
                     cstring.set(#set_arg);
                     Ok(())
                 },
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OptionString => quote! {{
+        ConfigType::OptionString(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::String(ref mut cstring) => {
+                ::config::CType::String(ref mut cstring) => {
                     match #set_arg {
                         Some(str) => cstring.set(str),
                         None => cstring.unset(),
@@ -120,17 +37,17 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::Integer => quote! {{
+        ConfigType::Integer(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::Integer(ref mut cint) => {
+                ::config::CType::Integer(ref mut cint) => {
                     cint.set(#set_arg)
                 },
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OptionInteger => quote! {{
+        ConfigType::OptionInteger(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::Integer(ref mut cint) => {
+                ::config::CType::Integer(ref mut cint) => {
                     match #set_arg {
                         Some(int) => cint.set(int),
                         None => cint.unset(),
@@ -139,17 +56,17 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::Path => quote! {{
+        ConfigType::Path(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::Path(ref mut cpath) => {
+                ::config::CType::Path(ref mut cpath) => {
                     cpath.set(#set_arg)
                 },
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OptionPath => quote! {{
+        ConfigType::OptionPath(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::Path(ref mut cpath) => {
+                ::config::CType::Path(ref mut cpath) => {
                     match #set_arg {
                         Some(path) => cpath.set(path),
                         None => cpath.unset(),
@@ -158,17 +75,17 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::Bool => quote! {{
+        ConfigType::Bool(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::Bool(ref mut config_arg_bool) => {
+                ::config::CType::Bool(ref mut config_arg_bool) => {
                     Ok(config_arg_bool.set(#set_arg))
                 },
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OptionBool => quote! {{
+        ConfigType::OptionBool(_) => quote! {{
             match #match_arg {
-                ::config::CTypes::Bool(ref mut cbool) => {
+                ::config::CType::Bool(ref mut cbool) => {
                     match #set_arg {
                         Some(b) => cbool.set(b),
                         None => cbool.unset(),
@@ -178,14 +95,32 @@ fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::Vec(sub_type) => {
+        ConfigType::Wrapper(_, inner_ty, name) => {
+            let inner_setter = gen_set(inner_ty, field, quote! {inner}, quote! {value});
+            let unwrap_value = if name == "Arc" {
+                quote! {Arc::try_unwrap(#set_arg).unwrap()}
+            } else {
+                quote! {#set_arg.into_inner().unwrap()}
+            };
+            quote! {{
+                match #match_arg {
+                    ::config::CType::Wrapper(ref mut cwrapper) => {
+                        let mut inner = cwrapper.inner_mut();
+                        let value = #unwrap_value;
+                        #inner_setter
+                    },
+                    _ => panic!("This should never happen"),
+                }
+            }}
+        }
+        ConfigType::Vec(_, sub_type) => {
             let sub_setter = gen_set(sub_type, field, quote! {temp}, quote! {value});
             quote! {{
                 let config_vec = match #match_arg {
-                    ::config::CTypes::Vec(ref mut config_vec) => config_vec,
+                    ::config::CType::Vec(ref mut config_vec) => config_vec,
                     _ => panic!("This should never happen"),
                 };
-                let a: Result<Vec<::config::CTypes>, ::config::InvalidError> = #set_arg
+                let a: Result<Vec<::config::CType>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| value | {
                         let mut temp = config_vec.get_template();
@@ -201,16 +136,16 @@ fn gen_set(
                     Err(err) => Err(err),
                 }
             }}
-        },
-        SupportedTypes::HashMap(key_ty, value_ty) => {
-            let key_setter = gen_set(key_ty, field, quote! {key_temp}, quote! {key});
+        }
+        ConfigType::HashMap(_, key_ty, value_ty) => {
+            let key_setter = gen_hash_set(key_ty, field, quote! {key_temp}, quote! {key});
             let value_setter = gen_set(value_ty, field, quote! {value_temp}, quote! {value});
             quote! {{
                 let cmap = match #match_arg {
-                    ::config::CTypes::HashMap(ref mut cmap) => cmap,
+                    ::config::CType::HashMap(ref mut cmap) => cmap,
                     _ => panic!("This should never happen"),
                 };
-                let a: Result<HashMap<::config::CTypes, ::config::CTypes>, ::config::InvalidError> = #set_arg
+                let a: Result<std::collections::HashMap<::config::HashKey, ::config::CType>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| (key, value) | {
                         let mut key_temp = cmap.get_key();
@@ -226,29 +161,27 @@ fn gen_set(
                     Err(err) => Err(err),
                 }
             }}
-        },
-        SupportedTypes::Struct(ty_path) => {
-            let path = &ty_path.path;
+        }
+        ConfigType::Struct(path) => {
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CTypes::Struct(ref mut config_struct) => {
-                        #ty_path::update_app(#set_arg, config_struct)
+                    ::config::CType::Struct(ref mut config_struct) => {
+                        #path::update_app(#set_arg, config_struct)
                     },
                     _ => panic!("This should never happen"),
                 }
             }}
         }
-        SupportedTypes::CheckableStruct(ty_path) => {
-            let path = &ty_path.path;
+        ConfigType::CheckableStruct(path) => {
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CTypes::CheckableStruct(ref mut config_check_struct) => {
+                    ::config::CType::CheckableStruct(ref mut config_check_struct) => {
                         match #set_arg {
                             Some(arg) => {
                                 config_check_struct.set_checked(true);
-                                #ty_path::update_app(arg, config_check_struct.get_inner_mut())
+                                #path::update_app(arg, config_check_struct.get_inner_mut())
                             },
                             None => {
                                 config_check_struct.set_checked(false);
@@ -260,26 +193,24 @@ fn gen_set(
                 }
             }}
         }
-        SupportedTypes::Enum(ty_path) => {
-            let path = &ty_path.path;
+        ConfigType::Enum(path) => {
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CTypes::Enum(ref mut cenum) => {
-                        #ty_path::update_app(#set_arg, cenum)
+                    ::config::CType::Enum(ref mut cenum) => {
+                        #path::update_app(#set_arg, cenum)
                     },
                     _ => panic!("This should never happen"),
                 }
             }}
         }
-        SupportedTypes::OptionEnum(ty_path) => {
-            let path = &ty_path.path;
+        ConfigType::OptionEnum(path) => {
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CTypes::Enum(ref mut cenum) => {
+                    ::config::CType::Enum(ref mut cenum) => {
                         match #set_arg {
-                            Some(h) => #ty_path::update_app(h, cenum),
+                            Some(h) => #path::update_app(h, cenum),
                             None =>{
                                 cenum.unselect();
                                 Ok(())
@@ -293,29 +224,26 @@ fn gen_set(
     }
 }
 
-fn gen_set(
-    typ: &HashType,
+fn gen_hash_set(
+    typ: &ConfigHashType,
     field: &Field,
     match_arg: TokenStream,
     set_arg: TokenStream,
 ) -> TokenStream {
     match typ {
-        SupportedTypes::String => quote! {{
+        ConfigHashType::String => quote! {{
             match #match_arg {
-                ::config::CTypes::String(ref mut cstring) => {
-                    cstring.set(#set_arg);
+                ::config::HashKey::String(ref mut str) => {
+                    *str = #set_arg;
                     Ok(())
                 },
                 _ => panic!("This should never happen"),
             }
         }},
-        SupportedTypes::OptionString => quote! {{
+        ConfigHashType::Path => quote! {{
             match #match_arg {
-                ::config::CTypes::String(ref mut cstring) => {
-                    match #set_arg {
-                        Some(str) => cstring.set(str),
-                        None => cstring.unset(),
-                    };
+                ::config::HashKey::Path(ref mut path) => {
+                    *path = #set_arg;
                     Ok(())
                 },
                 _ => panic!("This should never happen"),

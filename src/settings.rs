@@ -4,13 +4,13 @@ use config_derive::Config;
 use serde::Serialize;
 use std::path::PathBuf;
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Clone, Serialize, Debug)]
 pub struct Settings {
     #[config(ty = "struct")]
     pub downs: DownloadSettings,
 }
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Clone, Serialize, Debug)]
 pub struct DownloadSettings {
     pub username: String,
     pub password: String,

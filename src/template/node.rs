@@ -10,6 +10,7 @@ use enum_dispatch::enum_dispatch;
 use lazy_static::lazy_static;
 use regex::Regex;
 use sha1::{Digest, Sha1};
+use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 use tokio::fs;
@@ -18,22 +19,22 @@ use futures::future::try_join_all;
 
 use crate::settings::DownloadSettings;
 use async_std::channel::{self, Receiver, Sender};
-use futures::join;
+use tokio::try_join;
 use futures::prelude::*;
 use serde::Serialize;
-use tokio::sync::RwLock;
-use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::{Mutex, RwLock};
 
+use dashmap::mapref::entry::Entry;
 use futures::stream::{FuturesUnordered, TryStreamExt};
 use reqwest::header::HeaderMap;
 use std::ffi::{OsStr, OsString};
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Serialize, Debug)]
 pub struct RootNode {
-    #[config(ty = "struct")]
+    #[config(inner_ty = "struct")]
     pub children: Vec<Node>,
 }
 
@@ -41,12 +42,12 @@ impl RootNode {
     pub async fn run(
         &self,
         session: &Session,
-        dsettings: &DownloadSettings,
+        dsettings: Arc<DownloadSettings>,
     ) -> Result<(), TemplateError> {
         let futures: Vec<_> = self
             .children
             .iter()
-            .map(|child| child.run(session, dsettings, PathBuf::new()))
+            .map(|child| child.run(session, Arc::clone(&dsettings), PathBuf::new()))
             .collect();
 
         try_join_all(futures).await?;
@@ -54,11 +55,11 @@ impl RootNode {
     }
 }
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Serialize, Debug)]
 pub struct Node {
     #[config(ty = "enum")]
     pub ty: NodeType,
-    #[config(ty = "struct")]
+    #[config(inner_ty = "struct")]
     pub children: Vec<Node>,
 
     #[config(ty = "struct")]
@@ -70,7 +71,7 @@ impl Node {
     async fn run<'a>(
         &'a self,
         session: &'a Session,
-        dsettings: &'a DownloadSettings,
+        dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
     ) -> Result<(), TemplateError> {
         let segment = self.ty.path_segment(&session).await?;
@@ -82,11 +83,13 @@ impl Node {
         let mut futures: Vec<_> = self
             .children
             .iter()
-            .map(|child| child.run(session, dsettings, path.clone()))
+            .map(|child| child.run(session, Arc::clone(&dsettings), path.clone()))
             .collect();
 
         if let NodeType::Site(site) = &self.ty {
-            futures.push(Box::pin(site.run(session, dsettings, path)))
+            let site_clone = site.clone();
+            let handle = tokio::spawn(site_clone.run(session.clone(), dsettings, path));
+            futures.push(Box::pin(async move { handle.await? }))
         };
 
         try_join_all(futures).await?;
@@ -94,34 +97,35 @@ impl Node {
     }
 }
 
-#[async_trait]
-#[enum_dispatch]
-trait NodeTypeExt {
-    async fn path_segment(&self, session: &Session) -> Result<&Path, TemplateError>;
-}
-
-#[enum_dispatch(NodeTypeExt)]
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Serialize, Debug)]
 pub enum NodeType {
     #[config(ty = "struct")]
     Folder(Folder),
-    #[config(ty = "struct")]
-    Site(Site),
+    #[config(inner_ty = "struct")]
+    Site(Arc<Site>),
 }
 
-#[derive(Config, Clone, Serialize)]
+impl NodeType {
+    async fn path_segment(&self, session: &Session) -> Result<&Path, TemplateError> {
+        match self {
+            NodeType::Folder(folder) => folder.path_segment(session).await,
+            NodeType::Site(site) => site.path_segment(session).await,
+        }
+    }
+}
+
+#[derive(Config, Serialize, Debug)]
 pub struct Folder {
     name: String,
 }
 
-#[async_trait]
-impl NodeTypeExt for Folder {
+impl Folder {
     async fn path_segment(&self, _session: &Session) -> Result<&Path, TemplateError> {
         Ok(Path::new(&self.name))
     }
 }
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Serialize, Debug)]
 pub struct Site {
     #[config(ty = "enum")]
     pub module: Module,
@@ -129,49 +133,58 @@ pub struct Site {
     #[config(ty = "struct")]
     pub storage: SiteStorage,
 
-    #[config(ty = "struct")]
+    #[config(inner_ty = "struct")]
     pub download_args: Option<DownloadArgs>,
 }
 
 impl Site {
     async fn run(
-        &self,
-        session: &Session,
-        dsettings: &DownloadSettings,
+        self: Arc<Self>,
+        session: Session,
+        dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
     ) -> Result<(), TemplateError> {
-        session.login(&self.module, dsettings).await?;
+        session.login(&self.module, &dsettings).await?;
 
-        let (sender, receiver) = async_std::channel::bounded(100);
+        let (sender, receiver) = async_std::channel::bounded(1024);
 
         let task_stream = self
             .module
             .retrieve_urls(session.clone(), sender, base_path);
-        let consumers = self.start_receivers(session, receiver, dsettings);
+        let consumers = Arc::clone(&self).start_receivers(session, receiver, dsettings);
 
-        let (collection_result, _) = join!(task_stream, consumers);
-        collection_result
+        try_join!(task_stream, consumers)?;
+        Ok(())
     }
 
     async fn start_receivers(
-        &self,
-        session: &Session,
+        self: Arc<Self>,
+        session: Session,
         receiver: Receiver<Task>,
-        dsettings: &DownloadSettings,
-    ) {
-        let mut futures = FuturesUnordered::new();
+        dsettings: Arc<DownloadSettings>,
+    ) -> Result<(), TemplateError> {
+        let mut handles = vec![];
         for _ in 0..10 {
-            futures.push(self.start_consumer(session.clone(), receiver.clone(), dsettings));
+            let self_clone = Arc::clone(&self);
+            handles.push(tokio::spawn(self_clone.start_consumer(
+                session.clone(),
+                receiver.clone(),
+                Arc::clone(&dsettings),
+            )));
         }
 
-        while let Some(_) = futures.next().await {}
+        for handle in handles {
+            handle.await??;
+        };
+        Ok(())
+
     }
 
     async fn start_consumer(
-        &self,
+        self: Arc<Self>,
         session: Session,
         receiver: Receiver<Task>,
-        dsettings: &DownloadSettings,
+        dsettings: Arc<DownloadSettings>,
     ) -> Result<(), TemplateError> {
         while let Ok(mut task) = receiver.recv().await {
             let download_args = self
@@ -203,6 +216,11 @@ impl Site {
             let temp_path = add_to_file_stem(&final_path, "-temp");
             let old_path = add_to_file_stem(&final_path, "-old");
 
+            self.storage
+                .files
+                .get(&final_path)
+                .map(|x| println!("{:#?}", *x));
+
             if fs::metadata(&final_path).await.is_ok() {
                 return Ok(());
             }
@@ -216,20 +234,33 @@ impl Site {
 
             let mut hasher = Sha1::new();
 
-            let mut f = fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(temp_path)
-                .await?;
-            while let Some(chunk) = response.chunk().await? {
-                hasher.update(&chunk);
-                f.write_all(&chunk).await?
+            {
+                let mut f = fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(temp_path)
+                    .await?;
+                while let Some(chunk) = response.chunk().await? {
+                    hasher.update(&chunk);
+                    f.write_all(&chunk).await?
+                }
+
+                f.shutdown().await?;
             }
 
-            f.shutdown().await?;
-            drop(f);
+            let file_checksum = String::from_utf8_lossy(&hasher.finalize()[..]).into_owned();
 
-            let result = hasher.finalize();
+            match self.storage.files.entry(final_path) {
+                Entry::Occupied(mut entry) => {
+                    let data = entry.get_mut();
+                    data.file_checksum = file_checksum;
+                }
+                Entry::Vacant(entry) => {
+                    let data = FileData::new(file_checksum);
+                    entry.insert(data);
+                }
+            }
         }
         Ok(())
     }
@@ -284,8 +315,7 @@ fn add_to_file_stem(path: &PathBuf, name: &str) -> PathBuf {
     path.with_file_name(file_name)
 }
 
-#[async_trait]
-impl NodeTypeExt for Site {
+impl Site {
     async fn path_segment(&self, session: &Session) -> Result<&Path, TemplateError> {
         self.module.folder_name(session).await
     }
@@ -297,19 +327,28 @@ pub struct DownloadArgs {
     pub forbidden_extensions: Vec<String>,
 }
 
-#[derive(Config, Clone, Serialize, Debug)]
+#[derive(Config, Serialize, Debug)]
 pub struct SiteStorage {
-    #[config(ty = "struct")]
-    files: HashMap<PathBuf, FileData>
+    #[config(ty = "HashMap", inner_ty = "struct")]
+    pub files: dashmap::DashMap<PathBuf, FileData>,
 }
 
 impl SiteStorage {}
 
-#[derive(Config, Clone, Serialize, Debug)]
+#[derive(Config, Serialize, Debug)]
 pub struct FileData {
+    pub site_checksum: Option<String>,
+    pub file_checksum: String,
 }
 
-impl FileData {}
+impl FileData {
+    pub fn new(file_checksum: String) -> Self {
+        Self {
+            site_checksum: None,
+            file_checksum,
+        }
+    }
+}
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Clone, Serialize, Debug)]
 pub struct MetaData {}

@@ -17,10 +17,7 @@ impl CEnum {
     }
 
     pub fn get_selected(&self) -> Option<&CArg> {
-        match &self.selected {
-            Some(idx) => Some(self.inner.get(idx).unwrap()),
-            None => None,
-        }
+        self.selected.as_ref().map(|idx| self.inner.get(idx).unwrap())
     }
 
     pub fn get_selected_mut(&mut self) -> Option<&mut CArg> {
@@ -97,7 +94,7 @@ impl CEnumBuilder {
 pub struct CArg {
     name: String,
     gui_name: Option<String>,
-    parameter: Option<CStruct>,
+    parameter: Option<CType>,
 }
 
 impl CArg {
@@ -113,11 +110,11 @@ impl CArg {
         &self.name
     }
 
-    pub fn get(&self) -> Option<&CStruct> {
+    pub fn get(&self) -> Option<&CType> {
         Option::from(&self.parameter)
     }
 
-    pub fn get_mut(&mut self) -> Option<&mut CStruct> {
+    pub fn get_mut(&mut self) -> Option<&mut CType> {
         Option::from(&mut self.parameter)
     }
 
@@ -127,16 +124,11 @@ impl CArg {
 
     pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         match &mut self.parameter {
-            Some(cstruct) => {
-                if let Value::Mapping(map) = value {
-                    cstruct.consume_map(map)
-                } else {
-                    Err(InvalidError::new("Struct Enum must be a Mapping").into())
-                }
-
+            Some(ctype) => {
+                ctype.consume_value(value)
             },
             None => {
-                if let Value::String(_str) = value {
+                if let Value::String(_) = value {
                     Ok(())
                 } else {
                     Err(InvalidError::new("Unit Enum must be a String").into())
@@ -162,7 +154,7 @@ impl CArgBuilder {
         self
     }
 
-    pub fn value(mut self, value: CStruct) -> Self {
+    pub fn value(mut self, value: CType) -> Self {
         self.inner.parameter = Some(value);
         self
     }

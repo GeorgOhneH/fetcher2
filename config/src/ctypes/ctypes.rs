@@ -1,9 +1,11 @@
 use crate::*;
 use serde_yaml::Value;
 use crate::ctypes::map::CHashMap;
+use crate::ctypes::CWrapper;
+
 
 #[derive(Debug, Clone)]
-pub enum CTypes {
+pub enum CType {
     String(CString),
     Bool(CBool),
     Integer(CInteger),
@@ -13,12 +15,13 @@ pub enum CTypes {
     Vec(CVec),
     HashMap(CHashMap),
     Enum(CEnum),
+    Wrapper(Box<CWrapper>)
 }
 
-impl CTypes {
+impl CType {
     pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         match self {
-            CTypes::String(cstring) => match value {
+            CType::String(cstring) => match value {
                 Value::String(str) => {
                     cstring.set(str);
                     Ok(())
@@ -29,7 +32,7 @@ impl CTypes {
                 }
                 _ => Err(InvalidError::new("Expected String or Null").into()),
             },
-            CTypes::Bool(cbool) => match value {
+            CType::Bool(cbool) => match value {
                 Value::Bool(bool) => {
                     cbool.set(bool);
                     Ok(())
@@ -40,7 +43,7 @@ impl CTypes {
                 }
                 _ => Err(InvalidError::new("Expected Bool or Null").into()),
             },
-            CTypes::Path(cpath) => match value {
+            CType::Path(cpath) => match value {
                 Value::String(str) => {
                     cpath.set(str)?;
                     Ok(())
@@ -51,7 +54,7 @@ impl CTypes {
                 }
                 _ => Err(InvalidError::new("Expected Bool or Null").into()),
             },
-            CTypes::Integer(cinteger) => match value {
+            CType::Integer(cinteger) => match value {
                 Value::Number(num) => match num.as_i64() {
                     Some(int) => cinteger.set(int as isize).map_err(|e| e.into()),
                     None => Err(InvalidError::new("Not supported Number").into()),
@@ -62,11 +65,11 @@ impl CTypes {
                 }
                 _ => Err(InvalidError::new("Expected Number or Null").into()),
             },
-            CTypes::Struct(cstruct) => match value {
+            CType::Struct(cstruct) => match value {
                 Value::Mapping(map) => cstruct.consume_map(map),
                 _ => Err(InvalidError::new("Expected Mapping").into()),
             },
-            CTypes::CheckableStruct(ccheck_struct) => match value {
+            CType::CheckableStruct(ccheck_struct) => match value {
                 Value::Mapping(map) => ccheck_struct.consume_map(map),
                 Value::Null => {
                     ccheck_struct.set_checked(false);
@@ -74,15 +77,16 @@ impl CTypes {
                 }
                 _ => Err(InvalidError::new("Expected Mapping or Null").into()),
             },
-            CTypes::Vec(cvec) => match value {
+            CType::Vec(cvec) => match value {
                 Value::Sequence(seq) => cvec.consume_sequence(seq),
                 _ => Err(InvalidError::new("Expected Sequence").into()),
             },
-            CTypes::HashMap(chash_map) => match value {
+            CType::HashMap(chash_map) => match value {
                 Value::Mapping(map) => chash_map.consume_map(map),
                 _ => Err(InvalidError::new("Expected Mapping").into()),
             },
-            CTypes::Enum(cenum) => match value {
+            CType::Wrapper(cwrapper) => cwrapper.consume_value(value),
+            CType::Enum(cenum) => match value {
                 Value::Mapping(map) => cenum.consume_map(map),
                 Value::String(str) => match cenum.set_selected(str) {
                     Ok(carg) => {

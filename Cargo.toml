@@ -10,7 +10,7 @@ edition = "2018"
 config_derive = { path = "./config_derive" }
 config = { path = "./config" }
 clap = "3.0.0-beta.2"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_yaml = "0.8"
 async-trait = "0.1"
 enum_dispatch = "0.3"
@@ -26,3 +26,5 @@ html-escape = "0.2"
 thiserror = "1.0"
 mime_guess = "2"
 sha-1 = "0.9"
+async-scoped = { version = "0.6", features = ["use-tokio"] }
+dashmap = { version = "4", features = ["serde"] }

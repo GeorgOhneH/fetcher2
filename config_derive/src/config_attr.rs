@@ -20,6 +20,7 @@ pub enum ConfigAttr {
     // ident = "string literal"
     GuiName(Ident, LitStr),
     Type(Ident, LitStr),
+    InnerType(Ident, LitStr),
     OtherLitStr(Ident, LitStr),
 
     // ident = arbitrary_expr
@@ -52,6 +53,7 @@ impl Parse for ConfigAttr {
                 match &*name_str {
                     "gui_name" => Ok(GuiName(name, lit)),
                     "ty" => Ok(Type(name, lit)),
+                    "inner_ty" => Ok(InnerType(name, lit)),
 
                     _ => Ok(OtherLitStr(name, lit)),
                 }

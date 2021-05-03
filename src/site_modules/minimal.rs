@@ -16,7 +16,7 @@ use tokio::time::Duration;
 use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
 use url::Url;
 
-#[derive(Config, Clone, Serialize)]
+#[derive(Config, Clone, Serialize, Debug)]
 pub struct Minimal {
     pub parameters: Option<String>,
 }

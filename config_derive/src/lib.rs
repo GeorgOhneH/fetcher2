@@ -10,6 +10,7 @@ mod config_attr;
 mod derives;
 mod parse_from_app;
 mod update_app;
+mod config_type;
 
 use crate::derives::derive_config;
 

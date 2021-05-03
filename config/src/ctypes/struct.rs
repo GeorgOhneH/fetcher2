@@ -21,14 +21,14 @@ impl CStruct {
         self.inner.get_mut(name)
     }
 
-    pub fn get_ty(&self, name: &str) -> Option<&CTypes> {
+    pub fn get_ty(&self, name: &str) -> Option<&CType> {
         match self.get(name) {
             Some(config_arg) => Some(config_arg.get()),
             None => None,
         }
     }
 
-    pub fn get_ty_mut(&mut self, name: &str) -> Option<&mut CTypes> {
+    pub fn get_ty_mut(&mut self, name: &str) -> Option<&mut CType> {
         match self.get_mut(name) {
             Some(config_arg) => Some(config_arg.get_mut()),
             None => None,
@@ -97,11 +97,11 @@ pub struct CKwarg {
     hint_text: Option<String>,
     active_fn: fn(CStruct) -> bool,
     inactive_behavior: InactiveBehavior,
-    ty: CTypes,
+    ty: CType,
 }
 
 impl CKwarg {
-    fn new(name: String, ty: CTypes) -> Self {
+    fn new(name: String, ty: CType) -> Self {
         Self {
             ty,
             name,
@@ -121,11 +121,11 @@ impl CKwarg {
         self.required
     }
 
-    pub fn get(&self) -> &CTypes {
+    pub fn get(&self) -> &CType {
         &self.ty
     }
 
-    pub fn get_mut(&mut self) -> &mut CTypes {
+    pub fn get_mut(&mut self) -> &mut CType {
         &mut self.ty
     }
 
@@ -139,7 +139,7 @@ pub struct CKwargBuilder {
 }
 
 impl CKwargBuilder {
-    pub fn new(name: String, ty: CTypes) -> Self {
+    pub fn new(name: String, ty: CType) -> Self {
         Self {
             inner: CKwarg::new(name, ty),
         }

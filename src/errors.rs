@@ -16,4 +16,16 @@ pub enum TemplateError {
 
     #[error("File Error")]
     FileError(#[from] async_std::io::Error),
+
+    #[error("Serde Error")]
+    SerdeError(#[from] serde_yaml::Error),
+
+    #[error("Utf8 Error")]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error("Config Error")]
+    ConfigError(#[from] config::ConfigError),
+
+    #[error("Join Error")]
+    JoinError(#[from] tokio::task::JoinError),
 }

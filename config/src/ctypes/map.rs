@@ -1,10 +1,11 @@
-use crate::{CTypes, InvalidError, ConfigError};
+use crate::{CType, InvalidError, ConfigError};
 use lazy_static::lazy_static;
 use serde_yaml::{Sequence, Mapping};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::hash::Hash;
 
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum HashKey {
     String(String),
     Path(PathBuf),
@@ -12,13 +13,13 @@ pub enum HashKey {
 
 #[derive(Debug, Clone)]
 pub struct CHashMap {
-    inner: HashMap<HashKey, CTypes>,
+    inner: HashMap<HashKey, CType>,
     key_fn: fn() -> HashKey,
-    value_fn: fn() -> CTypes,
+    value_fn: fn() -> CType,
 }
 
 impl CHashMap {
-    fn new(key_fn: fn() -> HashKey, value_fn: fn() -> CTypes) -> Self {
+    fn new(key_fn: fn() -> HashKey, value_fn: fn() -> CType) -> Self {
         Self {
             inner: HashMap::new(),
             key_fn,
@@ -26,7 +27,7 @@ impl CHashMap {
         }
     }
 
-    pub fn get(&self) -> &HashMap<HashKey, CTypes> {
+    pub fn get(&self) -> &HashMap<HashKey, CType> {
         &self.inner
     }
 
@@ -34,33 +35,28 @@ impl CHashMap {
         (self.key_fn)()
     }
 
-    pub fn get_value(&self) -> CTypes {
+    pub fn get_value(&self) -> CType {
         (self.value_fn)()
     }
 
-    pub fn is_valid(&self, map: &HashMap<HashKey, CTypes>) -> Result<(), InvalidError> {
+    pub fn is_valid(&self, map: &HashMap<HashKey, CType>) -> Result<(), InvalidError> {
         Ok(())
     }
 
-    pub fn set(&mut self, map: HashMap<HashKey, CTypes>) -> Result<(), InvalidError> {
+    pub fn set(&mut self, map: HashMap<HashKey, CType>) -> Result<(), InvalidError> {
         self.is_valid(&map)?;
         self.inner = map;
         Ok(())
     }
 
     pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
-        Ok(())
         // TODO
-        // self.inner.clear();
-        // let mut result = Ok(());
-        // for value in seq {
-        //     let mut template = self.get_template();
-        //     match template.consume_value(value) {
-        //         Ok(()) => self.inner.push(template),
-        //         Err(err) => result = Err(err),
-        //     }
-        // }
-        // result
+        self.inner.clear();
+        let mut result = Ok(());
+        map.into_iter().map(|(k, v)| {
+
+        });
+        result
     }
 }
 
@@ -69,7 +65,7 @@ pub struct CHashMapBuilder {
 }
 
 impl CHashMapBuilder {
-    pub fn new(key_fn: fn() -> HashKey, value_fn: fn() -> CTypes) -> Self {
+    pub fn new(key_fn: fn() -> HashKey, value_fn: fn() -> CType) -> Self {
         Self {
             inner: CHashMap::new(key_fn, value_fn),
         }
