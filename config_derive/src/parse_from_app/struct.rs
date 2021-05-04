@@ -6,8 +6,8 @@ use syn::{
     self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
 };
 
-use crate::parse_from_app::utils::gen_arg;
 use crate::config_type::{parse_type, ConfigHashType, ConfigType};
+use crate::parse_from_app::utils::gen_arg;
 
 pub fn gen_struct_parse_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_kwargs(fields);
@@ -48,4 +48,3 @@ fn gen_kwargs(fields: &Punctuated<Field, Comma>) -> TokenStream {
         })
     }
 }
-

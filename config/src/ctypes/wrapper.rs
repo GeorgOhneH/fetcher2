@@ -41,13 +41,13 @@ pub enum CWrapperKind {
 }
 
 pub struct CWrapperBuilder {
-    inner: CWrapper
+    inner: CWrapper,
 }
 
 impl CWrapperBuilder {
     pub fn new(inner: CType, kind: CWrapperKind) -> CWrapperBuilder {
         Self {
-            inner: CWrapper::new(inner, kind)
+            inner: CWrapper::new(inner, kind),
         }
     }
 

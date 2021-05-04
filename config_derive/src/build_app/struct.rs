@@ -1,6 +1,6 @@
-use crate::config_attr::{parse_config_attributes, ConfigAttr};
-use crate::build_app::utils::{attrs_to_args, attrs_to_sub_args};
 use crate::build_app::utils::gen_type;
+use crate::build_app::utils::{attrs_to_args, attrs_to_sub_args};
+use crate::config_attr::{parse_config_attributes, ConfigAttr};
 use proc_macro2::TokenStream;
 
 use proc_macro_error::abort;
@@ -52,6 +52,3 @@ fn gen_arg(field: &Field, typ: &ConfigType) -> TokenStream {
         .build()
     }
 }
-
-
-

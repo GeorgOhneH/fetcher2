@@ -1,5 +1,6 @@
 use proc_macro_error::{abort, ResultExt};
 
+use proc_macro2::Span;
 use syn::{
     self,
     parse::{Parse, ParseStream},
@@ -7,11 +8,9 @@ use syn::{
     Attribute, Expr, Ident, LitStr,
 };
 use syn::{MetaNameValue, Token};
-use proc_macro2::Span;
 
 #[allow(clippy::large_enum_variant)]
 pub enum ConfigAttr {
-
     DocString(LitStr),
 
     // single-identifier attributes
@@ -83,7 +82,7 @@ impl Parse for ConfigAttr {
     }
 }
 
-fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute]){
+fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute]) {
     use syn::Lit::*;
     use syn::Meta::*;
     let doc_parts: Vec<String> = attrs
@@ -92,7 +91,6 @@ fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute
             if let Ok(NameValue(MetaNameValue { lit: Str(s), .. })) = attr.parse_meta() {
                 //emit_call_site_warning! { " efigef"}
                 Some(s.value().trim().to_string())
-
             } else {
                 // non #[doc = "..."] attributes are not our concern
                 // we leave them for rustc to handle
@@ -103,7 +101,10 @@ fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute
 
     let doc_str = doc_parts.join("\n").trim().to_string();
     if !doc_str.is_empty() {
-        config_attrs.push(ConfigAttr::DocString(LitStr::new(&doc_str, Span::call_site())));
+        config_attrs.push(ConfigAttr::DocString(LitStr::new(
+            &doc_str,
+            Span::call_site(),
+        )));
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::config_attr::{parse_config_attributes, ConfigAttr};
-use proc_macro2::{TokenStream, Span};
+use proc_macro2::{Span, TokenStream};
 
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
@@ -9,8 +9,6 @@ use syn::{
 
 use crate::config_type::{parse_type, ConfigHashType, ConfigType};
 use syn::spanned::Spanned;
-
-
 
 pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> TokenStream {
     let args = attrs_to_sub_args(config_attrs);

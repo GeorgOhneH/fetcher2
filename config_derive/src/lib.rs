@@ -7,10 +7,10 @@ use proc_macro_error::proc_macro_error;
 use syn::{self, parse_macro_input, DeriveInput};
 mod build_app;
 mod config_attr;
+mod config_type;
 mod derives;
 mod parse_from_app;
 mod update_app;
-mod config_type;
 
 use crate::derives::derive_config;
 

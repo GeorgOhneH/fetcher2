@@ -1,14 +1,35 @@
-use crate::{CType, InvalidError, ConfigError};
+use crate::{CType, ConfigError, InvalidError};
 use lazy_static::lazy_static;
-use serde_yaml::{Sequence, Mapping};
+use serde_yaml::{Mapping, Sequence, Value};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::hash::Hash;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum HashKey {
     String(String),
     Path(PathBuf),
+}
+
+impl HashKey {
+    fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
+        match self {
+            HashKey::String(str) => match value {
+                Value::String(vstr) => {
+                    *str = vstr;
+                    Ok(())
+                }
+                _ => Err(InvalidError::new("Expected String").into()),
+            },
+            HashKey::Path(path) => match value {
+                Value::String(vstr) => {
+                    *path = PathBuf::from(vstr);
+                    Ok(())
+                }
+                _ => Err(InvalidError::new("Expected String").into()),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -39,23 +60,26 @@ impl CHashMap {
         (self.value_fn)()
     }
 
-    pub fn is_valid(&self, map: &HashMap<HashKey, CType>) -> Result<(), InvalidError> {
-        Ok(())
-    }
-
-    pub fn set(&mut self, map: HashMap<HashKey, CType>) -> Result<(), InvalidError> {
-        self.is_valid(&map)?;
+    pub fn set(&mut self, map: HashMap<HashKey, CType>) {
         self.inner = map;
-        Ok(())
     }
 
     pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
-        // TODO
         self.inner.clear();
         let mut result = Ok(());
-        map.into_iter().map(|(k, v)| {
-
-        });
+        for (k, v) in map {
+            let mut key = self.get_key();
+            let mut value = self.get_value();
+            if let Err(err) = value.consume_value(v) {
+                result = Err(err);
+                continue;
+            }
+            if let Err(err) = key.consume_value(k) {
+                result = Err(err);
+                continue;
+            }
+            self.inner.insert(key, value);
+        }
         result
     }
 }

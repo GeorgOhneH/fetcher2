@@ -16,7 +16,8 @@ use futures::StreamExt;
 use serde::Serialize;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, RwLock, Arc};
+use std::sync::{Arc, Mutex, RwLock};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 fn main() {
     let mut template = Template::new();
@@ -39,7 +40,6 @@ fn main() {
             let save_path = PathBuf::from("C:\\programming\\rust\\fetcher2\\test.yml");
             template.save(&save_path).await.unwrap();
             template.load(&save_path).await.unwrap();
-
         });
 }
 
@@ -56,8 +56,3 @@ fn main() {
 //
 // }
 //
-//
-//
-//
-// fn main() {}
-

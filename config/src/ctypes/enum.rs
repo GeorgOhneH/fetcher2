@@ -1,7 +1,6 @@
 use crate::*;
 use serde_yaml::{Mapping, Value};
 
-
 #[derive(Debug, Clone)]
 pub struct CEnum {
     inner: HashMap<String, CArg>,
@@ -17,7 +16,9 @@ impl CEnum {
     }
 
     pub fn get_selected(&self) -> Option<&CArg> {
-        self.selected.as_ref().map(|idx| self.inner.get(idx).unwrap())
+        self.selected
+            .as_ref()
+            .map(|idx| self.inner.get(idx).unwrap())
     }
 
     pub fn get_selected_mut(&mut self) -> Option<&mut CArg> {
@@ -53,9 +54,7 @@ impl CEnum {
 
     pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
         if map.len() != 1 {
-            Err(InvalidError::new(
-                "Enum map has the wrong format",
-            ).into())
+            Err(InvalidError::new("Enum map has the wrong format").into())
         } else if let Some((vkey, value)) = map.into_iter().next() {
             let key = match vkey {
                 Value::String(str) => str,
@@ -124,16 +123,14 @@ impl CArg {
 
     pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         match &mut self.parameter {
-            Some(ctype) => {
-                ctype.consume_value(value)
-            },
+            Some(ctype) => ctype.consume_value(value),
             None => {
                 if let Value::String(_) = value {
                     Ok(())
                 } else {
                     Err(InvalidError::new("Unit Enum must be a String").into())
                 }
-            },
+            }
         }
     }
 }

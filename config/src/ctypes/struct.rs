@@ -1,5 +1,5 @@
 use crate::*;
-use serde_yaml::{Value, Mapping};
+use serde_yaml::{Mapping, Value};
 
 #[derive(Debug, Clone)]
 pub struct CStruct {
@@ -48,15 +48,11 @@ impl CStruct {
         let mut result = Ok(());
         for (key, ckwarg) in self.inner.iter_mut() {
             match map.remove(&Value::String(key.to_string())) {
-                Some(value) => {
-                    match ckwarg.consume_value(value) {
-                        Ok(()) => (),
-                        Err(err) => result = Err(err)
-                    }
+                Some(value) => match ckwarg.consume_value(value) {
+                    Ok(()) => (),
+                    Err(err) => result = Err(err),
                 },
-                None => {
-                    result = Err(RequiredError::new(key, "Missing value(s)").into())
-                },
+                None => result = Err(RequiredError::new(key, "Missing value(s)").into()),
             }
         }
         result
@@ -81,7 +77,6 @@ impl CStructBuilder {
         self.inner
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub enum InactiveBehavior {

@@ -9,22 +9,21 @@ pub enum ConfigError {
     Load(#[from] serde_yaml::Error),
 
     #[error(transparent)]
-    Invalid(#[from] InvalidError)
+    Invalid(#[from] InvalidError),
 }
 
 #[derive(Error, Debug)]
 #[error("{msg:?}")]
 pub struct InvalidError {
-    msg: String
+    msg: String,
 }
 
 impl InvalidError {
     pub fn new<T>(str: T) -> Self
-    where String: From<T>
+    where
+        String: From<T>,
     {
-        Self {
-            msg: str.into()
-        }
+        Self { msg: str.into() }
     }
 }
 
@@ -32,7 +31,7 @@ impl InvalidError {
 #[error("Field {field:?} is required. Msg: {msg:?}")]
 pub struct RequiredError {
     field: String,
-    msg: String
+    msg: String,
 }
 
 impl RequiredError {

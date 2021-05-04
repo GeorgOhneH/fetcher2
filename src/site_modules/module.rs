@@ -2,17 +2,17 @@ use crate::errors::TemplateError;
 use crate::session::Session;
 use crate::site_modules::minimal::Minimal;
 use crate::task::Task;
-use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use config::Config;
 use config_derive::Config;
 use enum_dispatch::enum_dispatch;
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 
 use crate::settings::DownloadSettings;
-use async_std::channel::Sender;
+use tokio::sync::mpsc::Sender;
 
-#[derive(Config, Clone, Serialize, Debug)]
+#[derive(Config, Serialize, Debug)]
 pub enum Module {
     #[config(ty = "struct")]
     Minimal(Minimal),

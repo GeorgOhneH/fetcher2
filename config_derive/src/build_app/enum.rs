@@ -1,7 +1,7 @@
 use crate::build_app::utils::attrs_to_args;
 use crate::build_app::utils::gen_type;
 use crate::config_attr::{parse_config_attributes, ConfigAttr};
-use proc_macro2::{TokenStream, Span};
+use proc_macro2::{Span, TokenStream};
 
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
@@ -53,4 +53,3 @@ fn gen_enum_augmentation(e: &DataEnum) -> TokenStream {
         #(.arg(#data_expanded_members))*
     }
 }
-

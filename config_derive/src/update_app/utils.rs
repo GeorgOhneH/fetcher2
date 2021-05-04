@@ -132,7 +132,10 @@ pub fn gen_set(
                     .collect();
 
                 match a {
-                    Ok(vec) => config_vec.set(vec),
+                    Ok(vec) => {
+                        config_vec.set(vec);
+                        Ok(())
+                    },
                     Err(err) => Err(err),
                 }
             }}
@@ -157,7 +160,10 @@ pub fn gen_set(
                     .collect();
 
                 match a {
-                    Ok(map) => cmap.set(map),
+                    Ok(map) => {
+                        cmap.set(map);
+                        Ok(())
+                    },
                     Err(err) => Err(err),
                 }
             }}

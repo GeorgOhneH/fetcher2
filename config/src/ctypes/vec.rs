@@ -1,4 +1,4 @@
-use crate::{CType, InvalidError, ConfigError};
+use crate::{CType, ConfigError, InvalidError};
 use lazy_static::lazy_static;
 use serde_yaml::Sequence;
 use std::collections::HashMap;
@@ -25,22 +25,8 @@ impl CVec {
         (self.template_fn)()
     }
 
-    pub fn is_valid(&self, vec: &Vec<CType>) -> Result<(), InvalidError> {
-        let template = self.get_template();
-        let r = vec
-            .iter()
-            .all(|ty| std::mem::discriminant(ty) == std::mem::discriminant(&template));
-        if r {
-            Ok(())
-        } else {
-            Err(InvalidError::new("SupportedTypes must be the same enum"))
-        }
-    }
-
-    pub fn set(&mut self, vec: Vec<CType>) -> Result<(), InvalidError> {
-       self.is_valid(&vec)?;
+    pub fn set(&mut self, vec: Vec<CType>) {
         self.inner = vec;
-        Ok(())
     }
 
     pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), ConfigError> {

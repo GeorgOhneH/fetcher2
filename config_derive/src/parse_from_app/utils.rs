@@ -8,11 +8,7 @@ use syn::{
 
 use crate::config_type::{parse_type, ConfigHashType, ConfigType};
 
-pub fn gen_arg(
-    typ: &ConfigType,
-    match_arg: TokenStream,
-    span: Span,
-) -> TokenStream {
+pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStream {
     let option_arg = gen_option_arg(typ, match_arg, span);
     match &typ {
         ConfigType::Wrapper(_, _, _) => option_arg,
@@ -39,11 +35,7 @@ pub fn gen_arg(
     }
 }
 
-pub fn gen_option_arg(
-    typ: &ConfigType,
-    match_arg: TokenStream,
-    span: Span,
-) -> TokenStream {
+pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStream {
     match typ {
         ConfigType::String(_) | ConfigType::OptionString(_) => quote! {{
             match #match_arg {
@@ -165,11 +157,7 @@ pub fn gen_option_arg(
     }
 }
 
-pub fn gen_hash_arg(
-    typ: &ConfigHashType,
-    match_arg: TokenStream,
-    span: Span,
-) -> TokenStream {
+pub fn gen_hash_arg(typ: &ConfigHashType, match_arg: TokenStream, span: Span) -> TokenStream {
     match typ {
         ConfigHashType::String => quote! {{
             match #match_arg {

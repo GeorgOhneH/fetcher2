@@ -28,3 +28,4 @@ mime_guess = "2"
 sha-1 = "0.9"
 async-scoped = { version = "0.6", features = ["use-tokio"] }
 dashmap = { version = "4", features = ["serde"] }
+tokio-stream = "0.1"

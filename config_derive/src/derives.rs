@@ -13,7 +13,6 @@ use syn::{
 };
 use syn::{DataEnum, Type};
 
-
 pub fn derive_config(input: &DeriveInput) -> TokenStream {
     let ident = &input.ident;
 
@@ -88,5 +87,3 @@ fn gen_for_enum(name: &Ident, _attrs: &[Attribute], e: &DataEnum) -> TokenStream
 
     }
 }
-
-

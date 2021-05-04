@@ -7,8 +7,8 @@ use syn::{
 };
 
 use crate::config_type::{parse_type, ConfigHashType, ConfigType};
-use syn::spanned::Spanned;
 use crate::update_app::utils::gen_set;
+use syn::spanned::Spanned;
 
 pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_setter(fields);
@@ -18,7 +18,6 @@ pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStrea
         }
     }
 }
-
 
 fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let setters: Vec<TokenStream> = fields
@@ -46,4 +45,3 @@ fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
         Ok(())
     }
 }
-
