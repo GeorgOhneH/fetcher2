@@ -13,7 +13,7 @@ use syn::spanned::Spanned;
 pub fn gen_enum_update_app_fn(e: &DataEnum) -> TokenStream {
     let augmentation = gen_carg(e);
     quote! {
-        fn update_app(self, cenum: &mut ::config::CEnum) -> Result<(), ::config::InvalidError> {
+        fn update_app(self, cenum: &mut ::config::CEnum) -> std::result::Result<(), ::config::InvalidError> {
             #augmentation
         }
     }

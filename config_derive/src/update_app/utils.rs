@@ -120,7 +120,7 @@ pub fn gen_set(
                     ::config::CType::Vec(ref mut config_vec) => config_vec,
                     _ => panic!("This should never happen"),
                 };
-                let a: Result<Vec<::config::CType>, ::config::InvalidError> = #set_arg
+                let a: std::result::Result<Vec<::config::CType>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| value | {
                         let mut temp = config_vec.get_template();
@@ -148,7 +148,7 @@ pub fn gen_set(
                     ::config::CType::HashMap(ref mut cmap) => cmap,
                     _ => panic!("This should never happen"),
                 };
-                let a: Result<std::collections::HashMap<::config::HashKey, ::config::CType>, ::config::InvalidError> = #set_arg
+                let a: std::result::Result<std::collections::HashMap<::config::HashKey, ::config::CType>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| (key, value) | {
                         let mut key_temp = cmap.get_key();

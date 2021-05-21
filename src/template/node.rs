@@ -1,4 +1,4 @@
-use crate::errors::TemplateError;
+use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::site_modules::Module;
 use crate::task::Task;
@@ -40,11 +40,7 @@ pub struct RootNode {
 }
 
 impl RootNode {
-    pub async fn run(
-        &self,
-        session: &Session,
-        dsettings: Arc<DownloadSettings>,
-    ) -> Result<(), TemplateError> {
+    pub async fn run(&self, session: &Session, dsettings: Arc<DownloadSettings>) -> Result<()> {
         let futures: Vec<_> = self
             .children
             .iter()
@@ -77,8 +73,8 @@ impl Node {
         session: &'a Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
-    ) -> Result<(), TemplateError> {
-        let segment = self.ty.path_segment(&session).await?;
+    ) -> Result<()> {
+        let segment = self.ty.path_segment(&session, &dsettings).await?;
         if segment.is_absolute() {
             panic!("segment is not allowed to be absolute")
         }

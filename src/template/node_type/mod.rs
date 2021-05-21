@@ -1,4 +1,4 @@
-use crate::errors::TemplateError;
+use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::site_modules::Module;
 use crate::task::Task;
@@ -35,10 +35,12 @@ mod folder;
 mod site;
 mod utils;
 
+use crate::settings::DownloadSettings;
 pub use crate::template::node_type::folder::Folder;
-pub use crate::template::node_type::site::DownloadArgs;
+pub use crate::template::node_type::site::Mode;
 pub use crate::template::node_type::site::Site;
 pub use crate::template::node_type::site::SiteStorage;
+pub use crate::template::node_type::site::{DownloadArgs, Extensions};
 
 #[derive(Config, Serialize, Debug)]
 pub enum NodeType {
@@ -49,10 +51,14 @@ pub enum NodeType {
 }
 
 impl NodeType {
-    pub async fn path_segment(&self, session: &Session) -> Result<&Path, TemplateError> {
+    pub async fn path_segment(
+        &self,
+        session: &Session,
+        dsettings: &DownloadSettings,
+    ) -> Result<PathBuf> {
         match self {
-            NodeType::Folder(folder) => folder.path_segment(session).await,
-            NodeType::Site(site) => site.path_segment(session).await,
+            NodeType::Folder(folder) => folder.path_segment().await,
+            NodeType::Site(site) => site.path_segment(session, dsettings).await,
         }
     }
 }

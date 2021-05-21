@@ -12,7 +12,7 @@ use crate::parse_from_app::utils::gen_arg;
 pub fn gen_struct_parse_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_kwargs(fields);
     quote! {
-        fn parse_from_app(app: &::config::CStruct) -> Result<Self, ::config::RequiredError> {
+        fn parse_from_app(app: &::config::CStruct) -> std::result::Result<Self, ::config::RequiredError> {
             #augmentation
         }
     }

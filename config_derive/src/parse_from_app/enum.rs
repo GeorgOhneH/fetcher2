@@ -13,7 +13,7 @@ use crate::parse_from_app::utils::gen_arg;
 pub fn gen_enum_parse_fn(e: &DataEnum) -> TokenStream {
     let augmentation = gen_carg(e);
     quote! {
-        fn parse_from_app(cenum: &::config::CEnum) -> Result<Option<Self>, ::config::RequiredError> {
+        fn parse_from_app(cenum: &::config::CEnum) -> std::result::Result<Option<Self>, ::config::RequiredError> {
             let selected = cenum.get_selected();
             match selected {
                 Some(carg) => {

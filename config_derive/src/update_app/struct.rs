@@ -13,7 +13,7 @@ use syn::spanned::Spanned;
 pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_setter(fields);
     quote! {
-        fn update_app(self, app: &mut ::config::CStruct) -> Result<(), ::config::InvalidError> {
+        fn update_app(self, app: &mut ::config::CStruct) -> std::result::Result<(), ::config::InvalidError> {
             #augmentation
         }
     }
@@ -34,7 +34,7 @@ fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
         .collect();
 
     quote! {
-        let results: Vec<Result<(), ::config::InvalidError>> = vec![#(
+        let results: Vec<std::result::Result<(), ::config::InvalidError>> = vec![#(
             #setters
         ),*];
         for result in results {

@@ -19,4 +19,7 @@ pub struct DownloadSettings {
 
     #[config(ty = "struct")]
     pub download_args: DownloadArgs,
+
+    #[config(default = false)]
+    pub force: bool,
 }

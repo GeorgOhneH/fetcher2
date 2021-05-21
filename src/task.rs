@@ -1,3 +1,4 @@
+use reqwest::header::HeaderMap;
 use std::path::PathBuf;
 use url::Url;
 
@@ -5,6 +6,9 @@ use url::Url;
 pub struct Task {
     pub path: PathBuf,
     pub url: Url,
+    pub headers: Option<HeaderMap>,
+    pub basic_auth: Option<(String, Option<String>)>,
+    pub bearer_auth: Option<String>,
     pub checksum: Option<String>,
     pub has_extension: bool,
 }
@@ -14,6 +18,9 @@ impl Task {
         Self {
             path,
             url,
+            headers: None,
+            basic_auth: None,
+            bearer_auth: None,
             checksum: None,
             has_extension: true,
         }

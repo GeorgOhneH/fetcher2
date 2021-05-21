@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 config_derive = { path = "./config_derive" }
 config = { path = "./config" }
+fetcher2_macro = { path = "./fetcher2_macro" }
 clap = "3.0.0-beta.2"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_yaml = "0.8"
@@ -26,6 +27,15 @@ html-escape = "0.2"
 thiserror = "1.0"
 mime_guess = "2"
 sha-1 = "0.9"
-async-scoped = { version = "0.6", features = ["use-tokio"] }
 dashmap = { version = "4", features = ["serde"] }
-tokio-stream = "0.1"
+lopdf = { git = "https://github.com/J-F-Liu/lopdf", features = ["rayon"] }
+ndarray = "0.15"
+font-kit = { version = "0.10", features = ["loader-freetype"] }
+pathfinder_geometry = "0.5.1"
+rusttype = "0.9"
+fontdue = "0.5.0"
+phf = { version = "0.8", features = ["macros"] }
+soup = "0.5"
+strum = "0.20"
+strum_macros = "0.20"
+html5ever = "0.22"

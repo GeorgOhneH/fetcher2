@@ -57,7 +57,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
         }},
         ConfigType::Bool(_) | ConfigType::OptionBool(_) => quote! {{
             match #match_arg {
-                ::config::CType::Bool(value_arg) => Ok(value_arg.get().map(|x|x.copy())),
+                ::config::CType::Bool(value_arg) => Ok(value_arg.get().map(|x|x)),
                 _ => panic!("This should never happen"),
             }
         }},
@@ -77,7 +77,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
         ConfigType::Vec(path, sub_type) => {
             let sub_value = gen_arg(sub_type, quote! {subtype}, span);
             quote! {{
-                let a: Result<#path, ::config::RequiredError> = match #match_arg {
+                let a: std::result::Result<#path, ::config::RequiredError> = match #match_arg {
                     ::config::CType::Vec(cvec) => cvec
                             .get()
                             .iter()
@@ -97,7 +97,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
             let real_key = gen_hash_arg(key_ty, quote! {keytype}, span);
             let real_value = gen_arg(value_ty, quote! {valuetype}, span);
             quote! {{
-                let a: Result<#path, ::config::RequiredError> = match #match_arg {
+                let a: std::result::Result<#path, ::config::RequiredError> = match #match_arg {
                     ::config::CType::HashMap(cmap) => cmap
                             .get()
                             .iter()

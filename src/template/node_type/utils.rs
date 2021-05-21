@@ -1,4 +1,4 @@
-use crate::errors::TemplateError;
+use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::site_modules::Module;
 use crate::task::Task;
@@ -32,10 +32,7 @@ use std::ffi::{OsStr, OsString};
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-pub async fn extension_from_url(
-    session: &Session,
-    url: &Url,
-) -> Result<Option<OsString>, TemplateError> {
+pub async fn extension_from_url(session: &Session, url: &Url) -> Result<Option<OsString>> {
     let response = session.get(url.clone()).send().await?;
     let headers = response.headers();
 

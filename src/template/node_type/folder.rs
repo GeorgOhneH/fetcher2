@@ -1,4 +1,4 @@
-use crate::errors::TemplateError;
+use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::site_modules::Module;
 use crate::task::Task;
@@ -38,7 +38,7 @@ pub struct Folder {
 }
 
 impl Folder {
-    pub async fn path_segment(&self, _session: &Session) -> Result<&Path, TemplateError> {
-        Ok(Path::new(&self.name))
+    pub async fn path_segment(&self) -> Result<PathBuf> {
+        Ok(PathBuf::from(&self.name))
     }
 }

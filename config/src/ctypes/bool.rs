@@ -9,8 +9,8 @@ impl CBool {
     fn new() -> Self {
         Self { value: None }
     }
-    pub fn get(&self) -> Option<&bool> {
-        Option::from(&self.value)
+    pub fn get(&self) -> Option<bool> {
+        self.value
     }
 
     pub fn set(&mut self, value: bool) {

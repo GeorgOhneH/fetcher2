@@ -1,4 +1,4 @@
-use crate::errors::TemplateError;
+use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::settings::DownloadSettings;
 use lazy_static::lazy_static;
@@ -31,7 +31,7 @@ pub async fn aai_login<T: Serialize + ?Sized>(
     dsettings: &DownloadSettings,
     url: Url,
     form: &T,
-) -> Result<(), TemplateError> {
+) -> Result<()> {
     lazy_static! {
         static ref ACTION_URL_RE: Regex =
             Regex::new("<form .*action=\"(.+)\" method=\"post\">").unwrap();
@@ -46,9 +46,7 @@ pub async fn aai_login<T: Serialize + ?Sized>(
     let text = session.post(url).form(form).send().await?.text().await?;
 
     let sam_text = if !text.contains("SAMLResponse") {
-        let local_storage_part = &ACTION_URL_RE
-            .captures(&text)
-            .ok_or(TemplateError::WrongFormat)?[1];
+        let local_storage_part = &ACTION_URL_RE.captures(&text)?[1];
         let local_storage_url = Url::parse(&BASE_URL).unwrap().join(local_storage_part)?;
         let login_page = session
             .post(local_storage_url)
@@ -63,9 +61,7 @@ pub async fn aai_login<T: Serialize + ?Sized>(
             ("j_username", &dsettings.username),
             ("j_password", &dsettings.password),
         ];
-        let sso_part = &ACTION_URL_RE
-            .captures(&login_page)
-            .ok_or(TemplateError::WrongFormat)?[1];
+        let sso_part = &ACTION_URL_RE.captures(&login_page)?[1];
         let sso_url = Url::parse(&BASE_URL).unwrap().join(sso_part)?;
         session
             .post(sso_url)
@@ -78,21 +74,9 @@ pub async fn aai_login<T: Serialize + ?Sized>(
         text
     };
 
-    let sam_url = Url::parse(&unescape(
-        &ACTION_URL_RE
-            .captures(&sam_text)
-            .ok_or(TemplateError::WrongFormat)?[1],
-    ))?;
-    let ssm = unescape(
-        &RELAY_STATE_RE
-            .captures(&sam_text)
-            .ok_or(TemplateError::WrongFormat)?[1],
-    );
-    let sam = unescape(
-        &SAMLRESPONSE_RE
-            .captures(&sam_text)
-            .ok_or(TemplateError::WrongFormat)?[1],
-    );
+    let sam_url = Url::parse(&unescape(&ACTION_URL_RE.captures(&sam_text)?[1]))?;
+    let ssm = unescape(&RELAY_STATE_RE.captures(&sam_text)?[1]);
+    let sam = unescape(&SAMLRESPONSE_RE.captures(&sam_text)?[1]);
 
     let saml_form = [("RelayState", &ssm), ("SAMLResponse", &sam)];
 
