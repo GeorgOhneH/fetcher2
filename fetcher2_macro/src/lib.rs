@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, TokenStreamExt};
 use std::sync::Mutex;
 use syn::parse::Parser;
 use convert_case::{Case, Casing};
@@ -44,7 +44,7 @@ pub fn login_locks(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_derive(LoginLock)]
-pub fn config(input: TokenStream) -> TokenStream {
+pub fn derive_login_lock(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
 
     let arms: Vec<_> = ENUM_DEFS

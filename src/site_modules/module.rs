@@ -14,6 +14,7 @@ use tokio::sync::{Mutex, MutexGuard};
 use crate::settings::DownloadSettings;
 use crate::site_modules::polybox::Polybox;
 use tokio::sync::mpsc::Sender;
+use std::sync::Arc;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
@@ -77,13 +78,14 @@ pub trait ModuleExt {
         session: Session,
         sender: Sender<Task>,
         base_path: PathBuf,
+        dsettings: Arc<DownloadSettings>,
     ) -> Result<()>;
 
     async fn login(&self, session: &Session, dsettings: &DownloadSettings) -> Result<()> {
         Ok(())
     }
 
-    fn website_url(&self) -> String;
+    fn website_url(&self, dsettings: &DownloadSettings) -> String;
 
     async fn folder_name(&self, session: &Session, dsettings: &DownloadSettings)
         -> Result<PathBuf>;

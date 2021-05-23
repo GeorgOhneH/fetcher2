@@ -48,6 +48,21 @@ impl TaskBuilder {
         self
     }
 
+    pub fn headers(mut self, headers: HeaderMap) -> Self {
+        self.inner.headers = Some(headers);
+        self
+    }
+
+    pub fn basic_auth(mut self, username: String, password: Option<String>) -> Self {
+        self.inner.basic_auth = Some((username, password));
+        self
+    }
+
+    pub fn bearer_auth(mut self, token: String) -> Self {
+        self.inner.bearer_auth = Some(token);
+        self
+    }
+
     pub fn build(self) -> Task {
         self.inner
     }

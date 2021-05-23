@@ -2,6 +2,7 @@ use crate::task::Task;
 use std::backtrace::Backtrace;
 use std::option::NoneError;
 use thiserror::Error;
+use tokio::time::error::Elapsed;
 
 pub type Result<T> = std::result::Result<T, TError>;
 
@@ -21,6 +22,7 @@ impl TError {
     }
 }
 
+
 impl<T> From<T> for TError
 where
     TErrorKind: From<T>,
@@ -35,11 +37,17 @@ pub enum TErrorKind {
     #[error("Previous login attempt was unsuccessful")]
     PreviousLoginError,
 
+    #[error("Login Data was not correct")]
+    LoginError,
+
     #[error("Expected different format from data")]
     WrongFormat,
 
     #[error("The Etag was not well formatted")]
     ETagFormat,
+
+    #[error("Xml error: {0}")]
+    Xml(String),
 
     #[error("Url Parse Error")]
     UrlParseError(#[from] url::ParseError),
@@ -47,8 +55,11 @@ pub enum TErrorKind {
     #[error("Client Error")]
     ClientError(#[from] reqwest::Error),
 
+    #[error("Timeout error")]
+    TimeOut(#[from] Elapsed),
+
     #[error("File Error")]
-    FileError(#[from] async_std::io::Error),
+    FileError(#[from] std::io::Error),
 
     #[error("Serde Error")]
     SerdeError(#[from] serde_yaml::Error),

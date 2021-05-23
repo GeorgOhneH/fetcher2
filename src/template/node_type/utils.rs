@@ -18,7 +18,6 @@ use tokio::fs;
 use futures::future::try_join_all;
 
 use crate::settings::DownloadSettings;
-use async_std::channel::{self, Receiver, Sender};
 use futures::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;

@@ -4,7 +4,6 @@ use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
 
 use config_derive::Config;
-use reqwest::multipart::Form;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc::Sender;
@@ -16,6 +15,7 @@ use tokio::time::Duration;
 use crate::site_modules::module::ModuleExt;
 use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
 use url::Url;
+use std::sync::Arc;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Minimal {
@@ -29,6 +29,7 @@ impl ModuleExt for Minimal {
         session: Session,
         sender: Sender<Task>,
         base_path: PathBuf,
+        dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
         println!("Retirevinbg Urls");
         //tokio::time::sleep(Duration::from_secs(3)).await;
@@ -85,11 +86,11 @@ impl ModuleExt for Minimal {
             url::Url::parse("https://moodle-app2.let.ethz.ch/auth/shibboleth/login.php").unwrap();
 
         let form = [("idp", "https://aai-logon.ethz.ch/idp/shibboleth")];
-        //crate::site_modules::aai_login::aai_login(_session, dsettings, url, &form).await
+        crate::site_modules::aai_login::aai_login(_session, dsettings, url, &form).await?;
         Ok(())
     }
 
-    fn website_url(&self) -> String {
+    fn website_url(&self, dsettings: &DownloadSettings) -> String {
         "todo!()".to_owned()
     }
 

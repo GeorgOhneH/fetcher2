@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Serialize;
 use url::Url;
+use crate::site_modules::utils::unescape;
 
 const SSO_URL: &str = "https://aai-logon.ethz.ch/idp/profile/SAML2/Redirect/SSO";
 const BASE_URL: &str = "https://aai-logon.ethz.ch";
@@ -19,12 +20,6 @@ const LOCAL_STORAGE_FORM: [(&str, &str); 8] = [
     ("shib_idp_ls_supported", ""),
     ("_eventId_proceed", ""),
 ];
-
-fn unescape(str: &str) -> String {
-    let mut r = String::new();
-    html_escape::decode_html_entities_to_string(str, &mut r);
-    r
-}
 
 pub async fn aai_login<T: Serialize + ?Sized>(
     session: &Session,
@@ -80,7 +75,7 @@ pub async fn aai_login<T: Serialize + ?Sized>(
 
     let saml_form = [("RelayState", &ssm), ("SAMLResponse", &sam)];
 
-    session.post(sam_url).form(&saml_form).send().await?;
+    session.post(sam_url).form(&saml_form).send().await?.error_for_status()?;
 
     Ok(())
 }

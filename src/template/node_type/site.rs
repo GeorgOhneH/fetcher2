@@ -76,7 +76,7 @@ impl Site {
 
         let task_stream = self
             .module
-            .retrieve_urls(session.clone(), sender, base_path);
+            .retrieve_urls(session.clone(), sender, base_path, Arc::clone(&dsettings));
 
         let consumers = Arc::clone(&self).handle_receiver(session, receiver, dsettings);
 
@@ -91,9 +91,17 @@ impl Site {
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
         let mut futs = FuturesUnordered::new();
+        let mut n_errors = 0;
         loop {
             tokio::select! {
-                Some(task) = receiver.recv() => {
+                biased;
+
+                Some(result) = futs.next() => {
+                    let msg: Result<Msg> = result?;
+                    if msg.is_ok() {} else { n_errors += 1 }
+                    println!("{:?}, {}", msg, n_errors);
+                },
+                Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
                     let handle = tokio::spawn(self_clone.consume_task(
                         session.clone(),
@@ -101,9 +109,6 @@ impl Site {
                         Arc::clone(&dsettings),
                     ));
                     futs.push(handle);
-                },
-                Some(result) = futs.next() => {
-                    let msg = result??;
                 },
                 else => break,
             }
@@ -155,6 +160,7 @@ impl Site {
             .extensions
             .is_extension_forbidden(final_path.extension())
         {
+            println!("{:?}", final_path);
             return Ok(Msg::ForbiddenExtension);
         }
 
@@ -190,7 +196,7 @@ impl Site {
             &final_path,
         )?;
 
-        let mut response = session.execute(request).await?;
+        let mut response = session.execute(request).await?.error_for_status()?;
         if response.status() == reqwest::StatusCode::NOT_MODIFIED {
             self.storage
                 .files
@@ -210,7 +216,8 @@ impl Site {
                 .truncate(true)
                 .open(&temp_path)
                 .await?;
-            while let Some(chunk) = response.chunk().await? {
+
+            while let Some(chunk) = tokio::time::timeout(Duration::from_secs(10), response.chunk()).await?? {
                 hasher.update(&chunk);
                 f.write_all(&chunk).await?
             }
@@ -348,7 +355,7 @@ impl Extensions {
                 Mode::Allowed => !self.inner.contains(&*extension.to_string_lossy()),
                 Mode::Forbidden => self.inner.contains(&*extension.to_string_lossy()),
             },
-            None => true,
+            None => false,
         }
     }
 }

@@ -2,6 +2,7 @@ mod aai_login;
 mod minimal;
 mod module;
 mod polybox;
+mod utils;
 
 pub use crate::site_modules::minimal::*;
 pub use crate::site_modules::module::*;

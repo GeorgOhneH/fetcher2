@@ -15,7 +15,6 @@ use crate::settings::DownloadSettings;
 use crate::template::node::RootNode;
 use crate::template::node::{MetaData, Node};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
-use async_std::channel::Sender;
 use config::{Config, ConfigEnum};
 use std::collections::HashMap;
 use std::path::Path;
@@ -31,20 +30,37 @@ impl Template {
         let mut app = RootNode::build_app();
 
         let root = RootNode {
-            children: vec![Node {
-                ty: NodeType::Site(Arc::new(Site {
-                    module: Module::Polybox(Polybox {
-                        id: "TnFKtU4xoe5gIZy".to_owned(),
-                        mode: PolyboxMode::Shared(Some("123".to_owned())),
-                    }),
-                    storage: SiteStorage {
-                        files: dashmap::DashMap::new(),
-                    },
-                    download_args: None,
-                })),
-                children: vec![Node {
+            children: vec![
+                Node {
                     ty: NodeType::Site(Arc::new(Site {
-                        module: Module::Minimal(Minimal { parameters: None }),
+                        module: Module::Polybox(Polybox {
+                            id: "TnFKtU4xoe5gIZy".to_owned(),
+                            mode: PolyboxMode::Shared(Some("123".to_owned())),
+                        }),
+                        storage: SiteStorage {
+                            files: dashmap::DashMap::new(),
+                        },
+                        download_args: None,
+                    })),
+                    children: vec![Node {
+                        ty: NodeType::Site(Arc::new(Site {
+                            module: Module::Minimal(Minimal { parameters: None }),
+                            storage: SiteStorage {
+                                files: dashmap::DashMap::new(),
+                            },
+                            download_args: None,
+                        })),
+                        children: vec![],
+                        meta_data: MetaData {},
+                    }],
+                    meta_data: MetaData {},
+                },
+                Node {
+                    ty: NodeType::Site(Arc::new(Site {
+                        module: Module::Polybox(Polybox {
+                            id: "1929777502".to_owned(),
+                            mode: PolyboxMode::Private,
+                        }),
                         storage: SiteStorage {
                             files: dashmap::DashMap::new(),
                         },
@@ -52,9 +68,22 @@ impl Template {
                     })),
                     children: vec![],
                     meta_data: MetaData {},
-                }],
-                meta_data: MetaData {},
-            }],
+                },
+                Node {
+                    ty: NodeType::Site(Arc::new(Site {
+                        module: Module::Polybox(Polybox {
+                            id: "sYrHnA3ZBbuDcip".to_owned(),
+                            mode: PolyboxMode::Shared(None),
+                        }),
+                        storage: SiteStorage {
+                            files: dashmap::DashMap::new(),
+                        },
+                        download_args: None,
+                    })),
+                    children: vec![],
+                    meta_data: MetaData {},
+                },
+            ],
         };
 
         root.update_app(&mut app).unwrap();
