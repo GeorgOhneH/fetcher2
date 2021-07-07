@@ -23,18 +23,20 @@ pub use crate::ctypes::wrapper::*;
 use crate::ctypes::CWrapper;
 use crate::{ConfigError, InvalidError};
 use serde_yaml::Value;
+use druid::{Data, Widget, WidgetExt, lens, LensExt};
+use druid_enums::Matcher;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, Matcher)]
 pub enum CType {
     String(CString),
     Bool(CBool),
     Integer(CInteger),
     Path(CPath),
-    Struct(CStruct),
+    CStruct(CStruct),
     CheckableStruct(CCheckableStruct),
     Vec(CVec),
     HashMap(CHashMap),
-    Enum(CEnum),
+    CEnum(CEnum),
     Wrapper(Box<CWrapper>),
 }
 
@@ -85,7 +87,7 @@ impl CType {
                 }
                 _ => Err(InvalidError::new("Expected Number or Null").into()),
             },
-            CType::Struct(cstruct) => match value {
+            CType::CStruct(cstruct) => match value {
                 Value::Mapping(map) => cstruct.consume_map(map),
                 _ => Err(InvalidError::new("Expected Mapping").into()),
             },
@@ -106,7 +108,7 @@ impl CType {
                 _ => Err(InvalidError::new("Expected Mapping").into()),
             },
             CType::Wrapper(cwrapper) => cwrapper.consume_value(value),
-            CType::Enum(cenum) => match value {
+            CType::CEnum(cenum) => match value {
                 Value::Mapping(map) => cenum.consume_map(map),
                 Value::String(str) => match cenum.set_selected(str) {
                     Ok(carg) => {
@@ -125,5 +127,19 @@ impl CType {
                 _ => Err(InvalidError::new("Expected Mapping").into()),
             },
         }
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        Self::matcher()
+            .string(CString::widget())
+            .bool(CBool::widget())
+            .integer(CInteger::widget())
+            .path(CPath::widget())
+            .c_struct(CStruct::widget())
+            .checkable_struct(CCheckableStruct::widget())
+            .hash_map(CHashMap::widget())
+            .vec(CVec::widget())
+            .c_enum(CEnum::widget())
+            .wrapper(CWrapper::widget().lens(lens::Identity.deref()))
     }
 }

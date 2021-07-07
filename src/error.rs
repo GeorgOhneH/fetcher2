@@ -1,8 +1,9 @@
 use crate::task::Task;
 use std::backtrace::Backtrace;
-use std::option::NoneError;
 use thiserror::Error;
 use tokio::time::error::Elapsed;
+use std::ops::FromResidual;
+use std::convert::Infallible;
 
 pub type Result<T> = std::result::Result<T, TError>;
 
@@ -21,7 +22,6 @@ impl TError {
         }
     }
 }
-
 
 impl<T> From<T> for TError
 where
@@ -45,6 +45,9 @@ pub enum TErrorKind {
 
     #[error("The Etag was not well formatted")]
     ETagFormat,
+
+    #[error("Something")]
+    Something,
 
     #[error("Xml error: {0}")]
     Xml(String),
@@ -77,8 +80,12 @@ pub enum TErrorKind {
     SendError(#[from] tokio::sync::mpsc::error::SendError<Task>),
 }
 
-impl From<NoneError> for TErrorKind {
-    fn from(_: NoneError) -> Self {
-        TErrorKind::WrongFormat
+pub trait DefaultOk<T> {
+    fn d_ok(self) -> Result<T>;
+}
+
+impl<T> DefaultOk<T> for Option<T> {
+    fn d_ok(self) -> Result<T> {
+        self.ok_or_else(|| TError::new(TErrorKind::Something))
     }
 }

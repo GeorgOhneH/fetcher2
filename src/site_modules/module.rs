@@ -1,4 +1,4 @@
-use crate::error::{Result, TError, TErrorKind};
+use crate::error::{Result, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::minimal::Minimal;
 use crate::task::Task;
@@ -8,13 +8,13 @@ use config_derive::Config;
 use enum_dispatch::enum_dispatch;
 use fetcher2_macro::{login_locks, LoginLock};
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::settings::DownloadSettings;
 use crate::site_modules::polybox::Polybox;
-use tokio::sync::mpsc::Sender;
 use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
@@ -81,7 +81,7 @@ pub trait ModuleExt {
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()>;
 
-    async fn login(&self, session: &Session, dsettings: &DownloadSettings) -> Result<()> {
+    async fn login(&self, _session: &Session, _dsettings: &DownloadSettings) -> Result<()> {
         Ok(())
     }
 

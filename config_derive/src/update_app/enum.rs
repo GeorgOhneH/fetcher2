@@ -3,12 +3,11 @@ use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
 use syn::{
-    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
+    self, DataEnum, Fields, FieldsUnnamed, LitStr,
 };
 
-use crate::config_type::{parse_type, ConfigHashType, ConfigType};
+use crate::config_type::{parse_type};
 use crate::update_app::utils::gen_set;
-use syn::spanned::Spanned;
 
 pub fn gen_enum_update_app_fn(e: &DataEnum) -> TokenStream {
     let augmentation = gen_carg(e);

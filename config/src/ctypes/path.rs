@@ -1,15 +1,20 @@
 use crate::*;
 use std::path::PathBuf;
+use druid::{Data, Lens, Widget, WidgetExt, LensExt};
+use druid::im;
+use druid::widget::TextBox;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data)]
 pub enum CPathTypes {
     Folder,
-    File(Option<Vec<String>>),
+    File(Option<im::Vector<String>>),
     Any,
 }
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CPath {
+    #[data(same_fn = "PartialEq::eq")]
     value: Option<PathBuf>,
     ty: CPathTypes,
 }
@@ -78,6 +83,28 @@ impl CPath {
 
     pub fn unset(&mut self) {
         self.value = None;
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        TextBox::new().lens(Self::value.map(
+            |value| {
+                match value {
+                    Some(v) => v
+                        .clone()
+                        .into_os_string()
+                        .into_string()
+                        .unwrap_or("".to_owned()),
+                    None => "".to_owned(),
+                }
+            },
+            |value: &mut Option<PathBuf>, x| {
+                if x.is_empty() {
+                    *value = None
+                } else {
+                    *value = Some(PathBuf::from(x))
+                }
+            },
+        ))
     }
 }
 

@@ -1,23 +1,27 @@
-use crate::{CType, ConfigError, InvalidError};
-use lazy_static::lazy_static;
-use serde_yaml::Sequence;
-use std::collections::HashMap;
+use crate::{CType, ConfigError};
 
-#[derive(Debug, Clone)]
+use druid::im::Vector;
+use druid::widget::{Button, Flex, List, ListIter};
+use druid::{im, Widget};
+use druid::{lens, Data, Lens, LensExt, WidgetExt};
+use serde_yaml::Sequence;
+
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CVec {
-    inner: Vec<CType>,
+    inner: im::Vector<CItem>,
+    #[data(ignore)]
     template_fn: fn() -> CType,
 }
 
 impl CVec {
     fn new(template_fn: fn() -> CType) -> Self {
         Self {
-            inner: Vec::new(),
+            inner: im::Vector::new(),
             template_fn,
         }
     }
 
-    pub fn get(&self) -> &Vec<CType> {
+    pub fn get(&self) -> &im::Vector<CItem> {
         &self.inner
     }
 
@@ -25,7 +29,7 @@ impl CVec {
         (self.template_fn)()
     }
 
-    pub fn set(&mut self, vec: Vec<CType>) {
+    pub fn set(&mut self, vec: im::Vector<CItem>) {
         self.inner = vec;
     }
 
@@ -35,11 +39,40 @@ impl CVec {
         for value in seq {
             let mut template = self.get_template();
             match template.consume_value(value) {
-                Ok(()) => self.inner.push(template),
+                Ok(()) => self.inner.push_back(CItem::new(template)),
                 Err(err) => result = Err(err),
             }
         }
         result
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        Flex::column()
+            .with_child(
+                List::new(|| {
+                    Flex::row().with_child(CType::widget().lens(CItem::ty)).with_child(
+                        Button::new("Delete").on_click(
+                            |_ctx, item: &mut CItem, _env| {
+                                // We have access to both child's data and shared data.
+                                // Remove element from right list.
+                                item.valid = false;
+                            },
+                        ),
+                    )
+                })
+                .lens(CVec::inner.map(
+                    |inner: &im::Vector<CItem>| inner.clone(),
+                    |inner: &mut im::Vector<CItem>, mut data: im::Vector<CItem>| {
+                        data.retain(|item| item.valid);
+                        *inner = data;
+                    },
+                )),
+            )
+            .with_child(
+                Button::new("Add").on_click(|_, c_vec: &mut Self, _env| {
+                    c_vec.inner.push_back(CItem::new(c_vec.get_template()))
+                }),
+            )
     }
 }
 
@@ -56,4 +89,26 @@ impl CVecBuilder {
     pub fn build(self) -> CVec {
         self.inner
     }
+}
+
+#[derive(Debug, Clone, Data, Lens)]
+pub struct CItem {
+    pub valid: bool,
+    pub ty: CType,
+}
+
+impl CItem {
+    pub fn new(ty: CType) -> Self {
+        Self {
+            valid: true,
+            ty,
+        }
+    }
+}
+
+impl From<CType> for CItem {
+    fn from(ty: CType) -> Self {
+        Self::new(ty)
+    }
+
 }

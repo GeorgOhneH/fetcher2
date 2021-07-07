@@ -1,12 +1,12 @@
 use proc_macro2::TokenStream;
 
-use proc_macro_error::abort;
+
 use quote::quote;
 use syn::{
-    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
+    self, Field, LitStr,
 };
 
-use crate::config_type::{parse_type, ConfigHashType, ConfigType};
+use crate::config_type::{ConfigHashType, ConfigType};
 use syn::spanned::Spanned;
 
 pub fn gen_set(
@@ -69,7 +69,7 @@ pub fn gen_set(
                 ::config::CType::Path(ref mut cpath) => {
                     match #set_arg {
                         Some(path) => cpath.set(path),
-                        None => cpath.unset(),
+                        None => Ok(cpath.unset()),
                     }
                 },
                 _ => panic!("This should never happen"),
@@ -120,12 +120,12 @@ pub fn gen_set(
                     ::config::CType::Vec(ref mut config_vec) => config_vec,
                     _ => panic!("This should never happen"),
                 };
-                let a: std::result::Result<Vec<::config::CType>, ::config::InvalidError> = #set_arg
+                let a: std::result::Result<Vec<::config::CItem>, ::config::InvalidError> = #set_arg
                     .into_iter()
                     .map(| value | {
                         let mut temp = config_vec.get_template();
                         match #sub_setter {
-                            Ok(_) => Ok(temp),
+                            Ok(_) => Ok(::config::CItem::new(temp)),
                             Err(err) => Err(err),
                         }
                     })
@@ -133,7 +133,7 @@ pub fn gen_set(
 
                 match a {
                     Ok(vec) => {
-                        config_vec.set(vec);
+                        config_vec.set(vec.into());
                         Ok(())
                     },
                     Err(err) => Err(err),
@@ -161,7 +161,7 @@ pub fn gen_set(
 
                 match a {
                     Ok(map) => {
-                        cmap.set(map);
+                        cmap.set(map.into());
                         Ok(())
                     },
                     Err(err) => Err(err),
@@ -172,7 +172,7 @@ pub fn gen_set(
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CType::Struct(ref mut config_struct) => {
+                    ::config::CType::CStruct(ref mut config_struct) => {
                         #path::update_app(#set_arg, config_struct)
                     },
                     _ => panic!("This should never happen"),
@@ -203,7 +203,7 @@ pub fn gen_set(
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CType::Enum(ref mut cenum) => {
+                    ::config::CType::CEnum(ref mut cenum) => {
                         #path::update_app(#set_arg, cenum)
                     },
                     _ => panic!("This should never happen"),
@@ -214,7 +214,7 @@ pub fn gen_set(
             let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
             quote! {{
                 match #match_arg {
-                    ::config::CType::Enum(ref mut cenum) => {
+                    ::config::CType::CEnum(ref mut cenum) => {
                         match #set_arg {
                             Some(h) => #path::update_app(h, cenum),
                             None =>{
@@ -232,7 +232,7 @@ pub fn gen_set(
 
 fn gen_hash_set(
     typ: &ConfigHashType,
-    field: &Field,
+    _field: &Field,
     match_arg: TokenStream,
     set_arg: TokenStream,
 ) -> TokenStream {

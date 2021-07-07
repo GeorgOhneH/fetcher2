@@ -1,17 +1,13 @@
-use crate::error::{Result, TError, TErrorKind};
+use crate::error::Result;
 use crate::site_modules::LoginLocks;
-use crate::site_modules::Module;
-use crate::site_modules::ModuleExt;
 use reqwest::{Body, Client, ClientBuilder, IntoUrl, Method, Request, RequestBuilder, Response};
 
-use crate::settings::DownloadSettings;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct Session {

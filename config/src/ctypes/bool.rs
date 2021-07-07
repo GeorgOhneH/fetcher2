@@ -1,9 +1,12 @@
 use crate::*;
+use druid::{Data, Lens, Widget, WidgetExt, LensExt};
+use druid::widget::Switch;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CBool {
     value: Option<bool>,
 }
+
 
 impl CBool {
     fn new() -> Self {
@@ -18,6 +21,16 @@ impl CBool {
     }
     pub fn unset(&mut self) {
         self.value = None
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        Switch::new().lens(Self::value.map(
+            |value: &Option<bool>| match value {
+                Some(v) => *v,
+                None => false,
+            },
+            |value: &mut Option<bool>, x| *value = Some(x),
+        ))
     }
 }
 

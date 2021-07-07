@@ -1,6 +1,8 @@
 use crate::*;
+use druid::{Data, Lens, Widget, WidgetExt, LensExt};
+use druid::widget::TextBox;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CString {
     value: Option<String>,
 }
@@ -19,6 +21,16 @@ impl CString {
     }
     pub fn unset(&mut self) {
         self.value = None
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        TextBox::new().lens(Self::value.map(
+            |value| match value {
+                Some(v) => v.to_owned(),
+                None => "".to_owned(),
+            },
+            |value: &mut Option<String>, x| *value = Some(x),
+        ))
     }
 }
 

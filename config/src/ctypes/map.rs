@@ -1,15 +1,20 @@
-use crate::{CType, ConfigError, InvalidError};
-use lazy_static::lazy_static;
-use serde_yaml::{Mapping, Sequence, Value};
+use crate::{CType, ConfigError, InvalidError, CArg};
+
+use serde_yaml::{Mapping, Value};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
+use druid::{Data, Widget, WidgetExt};
+use druid::im;
+use druid::widget::{Flex, List, ListIter, Label};
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, Data)]
 pub enum HashKey {
     String(String),
-    Path(PathBuf),
+    Path(#[data(same_fn = "PartialEq::eq")] PathBuf),
 }
+
+
 
 impl HashKey {
     fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
@@ -32,23 +37,25 @@ impl HashKey {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data)]
 pub struct CHashMap {
-    inner: HashMap<HashKey, CType>,
+    inner: im::OrdMap<HashKey, CType>,
+    #[data(ignore)]
     key_fn: fn() -> HashKey,
+    #[data(ignore)]
     value_fn: fn() -> CType,
 }
 
 impl CHashMap {
     fn new(key_fn: fn() -> HashKey, value_fn: fn() -> CType) -> Self {
         Self {
-            inner: HashMap::new(),
+            inner: im::OrdMap::new(),
             key_fn,
             value_fn,
         }
     }
 
-    pub fn get(&self) -> &HashMap<HashKey, CType> {
+    pub fn get(&self) -> &im::OrdMap<HashKey, CType> {
         &self.inner
     }
 
@@ -60,7 +67,7 @@ impl CHashMap {
         (self.value_fn)()
     }
 
-    pub fn set(&mut self, map: HashMap<HashKey, CType>) {
+    pub fn set(&mut self, map: im::OrdMap<HashKey, CType>) {
         self.inner = map;
     }
 
@@ -81,6 +88,24 @@ impl CHashMap {
             self.inner.insert(key, value);
         }
         result
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        Label::new("Map can't really be used as a widget")
+    }
+}
+
+impl ListIter<CType> for CHashMap {
+    fn for_each(&self, cb: impl FnMut(&CType, usize)) {
+        self.inner.for_each(cb)
+    }
+
+    fn for_each_mut(&mut self, cb: impl FnMut(&mut CType, usize)) {
+        self.inner.for_each_mut(cb)
+    }
+
+    fn data_len(&self) -> usize {
+        self.inner.data_len()
     }
 }
 

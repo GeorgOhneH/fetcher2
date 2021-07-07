@@ -1,14 +1,12 @@
-use crate::config_attr::{parse_config_attributes, ConfigAttr};
+use crate::config_attr::{ConfigAttr};
 use proc_macro2::{Span, TokenStream};
 
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
-use syn::{
-    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
-};
 
-use crate::config_type::{parse_type, ConfigHashType, ConfigType};
-use syn::spanned::Spanned;
+
+use crate::config_type::{ConfigHashType, ConfigType};
+
 
 pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> TokenStream {
     let args = attrs_to_sub_args(config_attrs);
@@ -76,7 +74,7 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
                 abort!(path, "Sub args are not allowed for ConfigStructs")
             } else {
                 quote_spanned! {span=>
-                    ::config::CType::Struct(
+                    ::config::CType::CStruct(
                         #path::build_app()
                         #args
                     )
@@ -99,7 +97,7 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
                 abort!(path, "Sub args are not allowed for Enum")
             } else {
                 quote_spanned! {span=>
-                    ::config::CType::Enum(
+                    ::config::CType::CEnum(
                         #path::build_app()
                         #args
                     )
@@ -109,7 +107,7 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
     }
 }
 
-pub fn gen_hash_type(typ: &ConfigHashType, config_attrs: &[ConfigAttr], span: Span) -> TokenStream {
+pub fn gen_hash_type(typ: &ConfigHashType, _config_attrs: &[ConfigAttr], span: Span) -> TokenStream {
     match typ {
         ConfigHashType::String => quote_spanned! {span=>
             ::config::HashKey::String("".to_owned())

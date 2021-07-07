@@ -1,28 +1,24 @@
-use crate::error::{Result, TError, TErrorKind};
+use crate::error::{Result, TErrorKind, DefaultOk};
 use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
-use html5ever::rcdom::{Handle, NodeData, RcDom};
 use soup::prelude::*;
 
 use config::ConfigEnum;
 use config_derive::Config;
-use quick_xml::events::{BytesText, Event};
+use quick_xml::events::Event;
 use quick_xml::Reader;
-use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use serde::Serialize;
+use std::path::PathBuf;
 use tokio::sync::mpsc::Sender;
 
 use crate::settings::DownloadSettings;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::HashMap;
-use tokio::time::Duration;
 
 use crate::site_modules::utils::save_path;
 use crate::site_modules::ModuleExt;
-use futures::future::ok;
-use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
+use futures::stream::{StreamExt, TryStreamExt};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Method;
 use std::str::FromStr;
@@ -92,7 +88,7 @@ impl Polybox {
         let resp = session.get(url.clone()).send().await?;
 
         let text = resp.text().await?;
-        let token = &TOKEN_RE.captures(&text)?[1];
+        let token = &TOKEN_RE.captures(&text).d_ok()?[1];
 
         let data = [("requesttoken", token), ("password", password)];
 
@@ -192,7 +188,7 @@ impl ModuleExt for Polybox {
         Ok(())
     }
 
-    fn website_url(&self, dsettings: &DownloadSettings) -> String {
+    fn website_url(&self, _dsettings: &DownloadSettings) -> String {
         "todo!()".to_owned()
     }
 
@@ -204,7 +200,7 @@ impl ModuleExt for Polybox {
         match &self.mode {
             Mode::Private => {
                 let dir_path = self.dire_path(session, dsettings).await?;
-                let folder_name = dir_path.split("/").last()?;
+                let folder_name = dir_path.split("/").last().d_ok()?;
                 return Ok(PathBuf::from(folder_name));
             }
             Mode::Shared(password) => {
@@ -227,12 +223,12 @@ impl ModuleExt for Polybox {
                 let soup = Soup::new(&text);
                 let data_node = soup
                     .tag("body")
-                    .find()?
+                    .find().d_ok()?
                     .tag("header")
-                    .find()?
+                    .find().d_ok()?
                     .tag("div")
-                    .find()?;
-                let name = data_node.get("data-name")?;
+                    .find().d_ok()?;
+                let name = data_node.get("data-name").d_ok()?;
                 Ok(PathBuf::from(name))
             }
         }

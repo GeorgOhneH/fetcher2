@@ -1,17 +1,17 @@
 use proc_macro_error::abort_call_site;
 
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens, TokenStreamExt};
+use proc_macro2::{TokenStream};
+use quote::{quote};
 
-use proc_macro_error::abort;
+
 
 use crate::build_app::{gen_enum_build_app_fn, gen_struct_build_app_fn};
-use crate::config_attr::{parse_config_attributes, ConfigAttr};
+
 use syn::{
     self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
-    Fields, GenericArgument, Ident, LitStr, Path, PathArguments, TypePath,
+    Fields, Ident,
 };
-use syn::{DataEnum, Type};
+use syn::{DataEnum};
 
 pub fn derive_config(input: &DeriveInput) -> TokenStream {
     let ident = &input.ident;

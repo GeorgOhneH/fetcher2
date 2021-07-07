@@ -1,12 +1,12 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{TokenStream};
 
-use proc_macro_error::abort;
+
 use quote::quote;
 use syn::{
-    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
+    self, punctuated::Punctuated, token::Comma, Field, LitStr,
 };
 
-use crate::config_type::{parse_type, ConfigHashType, ConfigType};
+use crate::config_type::{parse_type};
 use crate::parse_from_app::utils::gen_arg;
 
 pub fn gen_struct_parse_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {

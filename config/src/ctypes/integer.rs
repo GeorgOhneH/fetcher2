@@ -1,9 +1,14 @@
 use crate::*;
+use druid::{Data, Lens, Widget, WidgetExt};
+use druid::widget::TextBox;
+use druid::text::{ValidationError, Validation, Formatter, Selection};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CInteger {
     value: Option<isize>,
+    #[data(ignore)]
     min: isize,
+    #[data(ignore)]
     max: isize,
 }
 
@@ -39,6 +44,13 @@ impl CInteger {
     pub fn unset(&mut self) {
         self.value = None
     }
+
+    pub fn widget() -> impl Widget<Self> {
+        TextBox::new()
+            .with_formatter(IntFormatter::new())
+            .update_data_while_editing(true)
+            .lens(Self::value)
+    }
 }
 
 pub struct CIntegerBuilder {
@@ -72,5 +84,42 @@ impl CIntegerBuilder {
     }
     pub fn build(self) -> CInteger {
         self.inner
+    }
+}
+
+struct IntFormatter;
+
+impl IntFormatter {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Formatter<Option<isize>> for IntFormatter {
+    fn format(&self, value: &Option<isize>) -> String {
+        match value {
+            Some(v) => v.to_string(),
+            None => "".to_owned(),
+        }
+    }
+    fn format_for_editing(&self, value: &Option<isize>) -> String {
+        self.format(value)
+    }
+
+    fn validate_partial_input(&self, input: &str, _sel: &Selection) -> Validation {
+        match self.value(input) {
+            Ok(_) => Validation::success(),
+            Err(err) => Validation::failure(err),
+        }
+    }
+    fn value(&self, input: &str) -> std::result::Result<Option<isize>, ValidationError> {
+        if input.is_empty() {
+            Ok(None)
+        } else {
+            input
+                .parse()
+                .map_err(ValidationError::new)
+                .map(Option::Some)
+        }
     }
 }

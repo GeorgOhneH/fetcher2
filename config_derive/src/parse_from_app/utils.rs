@@ -1,12 +1,12 @@
 use proc_macro2::{Span, TokenStream};
 
-use proc_macro_error::abort;
+
 use quote::quote;
 use syn::{
-    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
+    self, LitStr,
 };
 
-use crate::config_type::{parse_type, ConfigHashType, ConfigType};
+use crate::config_type::{ConfigHashType, ConfigType};
 
 pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStream {
     let option_arg = gen_option_arg(typ, match_arg, span);
@@ -81,7 +81,8 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
                     ::config::CType::Vec(cvec) => cvec
                             .get()
                             .iter()
-                            .map(|subtype| {
+                            .map(|citem| {
+                                let subtype = &citem.ty;
                                 #sub_value
                             })
                             .collect(),
@@ -116,10 +117,10 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
             }}
         }
         ConfigType::Struct(path) => {
-            let struct_name_str = LitStr::new(&quote! {#path}.to_string(), span);
+            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), span);
             quote! {{
                 match #match_arg {
-                    ::config::CType::Struct(config_struct) => match #path::parse_from_app(config_struct) {
+                    ::config::CType::CStruct(config_struct) => match #path::parse_from_app(config_struct) {
                         Ok(value) => Ok(Some(value)),
                         Err(err) => Err(err),
                     },
@@ -128,7 +129,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
             }}
         }
         ConfigType::CheckableStruct(path) => {
-            let struct_name_str = LitStr::new(&quote! {#path}.to_string(), span);
+            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), span);
             quote! {{
                 match #match_arg {
                     ::config::CType::CheckableStruct(config_check_struct) => {
@@ -146,10 +147,10 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
             }}
         }
         ConfigType::Enum(path) | ConfigType::OptionEnum(path) => {
-            let enum_name_str = LitStr::new(&quote! {#path}.to_string(), span.clone());
+            let _enum_name_str = LitStr::new(&quote! {#path}.to_string(), span.clone());
             quote! {{
                 match #match_arg {
-                    ::config::CType::Enum(cenum) => #path::parse_from_app(cenum),
+                    ::config::CType::CEnum(cenum) => #path::parse_from_app(cenum),
                     _ => panic!("This should never happen"),
                 }
             }}
@@ -157,7 +158,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
     }
 }
 
-pub fn gen_hash_arg(typ: &ConfigHashType, match_arg: TokenStream, span: Span) -> TokenStream {
+pub fn gen_hash_arg(typ: &ConfigHashType, match_arg: TokenStream, _span: Span) -> TokenStream {
     match typ {
         ConfigHashType::String => quote! {{
             match #match_arg {

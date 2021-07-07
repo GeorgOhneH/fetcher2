@@ -1,15 +1,19 @@
 use crate::*;
+use druid::im;
+use druid::widget::{Flex, List, ListIter};
+use druid::{Data, Lens, Widget, WidgetExt};
 use serde_yaml::{Mapping, Value};
+use std::collections::hash_map::Iter;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data)]
 pub struct CStruct {
-    inner: HashMap<String, CKwarg>,
+    inner: im::OrdMap<String, CKwarg>,
 }
 
 impl CStruct {
     fn new() -> Self {
         Self {
-            inner: HashMap::new(),
+            inner: im::OrdMap::new(),
         }
     }
 
@@ -44,18 +48,43 @@ impl CStruct {
         }
     }
 
+    pub fn iter(&self) -> im::ordmap::Iter<String, CKwarg> {
+        self.inner.iter()
+    }
+
     pub(crate) fn consume_map(&mut self, mut map: Mapping) -> Result<(), ConfigError> {
         let mut result = Ok(());
-        for (key, ckwarg) in self.inner.iter_mut() {
+        for (key, ckwarg) in self.inner.clone().iter() {
             match map.remove(&Value::String(key.to_string())) {
-                Some(value) => match ckwarg.consume_value(value) {
-                    Ok(()) => (),
-                    Err(err) => result = Err(err),
-                },
+                Some(value) => {
+                    let mut kwarg_clone = ckwarg.clone();
+                    match kwarg_clone.consume_value(value) {
+                        Ok(()) => self.inner[key] = kwarg_clone,
+                        Err(err) => result = Err(err),
+                    }
+                }
                 None => result = Err(RequiredError::new(key, "Missing value(s)").into()),
             }
         }
         result
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        List::new(|| CKwarg::widget())
+    }
+}
+
+impl ListIter<CKwarg> for CStruct {
+    fn for_each(&self, cb: impl FnMut(&CKwarg, usize)) {
+        self.inner.for_each(cb)
+    }
+
+    fn for_each_mut(&mut self, cb: impl FnMut(&mut CKwarg, usize)) {
+        self.inner.for_each_mut(cb)
+    }
+
+    fn data_len(&self) -> usize {
+        self.inner.data_len()
     }
 }
 
@@ -84,13 +113,20 @@ pub enum InactiveBehavior {
     Hide,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CKwarg {
+    #[data(ignore)]
     required: bool,
+    #[data(ignore)]
+    #[lens(name = "name_lens")]
     name: String,
+    #[data(ignore)]
     gui_name: Option<String>,
+    #[data(ignore)]
     hint_text: Option<String>,
+    #[data(ignore)]
     active_fn: fn(CStruct) -> bool,
+    #[data(ignore)]
     inactive_behavior: InactiveBehavior,
     ty: CType,
 }
@@ -126,6 +162,10 @@ impl CKwarg {
 
     pub fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         self.ty.consume_value(value)
+    }
+
+    fn widget() -> impl Widget<Self> {
+        Flex::column().with_child(CType::widget().lens(Self::ty))
     }
 }
 

@@ -69,20 +69,20 @@ impl Template {
                     children: vec![],
                     meta_data: MetaData {},
                 },
-                Node {
-                    ty: NodeType::Site(Arc::new(Site {
-                        module: Module::Polybox(Polybox {
-                            id: "sYrHnA3ZBbuDcip".to_owned(),
-                            mode: PolyboxMode::Shared(None),
-                        }),
-                        storage: SiteStorage {
-                            files: dashmap::DashMap::new(),
-                        },
-                        download_args: None,
-                    })),
-                    children: vec![],
-                    meta_data: MetaData {},
-                },
+                // Node {
+                //     ty: NodeType::Site(Arc::new(Site {
+                //         module: Module::Polybox(Polybox {
+                //             id: "sYrHnA3ZBbuDcip".to_owned(),
+                //             mode: PolyboxMode::Shared(None),
+                //         }),
+                //         storage: SiteStorage {
+                //             files: dashmap::DashMap::new(),
+                //         },
+                //         download_args: None,
+                //     })),
+                //     children: vec![],
+                //     meta_data: MetaData {},
+                // },
             ],
         };
 

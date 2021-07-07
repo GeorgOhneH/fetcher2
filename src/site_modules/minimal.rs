@@ -1,21 +1,19 @@
-use crate::error::{Result, TError};
+use crate::error::Result;
 use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
 
 use config_derive::Config;
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::sync::mpsc::Sender;
 
 use crate::settings::DownloadSettings;
-use std::collections::HashMap;
-use tokio::time::Duration;
 
 use crate::site_modules::module::ModuleExt;
-use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
-use url::Url;
+use futures::stream::StreamExt;
 use std::sync::Arc;
+use url::Url;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Minimal {
@@ -29,7 +27,7 @@ impl ModuleExt for Minimal {
         session: Session,
         sender: Sender<Task>,
         base_path: PathBuf,
-        dsettings: Arc<DownloadSettings>,
+        _dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
         println!("Retirevinbg Urls");
         //tokio::time::sleep(Duration::from_secs(3)).await;
@@ -90,14 +88,14 @@ impl ModuleExt for Minimal {
         Ok(())
     }
 
-    fn website_url(&self, dsettings: &DownloadSettings) -> String {
+    fn website_url(&self, _dsettings: &DownloadSettings) -> String {
         "todo!()".to_owned()
     }
 
     async fn folder_name(
         &self,
-        session: &Session,
-        dsettings: &DownloadSettings,
+        _session: &Session,
+        _dsettings: &DownloadSettings,
     ) -> Result<PathBuf> {
         println!("Folder Name");
         Ok(PathBuf::from("efgeuif"))

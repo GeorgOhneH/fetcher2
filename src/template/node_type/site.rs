@@ -74,9 +74,9 @@ impl Site {
 
         let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 
-        let task_stream = self
-            .module
-            .retrieve_urls(session.clone(), sender, base_path, Arc::clone(&dsettings));
+        let task_stream =
+            self.module
+                .retrieve_urls(session.clone(), sender, base_path, Arc::clone(&dsettings));
 
         let consumers = Arc::clone(&self).handle_receiver(session, receiver, dsettings);
 
@@ -217,7 +217,9 @@ impl Site {
                 .open(&temp_path)
                 .await?;
 
-            while let Some(chunk) = tokio::time::timeout(Duration::from_secs(10), response.chunk()).await?? {
+            while let Some(chunk) =
+                tokio::time::timeout(Duration::from_secs(10), response.chunk()).await??
+            {
                 hasher.update(&chunk);
                 f.write_all(&chunk).await?
             }

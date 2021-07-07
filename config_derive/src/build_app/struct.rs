@@ -1,15 +1,15 @@
 use crate::build_app::utils::gen_type;
-use crate::build_app::utils::{attrs_to_args, attrs_to_sub_args};
-use crate::config_attr::{parse_config_attributes, ConfigAttr};
+use crate::build_app::utils::{attrs_to_args};
+use crate::config_attr::{parse_config_attributes};
 use proc_macro2::TokenStream;
 
-use proc_macro_error::abort;
+
 use quote::{quote, quote_spanned};
 use syn::{
-    self, punctuated::Punctuated, token::Comma, DataEnum, Field, Fields, FieldsUnnamed, LitStr,
+    self, punctuated::Punctuated, token::Comma, Field, LitStr,
 };
 
-use crate::config_type::{parse_type, ConfigHashType, ConfigType};
+use crate::config_type::{parse_type, ConfigType};
 use syn::spanned::Spanned;
 
 pub fn gen_struct_build_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {

@@ -1,9 +1,19 @@
 use crate::{CType, ConfigError};
 use serde_yaml::Value;
+use druid::{Data, Lens, Widget, WidgetExt};
+use druid::widget::Label;
 
-#[derive(Debug, Clone)]
+impl Data for Box<CWrapper> {
+    fn same(&self, other: &Self) -> bool {
+        self.as_ref().same(other.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CWrapper {
+    #[lens(name = "inner_lens")]
     inner: CType,
+    #[lens(name = "kind_lens")]
     kind: CWrapperKind,
 }
 
@@ -31,9 +41,14 @@ impl CWrapper {
     pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         self.inner.consume_value(value)
     }
+
+    pub fn widget() -> impl Widget<Self> {
+        Label::new("TODO")
+        // CType::widget().lens(Self::inner_lens)
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, PartialEq)]
 pub enum CWrapperKind {
     Mutex,
     RwLock,

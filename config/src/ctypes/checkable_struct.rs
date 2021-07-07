@@ -1,7 +1,8 @@
 use crate::*;
 use serde_yaml::Mapping;
+use druid::{Data, Widget, Lens, WidgetExt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CCheckableStruct {
     inner: CStruct,
     checked: bool,
@@ -34,6 +35,10 @@ impl CCheckableStruct {
     pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
         self.set_checked(true);
         self.inner.consume_map(map)
+    }
+
+    pub fn widget() -> impl Widget<Self> {
+        CStruct::widget().lens(Self::inner)
     }
 }
 

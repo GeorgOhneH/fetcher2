@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use proc_macro::TokenStream;
-use quote::{quote, TokenStreamExt};
+use quote::{quote};
 use std::sync::Mutex;
 use syn::parse::Parser;
 use convert_case::{Case, Casing};
@@ -10,8 +10,8 @@ use proc_macro2::{Ident, Span};
 static ENUM_DEFS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 #[proc_macro_attribute]
-pub fn login_locks(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut item_c = item.clone();
+pub fn login_locks(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item_c = item.clone();
     match parse_macro_input!(item_c as Item) {
         Item::Enum(item_enum) => {
             let mut enum_vec = ENUM_DEFS.lock().unwrap();
@@ -45,7 +45,7 @@ pub fn login_locks(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(LoginLock)]
 pub fn derive_login_lock(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
+    let _input: DeriveInput = parse_macro_input!(input);
 
     let arms: Vec<_> = ENUM_DEFS
         .lock()
