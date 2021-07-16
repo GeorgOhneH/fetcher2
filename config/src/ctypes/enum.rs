@@ -16,6 +16,7 @@ use druid::{
 pub struct CEnum {
     inner: im::OrdMap<String, CArg>,
     selected: Option<String>,
+    name: Option<String>,
 }
 
 impl CEnum {
@@ -23,6 +24,7 @@ impl CEnum {
         Self {
             inner: im::OrdMap::new(),
             selected: None,
+            name: None,
         }
     }
 
@@ -78,9 +80,21 @@ impl CEnum {
         }
     }
 
+    pub fn state(&self) -> State {
+        match self.get_selected() {
+            Some(carg) => carg.state(),
+            None => State::None,
+        }
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        // TODO
+        true
+    }
+
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
-            .with_child(DropdownSelect::new())
+            .with_child(ListSelect::new())
             .with_child(CEnumWidget::new())
     }
 }
@@ -101,6 +115,11 @@ impl CEnumBuilder {
         self
     }
 
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
     pub fn build(self) -> CEnum {
         self.inner
     }
@@ -111,8 +130,6 @@ pub struct CArg {
     #[data(ignore)]
     #[lens(name = "name_lens")]
     name: String,
-    #[data(ignore)]
-    gui_name: Option<String>,
     parameter: Option<CType>,
 }
 
@@ -120,7 +137,6 @@ impl CArg {
     fn new(name: String) -> Self {
         Self {
             name,
-            gui_name: None,
             parameter: None,
         }
     }
@@ -154,6 +170,13 @@ impl CArg {
         }
     }
 
+    pub fn state(&self) -> State {
+        match &self.parameter {
+            Some(ty) => ty.state(),
+            None => State::Valid,
+        }
+    }
+
     pub fn widget() -> impl Widget<Self> {
         Maybe::or_empty(|| CType::widget()).lens(Self::parameter)
     }
@@ -168,11 +191,6 @@ impl CArgBuilder {
         Self {
             inner: CArg::new(name),
         }
-    }
-
-    pub fn gui_name(mut self, name: String) -> Self {
-        self.inner.gui_name = Some(name);
-        self
     }
 
     pub fn value(mut self, value: CType) -> Self {
@@ -342,7 +360,6 @@ impl DropdownButton {
 
 impl Widget<DropdownState> for DropdownButton {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut DropdownState, env: &Env) {
-        println!("oewhfoe");
         match event {
             Event::MouseDown(_) => {
                 ctx.set_active(true);
@@ -543,7 +560,6 @@ impl ListSelect {
 
 impl Widget<CEnum> for ListSelect {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut CEnum, env: &Env) {
-        println!("{:?}", event);
         if let Event::MouseDown(_) = event {
             ctx.request_focus();
         }
@@ -565,7 +581,6 @@ impl Widget<CEnum> for ListSelect {
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &CEnum, env: &Env) {
-        println!("{:?}", event);
         if let LifeCycle::WidgetAdded = event {
             for label in data.inner.keys().into_iter() {
                 self.widget.add_child(ListItem::new(label.clone()));
@@ -711,7 +726,6 @@ impl CEnumWidget {
 
 impl Widget<CEnum> for CEnumWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut CEnum, env: &Env) {
-        println!("{:?}, {:?}", event, event.should_propagate_to_hidden());
         if event.should_propagate_to_hidden() {
             for (key, widget) in self.widgets.iter_mut() {
                 widget.event(ctx, event, data.inner.get_mut(key).unwrap(), env)

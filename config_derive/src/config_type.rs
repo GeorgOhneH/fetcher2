@@ -1,16 +1,8 @@
-
-
-
-
-
 use proc_macro_error::abort;
 
-
 use crate::config_attr::{parse_config_attributes, ConfigAttr};
-use syn::{
-    self, Attribute, GenericArgument, Ident, Path, PathArguments, TypePath,
-};
-use syn::{Type};
+use syn::Type;
+use syn::{self, Attribute, Expr, GenericArgument, Ident, Path, PathArguments, TypePath};
 
 pub enum ConfigHashType {
     String,
@@ -33,6 +25,7 @@ pub enum ConfigType {
     Enum(Path),
     OptionEnum(Path),
     Wrapper(Path, Box<ConfigType>, Ident),
+    Skip(Expr),
 }
 
 impl ConfigType {
@@ -47,6 +40,7 @@ impl ConfigType {
             | Enum(_)
             | Path(_)
             | HashMap(_, _, _)
+            | Skip(_)
             | Wrapper(_, _, _) => false,
             OptionString(_) | OptionInteger(_) | OptionBool(_) | CheckableStruct(_)
             | OptionEnum(_) | OptionPath(_) => true,
@@ -59,7 +53,14 @@ pub fn parse_type(ty: &Type, attrs: &[Attribute]) -> ConfigType {
 }
 fn _parse_type(ty: &Type, attrs: &[Attribute], inner: bool) -> ConfigType {
     if let Some((path, inner_types)) = extract_type_from_bracket(ty) {
-        let type_args: Vec<String> = parse_config_attributes(attrs)
+        let config_attrs = parse_config_attributes(attrs);
+        if let Some(ConfigAttr::Skip(expr)) = config_attrs
+            .iter()
+            .find(|attr| matches!(attr, ConfigAttr::Skip(_)))
+        {
+            return ConfigType::Skip(expr.clone());
+        }
+        let type_args: Vec<String> = config_attrs
             .iter()
             .filter_map(|config_attr| {
                 if inner {

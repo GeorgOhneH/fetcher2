@@ -14,6 +14,7 @@ pub enum ConfigAttr {
     DocString(LitStr),
 
     // single-identifier attributes
+    Skip(Expr),
     OtherSingle(Ident),
 
     // ident = "string literal"
@@ -61,6 +62,7 @@ impl Parse for ConfigAttr {
                     Ok(expr) => match &*name_str {
                         "active_fn" => Ok(ActiveFn(name, expr)),
                         "inactive_behavior" => Ok(InactiveBehavior(name, expr)),
+                        "skip" => Ok(Skip(expr)),
                         _ => Ok(Other(name, expr)),
                     },
 
@@ -75,7 +77,7 @@ impl Parse for ConfigAttr {
             abort!(name, "nested attributes are not valid")
         } else {
             // Attributes represented with a sole identifier.
-            match name_str {
+            match &*name_str {
                 _ => Ok(OtherSingle(name)),
             }
         }

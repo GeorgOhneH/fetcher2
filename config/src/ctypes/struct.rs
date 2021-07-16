@@ -1,19 +1,21 @@
 use crate::*;
-use druid::im;
-use druid::widget::{Flex, List, ListIter};
+use druid::widget::{Container, CrossAxisAlignment, Flex, FlexParams, Label, List, ListIter, MainAxisAlignment, Maybe};
+use druid::{im, Color};
 use druid::{Data, Lens, Widget, WidgetExt};
 use serde_yaml::{Mapping, Value};
 use std::collections::hash_map::Iter;
 
-#[derive(Debug, Clone, Data)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {
     inner: im::OrdMap<String, CKwarg>,
+    name: Option<String>,
 }
 
 impl CStruct {
     fn new() -> Self {
         Self {
             inner: im::OrdMap::new(),
+            name: None,
         }
     }
 
@@ -69,8 +71,18 @@ impl CStruct {
         result
     }
 
+    pub fn state(&self) -> State {
+        self.inner.values().map(|ckwarg| ckwarg.state()).collect()
+    }
+
     pub fn widget() -> impl Widget<Self> {
-        List::new(|| CKwarg::widget())
+        Flex::column()
+            .cross_axis_alignment(CrossAxisAlignment::Start)
+            .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone())).lens(Self::name))
+            .with_child(
+                Container::new(List::new(|| CKwarg::widget()).with_spacing(5.).padding(5.))
+                    .border(Color::GRAY, 2.),
+            )
     }
 }
 
@@ -102,6 +114,12 @@ impl CStructBuilder {
         self.inner.inner.insert(arg.name().clone(), arg);
         self
     }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
     pub fn build(self) -> CStruct {
         self.inner
     }
@@ -121,8 +139,6 @@ pub struct CKwarg {
     #[lens(name = "name_lens")]
     name: String,
     #[data(ignore)]
-    gui_name: Option<String>,
-    #[data(ignore)]
     hint_text: Option<String>,
     #[data(ignore)]
     active_fn: fn(CStruct) -> bool,
@@ -136,7 +152,6 @@ impl CKwarg {
         Self {
             ty,
             name,
-            gui_name: None,
             active_fn: |_app| true,
             hint_text: None,
             inactive_behavior: InactiveBehavior::GrayOut,
@@ -164,8 +179,42 @@ impl CKwarg {
         self.ty.consume_value(value)
     }
 
+    pub fn state(&self) -> State {
+        match self.ty.state() {
+            State::Valid => State::Valid,
+            State::None => {
+                if self.required {
+                    State::invalid("Value is required")
+                } else {
+                    State::Valid
+                }
+            }
+            State::InValid(msg) => State::InValid(msg),
+        }
+    }
+
+    fn error_msg(&self) -> Option<String> {
+        if !self.ty.is_leaf() {
+            None
+        } else {
+            match self.ty.state() {
+                State::Valid => None,
+                State::None => {
+                    if self.required {
+                        Some("Value is required".to_string())
+                    } else {
+                        None
+                    }
+                }
+                State::InValid(msg) => Some(msg),
+            }
+        }
+    }
+
     fn widget() -> impl Widget<Self> {
-        Flex::column().with_child(CType::widget().lens(Self::ty))
+        Flex::column()
+            .with_child(CType::widget().lens(Self::ty))
+            .with_child(WarningLabel::new())
     }
 }
 
@@ -200,11 +249,85 @@ impl CKwargBuilder {
         self
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
-        self.inner.gui_name = Some(name);
-        self
-    }
     pub fn build(self) -> CKwarg {
         self.inner
+    }
+}
+
+use druid::{
+    BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
+    UpdateCtx, WidgetPod,
+};
+
+use druid::widget::SizedBox;
+
+pub struct WarningLabel {
+    label: Label<()>,
+    active: bool,
+}
+
+impl WarningLabel {
+    pub fn new() -> WarningLabel {
+        WarningLabel {
+            label: Label::new("test").with_text_color(Color::rgb8(255, 0, 0)),
+            active: true,
+        }
+    }
+}
+
+impl Widget<CKwarg> for WarningLabel {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut CKwarg, env: &Env) {
+        if self.active {
+            self.label.event(ctx, event, &mut (), env);
+        }
+    }
+
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &CKwarg, env: &Env) {
+        if let LifeCycle::WidgetAdded = event {
+            println!("{:?}", data.error_msg());
+            match data.error_msg() {
+                None => self.active = false,
+                Some(msg) => {
+                    self.active = true;
+                    self.label.set_text(msg)
+                }
+            }
+        }
+        if self.active {
+            self.label.lifecycle(ctx, event, &(), env)
+        }
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CKwarg, data: &CKwarg, env: &Env) {
+        match data.error_msg() {
+            None => self.active = false,
+            Some(msg) => {
+                self.active = true;
+                self.label.set_text(msg);
+            }
+        }
+        if self.active {
+            self.label.update(ctx, &(), &(), env);
+        }
+    }
+
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &CKwarg,
+        env: &Env,
+    ) -> Size {
+        if self.active {
+            self.label.layout(ctx, bc, &(), env)
+        } else {
+            bc.constrain((0.0, 0.0))
+        }
+    }
+
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &CKwarg, env: &Env) {
+        if self.active {
+            self.label.paint(ctx, &(), env);
+        }
     }
 }

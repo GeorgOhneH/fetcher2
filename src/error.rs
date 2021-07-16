@@ -4,6 +4,7 @@ use thiserror::Error;
 use tokio::time::error::Elapsed;
 use std::ops::FromResidual;
 use std::convert::Infallible;
+use druid::ExtEventError;
 
 pub type Result<T> = std::result::Result<T, TError>;
 
@@ -78,6 +79,9 @@ pub enum TErrorKind {
 
     #[error("Send Error")]
     SendError(#[from] tokio::sync::mpsc::error::SendError<Task>),
+
+    #[error("Druid ExtEvent Error")]
+    ExtEventError(#[from] ExtEventError),
 }
 
 pub trait DefaultOk<T> {

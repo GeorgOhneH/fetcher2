@@ -15,7 +15,10 @@ pub use crate::template::node_type::site::Site;
 pub use crate::template::node_type::site::SiteStorage;
 pub use crate::template::node_type::site::{DownloadArgs, Extensions};
 use std::sync::Arc;
+use druid::Data;
 use std::path::PathBuf;
+use crate::template::node_type::site::SiteData;
+use crate::template::node_type::folder::FolderData;
 
 #[derive(Config, Serialize, Debug)]
 pub enum NodeType {
@@ -36,4 +39,17 @@ impl NodeType {
             NodeType::Site(site) => site.path_segment(session, dsettings).await,
         }
     }
+
+    pub fn widget_data(&self) -> NodeTypeData {
+        match self {
+            NodeType::Site(site) => NodeTypeData::Site(site.widget_data()),
+            NodeType::Folder(folder) => NodeTypeData::Folder(folder.widget_data()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Data)]
+pub enum NodeTypeData {
+    Folder(FolderData),
+    Site(SiteData),
 }

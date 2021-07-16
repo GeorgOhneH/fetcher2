@@ -1,5 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 
+use proc_macro_error::abort;
 
 use quote::quote;
 use syn::{
@@ -9,6 +10,11 @@ use syn::{
 use crate::config_type::{ConfigHashType, ConfigType};
 
 pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStream {
+    if let ConfigType::Skip(expr) = typ {
+        return quote! {
+            Ok(#expr)
+        }
+    }
     let option_arg = gen_option_arg(typ, match_arg, span);
     match &typ {
         ConfigType::Wrapper(_, _, _) => option_arg,
@@ -57,7 +63,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
         }},
         ConfigType::Bool(_) | ConfigType::OptionBool(_) => quote! {{
             match #match_arg {
-                ::config::CType::Bool(value_arg) => Ok(value_arg.get().map(|x|x)),
+                ::config::CType::Bool(value_arg) => Ok(Some(value_arg.get())),
                 _ => panic!("This should never happen"),
             }
         }},
@@ -154,7 +160,8 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
                     _ => panic!("This should never happen"),
                 }
             }}
-        }
+        },
+        ConfigType::Skip(_) => abort!(span, "Skip shouldn't be a possible value"),
     }
 }
 

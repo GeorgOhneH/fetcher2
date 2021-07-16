@@ -1,4 +1,4 @@
-use crate::{CType, ConfigError};
+use crate::{CType, ConfigError, State};
 
 use druid::im::Vector;
 use druid::widget::{Button, Flex, List, ListIter};
@@ -11,6 +11,8 @@ pub struct CVec {
     inner: im::Vector<CItem>,
     #[data(ignore)]
     template_fn: fn() -> CType,
+    #[data(ignore)]
+    name: Option<String>,
 }
 
 impl CVec {
@@ -18,6 +20,7 @@ impl CVec {
         Self {
             inner: im::Vector::new(),
             template_fn,
+            name: None,
         }
     }
 
@@ -31,6 +34,19 @@ impl CVec {
 
     pub fn set(&mut self, vec: im::Vector<CItem>) {
         self.inner = vec;
+    }
+
+    pub fn state(&self) -> State {
+        self.inner
+            .iter()
+            .filter_map(|citem| {
+                if citem.valid {
+                    Some(citem.ty.state())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), ConfigError> {
@@ -50,15 +66,15 @@ impl CVec {
         Flex::column()
             .with_child(
                 List::new(|| {
-                    Flex::row().with_child(CType::widget().lens(CItem::ty)).with_child(
-                        Button::new("Delete").on_click(
+                    Flex::row()
+                        .with_child(CType::widget().lens(CItem::ty))
+                        .with_child(Button::new("Delete").on_click(
                             |_ctx, item: &mut CItem, _env| {
                                 // We have access to both child's data and shared data.
                                 // Remove element from right list.
                                 item.valid = false;
                             },
-                        ),
-                    )
+                        ))
                 })
                 .lens(CVec::inner.map(
                     |inner: &im::Vector<CItem>| inner.clone(),
@@ -68,11 +84,9 @@ impl CVec {
                     },
                 )),
             )
-            .with_child(
-                Button::new("Add").on_click(|_, c_vec: &mut Self, _env| {
-                    c_vec.inner.push_back(CItem::new(c_vec.get_template()))
-                }),
-            )
+            .with_child(Button::new("Add").on_click(|_, c_vec: &mut Self, _env| {
+                c_vec.inner.push_back(CItem::new(c_vec.get_template()))
+            }))
     }
 }
 
@@ -86,6 +100,12 @@ impl CVecBuilder {
             inner: CVec::new(template),
         }
     }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
     pub fn build(self) -> CVec {
         self.inner
     }
@@ -99,10 +119,7 @@ pub struct CItem {
 
 impl CItem {
     pub fn new(ty: CType) -> Self {
-        Self {
-            valid: true,
-            ty,
-        }
+        Self { valid: true, ty }
     }
 }
 
@@ -110,5 +127,4 @@ impl From<CType> for CItem {
     fn from(ty: CType) -> Self {
         Self::new(ty)
     }
-
 }

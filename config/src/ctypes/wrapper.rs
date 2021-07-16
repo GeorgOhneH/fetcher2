@@ -1,4 +1,4 @@
-use crate::{CType, ConfigError};
+use crate::{CType, ConfigError, State};
 use serde_yaml::Value;
 use druid::{Data, Lens, Widget, WidgetExt};
 use druid::widget::Label;
@@ -40,6 +40,14 @@ impl CWrapper {
 
     pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         self.inner.consume_value(value)
+    }
+
+    pub fn state(&self) -> State {
+        self.inner.state()
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        self.inner.is_leaf()
     }
 
     pub fn widget() -> impl Widget<Self> {

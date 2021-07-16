@@ -3,6 +3,7 @@ use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
 use soup::prelude::*;
+use druid::Data;
 
 use config::ConfigEnum;
 use config_derive::Config;
@@ -59,7 +60,7 @@ lazy_static! {
     };
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Polybox {
     pub id: String,
 
@@ -67,7 +68,7 @@ pub struct Polybox {
     pub mode: Mode,
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone, Data)]
 pub enum Mode {
     Shared(Option<String>),
     Private,

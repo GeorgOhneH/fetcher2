@@ -1,36 +1,38 @@
 use crate::*;
-use druid::{Data, Lens, Widget, WidgetExt, LensExt};
-use druid::widget::Switch;
+use druid::widget::{Checkbox, Switch, Flex};
+use druid::{Data, Lens, LensExt, Widget, WidgetExt, Env, EventCtx, LifeCycle, PaintCtx, BoxConstraints, LifeCycleCtx, Size, LayoutCtx, Event, UpdateCtx, WidgetPod};
 
-#[derive(Debug, Clone, Data, Lens)]
+#[derive(Debug, Clone, Data)]
 pub struct CBool {
-    value: Option<bool>,
+    value: bool,
+    #[data(ignore)]
+    name: Option<String>,
 }
-
 
 impl CBool {
     fn new() -> Self {
-        Self { value: None }
+        Self {
+            value: false,
+            name: None
+        }
     }
-    pub fn get(&self) -> Option<bool> {
+    pub fn get(&self) -> bool {
         self.value
     }
 
     pub fn set(&mut self, value: bool) {
-        self.value = Some(value);
+        self.value = value;
     }
     pub fn unset(&mut self) {
-        self.value = None
+        self.value = false
     }
 
     pub fn widget() -> impl Widget<Self> {
-        Switch::new().lens(Self::value.map(
-            |value: &Option<bool>| match value {
-                Some(v) => *v,
-                None => false,
-            },
-            |value: &mut Option<bool>, x| *value = Some(x),
-        ))
+        CBoolWidget::new()
+    }
+
+    pub fn state(&self) -> State {
+        State::Valid
     }
 }
 
@@ -48,7 +50,52 @@ impl CBoolBuilder {
         self.inner.set(value);
         self
     }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
     pub fn build(self) -> CBool {
         self.inner
+    }
+}
+
+pub struct CBoolWidget {
+    checkbox: Checkbox
+}
+
+impl CBoolWidget {
+    pub fn new() -> Self {
+        Self {
+            checkbox: Checkbox::new("")
+        }
+    }
+}
+
+impl Widget<CBool> for CBoolWidget {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut CBool, env: &Env) {
+        self.checkbox.event(ctx, event, &mut data.value, env)
+    }
+
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &CBool, env: &Env) {
+        if let LifeCycle::WidgetAdded = event {
+            if let Some(name) = &data.name {
+                self.checkbox.set_text(name.clone())
+            }
+        }
+        self.checkbox.lifecycle(ctx, event, &data.value, env)
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CBool, data: &CBool, env: &Env) {
+        self.checkbox.update(ctx, &old_data.value, &data.value, env)
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &CBool, env: &Env) -> Size {
+        self.checkbox.layout(ctx, bc, &data.value, env)
+    }
+
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &CBool, env: &Env) {
+        self.checkbox.paint(ctx, &data.value, env)
     }
 }

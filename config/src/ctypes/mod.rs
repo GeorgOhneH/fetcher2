@@ -25,6 +25,56 @@ use crate::{ConfigError, InvalidError};
 use serde_yaml::Value;
 use druid::{Data, Widget, WidgetExt, lens, LensExt};
 use druid_enums::Matcher;
+use std::iter::FromIterator;
+
+pub enum State {
+    Valid,
+    None,
+    InValid(String)
+}
+
+
+impl From<InvalidError> for State {
+    fn from(err: InvalidError) -> Self {
+        State::invalid(err.into_msg())
+    }
+}
+
+impl From<Result<(), InvalidError>> for State {
+    fn from(r: Result<(), InvalidError>) -> Self {
+        match r {
+            Ok(_) => State::Valid,
+            Err(err) => err.into(),
+        }
+    }
+}
+
+impl FromIterator<State> for State {
+    fn from_iter<T>(iter: T) -> Self
+        where
+            T: IntoIterator<Item = State> {
+        let mut encountered_none = false;
+        for state in iter.into_iter() {
+            match state {
+                State::InValid(_) => return state,
+                State::None => encountered_none = true,
+                State::Valid => (),
+            }
+        }
+        if encountered_none {
+            State::None
+        } else {
+            State::Valid
+        }
+    }
+}
+
+
+impl State {
+    pub fn invalid(text: impl Into<String>) -> Self {
+        Self::InValid(text.into())
+    }
+}
 
 #[derive(Debug, Clone, Data, Matcher)]
 pub enum CType {
@@ -41,6 +91,16 @@ pub enum CType {
 }
 
 impl CType {
+    pub fn is_leaf(&self) -> bool {
+        use CType::*;
+        match self {
+            String(_) | Bool(_) | Integer(_) | Path(_) => true,
+            CStruct(_) | CheckableStruct(_) | Vec(_) | HashMap(_) => false,
+            Wrapper(cwrapper) => cwrapper.is_leaf(),
+            CEnum(cenum) => cenum.is_leaf(),
+        }
+    }
+
     pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
         match self {
             CType::String(cstring) => match value {
@@ -126,6 +186,22 @@ impl CType {
                 }
                 _ => Err(InvalidError::new("Expected Mapping").into()),
             },
+        }
+    }
+
+    pub fn state(&self) -> State {
+        use CType::*;
+        match self {
+            String(cstring) => cstring.state(),
+            Bool(cbool) => cbool.state(),
+            Integer(cint) => cint.state(),
+            Path(cpath) => cpath.state(),
+            CStruct(cstruct) => cstruct.state(),
+            CheckableStruct(checkable_struct) => checkable_struct.state(),
+            Vec(cvec) => cvec.state(),
+            HashMap(cmap) => cmap.state(),
+            CEnum(cenum) => cenum.state(),
+            Wrapper(cwrapper) => cwrapper.state(),
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::{CType, ConfigError, InvalidError, CArg};
+use crate::{CType, ConfigError, InvalidError, CArg, State};
 
 use serde_yaml::{Mapping, Value};
 use std::collections::HashMap;
@@ -44,6 +44,8 @@ pub struct CHashMap {
     key_fn: fn() -> HashKey,
     #[data(ignore)]
     value_fn: fn() -> CType,
+    #[data(ignore)]
+    name: Option<String>,
 }
 
 impl CHashMap {
@@ -52,6 +54,7 @@ impl CHashMap {
             inner: im::OrdMap::new(),
             key_fn,
             value_fn,
+            name: None
         }
     }
 
@@ -90,8 +93,13 @@ impl CHashMap {
         result
     }
 
+
+    pub fn state(&self) -> State {
+        self.inner.values().map(|ty| ty.state()).collect()
+    }
+
     pub fn widget() -> impl Widget<Self> {
-        Label::new("Map can't really be used as a widget")
+        Label::new("Map can't really be used as a widget right now")
     }
 }
 
@@ -119,6 +127,12 @@ impl CHashMapBuilder {
             inner: CHashMap::new(key_fn, value_fn),
         }
     }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
     pub fn build(self) -> CHashMap {
         self.inner
     }

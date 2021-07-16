@@ -1,7 +1,7 @@
 use crate::*;
-use druid::{Data, Lens, Widget, WidgetExt};
-use druid::widget::TextBox;
-use druid::text::{ValidationError, Validation, Formatter, Selection};
+use druid::text::{Formatter, Selection, Validation, ValidationError};
+use druid::widget::{Flex, Label, TextBox, Maybe};
+use druid::{Data, Lens, Widget, WidgetExt, TextAlignment};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CInteger {
@@ -10,6 +10,8 @@ pub struct CInteger {
     min: isize,
     #[data(ignore)]
     max: isize,
+    #[data(ignore)]
+    name: Option<String>,
 }
 
 impl CInteger {
@@ -18,6 +20,7 @@ impl CInteger {
             value: None,
             min: isize::MIN,
             max: isize::MAX,
+            name: None,
         }
     }
 
@@ -45,11 +48,23 @@ impl CInteger {
         self.value = None
     }
 
+    pub fn state(&self) -> State {
+        match &self.value {
+            Some(v) => self.is_valid(v).into(),
+            None => State::None,
+        }
+    }
+
     pub fn widget() -> impl Widget<Self> {
-        TextBox::new()
-            .with_formatter(IntFormatter::new())
-            .update_data_while_editing(true)
-            .lens(Self::value)
+        Flex::row()
+            .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":")).lens(Self::name))
+            .with_child(
+                TextBox::new()
+                    .with_text_alignment(TextAlignment::End)
+                    .with_formatter(IntFormatter::new())
+                    .update_data_while_editing(true)
+                    .lens(Self::value),
+            )
     }
 }
 
@@ -65,6 +80,11 @@ impl CIntegerBuilder {
     }
     pub fn default(mut self, value: isize) -> Self {
         self.inner.set(value).unwrap();
+        self
+    }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
         self
     }
 

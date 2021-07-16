@@ -1,4 +1,5 @@
 use proc_macro2::TokenStream;
+use proc_macro_error::abort;
 
 
 use quote::quote;
@@ -226,7 +227,8 @@ pub fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        }
+        },
+        ConfigType::Skip(_) => abort!(field.span(), "Skip shouldn't be a possible value"),
     }
 }
 

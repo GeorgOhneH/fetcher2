@@ -6,7 +6,7 @@ use syn::{
     self, punctuated::Punctuated, token::Comma, Field, LitStr,
 };
 
-use crate::config_type::{parse_type};
+use crate::config_type::{parse_type, ConfigType};
 use crate::update_app::utils::gen_set;
 
 pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
@@ -21,14 +21,17 @@ pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStrea
 fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let setters: Vec<TokenStream> = fields
         .iter()
-        .map(|field| {
+        .filter_map(|field| {
             let typ = parse_type(&field.ty, &field.attrs);
+            if let ConfigType::Skip(_) = typ {
+                return None
+            }
 
             let field_name = field.ident.as_ref().expect("Unreachable");
             let field_name_str = LitStr::new(&field_name.to_string(), field_name.span());
             let match_arg = quote! {app.get_ty_mut(#field_name_str).unwrap()};
             let set_arg = quote! {self.#field_name};
-            gen_set(&typ, field, match_arg, set_arg)
+            Some(gen_set(&typ, field, match_arg, set_arg))
         })
         .collect();
 

@@ -4,16 +4,24 @@ use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
 
+use syn::LitStr;
+
 
 use crate::config_type::{ConfigHashType, ConfigType};
 
 
-pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> TokenStream {
+pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span, name: Option<&LitStr>) -> TokenStream {
     let args = attrs_to_sub_args(config_attrs);
+    let gui_fn = if let Some(name) = name {
+        quote! {.gui_name(#name.to_string())}
+    } else {
+        quote! {}
+    };
     match typ {
         ConfigType::Bool(_) | ConfigType::OptionBool(_) => quote_spanned! {span=>
             ::config::CType::Bool(
                 ::config::CBoolBuilder::new()
+                #gui_fn
                 #args
                 .build()
             )
@@ -21,6 +29,7 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
         ConfigType::String(_) | ConfigType::OptionString(_) => quote_spanned! {span=>
             ::config::CType::String(
                 ::config::CStringBuilder::new()
+                #gui_fn
                 #args
                 .build()
             )
@@ -28,6 +37,7 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
         ConfigType::Integer(_) | ConfigType::OptionInteger(_) => quote_spanned! {span=>
             ::config::CType::Integer(
                 ::config::CIntegerBuilder::new()
+                #gui_fn
                 #args
                 .build()
             )
@@ -35,25 +45,27 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
         ConfigType::Path(_) | ConfigType::OptionPath(_) => quote_spanned! {span=>
             ::config::CType::Path(
                 ::config::CPathBuilder::new()
+                #gui_fn
                 #args
                 .build()
             )
         },
         ConfigType::Vec(_, sub_type) => {
             //emit_call_site_warning!(format!("{:#?}", *sub_type));
-            let sub_arg = gen_type(sub_type, config_attrs, span);
+            let sub_arg = gen_type(sub_type, config_attrs, span, name);
             quote_spanned! {span=>
                 ::config::CType::Vec(
                     ::config::CVecBuilder::new(|| #sub_arg)
+                    #gui_fn
                     .build()
                 )
             }
         }
-        ConfigType::Wrapper(_, inner_ty, name) => {
-            let inner = gen_type(inner_ty, config_attrs, span);
+        ConfigType::Wrapper(_, inner_ty, wrapper_name) => {
+            let inner = gen_type(inner_ty, config_attrs, span, name);
             quote_spanned! {span=>
                 ::config::CType::Wrapper(Box::new(
-                    ::config::CWrapperBuilder::new(#inner, ::config::CWrapperKind::#name)
+                    ::config::CWrapperBuilder::new(#inner, ::config::CWrapperKind::#wrapper_name)
                     .build()
                 ))
             }
@@ -61,49 +73,48 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span) -> To
         ConfigType::HashMap(_, key_ty, value_ty) => {
             //emit_call_site_warning!(format!("{:#?}", *sub_type));
             let key_arg = gen_hash_type(key_ty, config_attrs, span);
-            let value_arg = gen_type(value_ty, config_attrs, span);
+            let value_arg = gen_type(value_ty, config_attrs, span, name);
             quote_spanned! {span=>
                 ::config::CType::HashMap(
                     ::config::CHashMapBuilder::new(|| #key_arg, || #value_arg)
+                    #gui_fn
                     .build()
                 )
             }
         }
         ConfigType::Struct(path) => {
-            if !args.is_empty() {
-                abort!(path, "Sub args are not allowed for ConfigStructs")
-            } else {
-                quote_spanned! {span=>
-                    ::config::CType::CStruct(
-                        #path::build_app()
-                        #args
-                    )
-                }
+            quote_spanned! {span=>
+                ::config::CType::CStruct(
+                    #path::builder()
+                    #gui_fn
+                    #args
+                    .build()
+                )
             }
         }
         ConfigType::CheckableStruct(path) => {
             quote_spanned! {span=>
                 ::config::CType::CheckableStruct(
                     ::config::CCheckableStructBuilder::new(
-                        #path::build_app()
+                        #path::builder()
                     )
+                    #gui_fn
                     #args
                     .build()
                 )
             }
         }
         ConfigType::Enum(path) | ConfigType::OptionEnum(path) => {
-            if !args.is_empty() {
-                abort!(path, "Sub args are not allowed for Enum")
-            } else {
-                quote_spanned! {span=>
-                    ::config::CType::CEnum(
-                        #path::build_app()
-                        #args
-                    )
-                }
+            quote_spanned! {span=>
+                ::config::CType::CEnum(
+                    #path::builder()
+                    #gui_fn
+                    #args
+                    .build()
+                )
             }
-        }
+        },
+        ConfigType::Skip(_) => abort!(span, "Skip shouldn't be a possible value"),
     }
 }
 
@@ -124,7 +135,6 @@ pub fn attrs_to_args(config_attrs: &Vec<ConfigAttr>) -> TokenStream {
     let args: Vec<TokenStream> = config_attrs
         .iter()
         .filter_map(|config_attr| match config_attr {
-            GuiName(name, value) => Some(quote! {#name(#value.to_string())}),
             ActiveFn(name, expr) => Some(quote! {#name(#expr)}),
             InactiveBehavior(name, expr) => Some(quote! {#name(#expr)}),
             DocString(str) => Some(quote! {hint_text(#str.to_string())}),
@@ -142,6 +152,7 @@ pub fn attrs_to_sub_args(config_attrs: &[ConfigAttr]) -> TokenStream {
             ConfigAttr::OtherSingle(name) => Some(quote! {#name()}),
             ConfigAttr::OtherLitStr(name, lit) => Some(quote! {#name(#lit.to_string())}),
             ConfigAttr::Other(name, expr) => Some(quote! {#name(#expr)}),
+            ConfigAttr::GuiName(name, value) => Some(quote! {#name(#value.to_string())}),
             _ => None,
         })
         .collect();

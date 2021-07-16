@@ -14,8 +14,9 @@ use crate::site_modules::module::ModuleExt;
 use futures::stream::StreamExt;
 use std::sync::Arc;
 use url::Url;
+use druid::Data;
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Minimal {
     pub parameters: Option<String>,
 }

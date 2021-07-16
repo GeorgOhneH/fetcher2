@@ -42,6 +42,8 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
 use url::Url;
+use druid::{Data, im, Widget, ExtEventSink};
+use crate::template::widget::WidgetCommunication;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {
@@ -307,6 +309,13 @@ impl Site {
         let request = request_builder.build()?;
         Ok(request)
     }
+
+    pub fn widget_data(&self) -> SiteData {
+        SiteData {
+            module: self.module.clone(),
+            download_args: self.download_args.clone(),
+        }
+    }
 }
 
 fn format_etag(etag: &HeaderValue) -> Result<String> {
@@ -332,7 +341,7 @@ pub enum Msg {
     ForbiddenExtension,
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct DownloadArgs {
     #[config(ty = "struct")]
     pub extensions: Extensions,
@@ -341,10 +350,10 @@ pub struct DownloadArgs {
     pub keep_old_files: bool,
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Extensions {
     #[config(ty = "Vec")]
-    pub inner: HashSet<String>,
+    pub inner: im::HashSet<String>,
 
     #[config(ty = "enum")]
     pub mode: Mode,
@@ -362,7 +371,7 @@ impl Extensions {
     }
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone, Data, PartialEq)]
 pub enum Mode {
     Forbidden,
     Allowed,
@@ -389,4 +398,11 @@ impl FileData {
             etag: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Data)]
+pub struct SiteData {
+    pub module: Module,
+
+    pub download_args: Option<DownloadArgs>,
 }

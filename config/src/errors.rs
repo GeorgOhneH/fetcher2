@@ -25,6 +25,10 @@ impl InvalidError {
     {
         Self { msg: str.into() }
     }
+
+    pub fn into_msg(self) -> String {
+        self.msg
+    }
 }
 
 #[derive(Error, Debug)]

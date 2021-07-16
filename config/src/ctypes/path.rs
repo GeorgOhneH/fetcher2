@@ -1,8 +1,8 @@
 use crate::*;
-use std::path::PathBuf;
-use druid::{Data, Lens, Widget, WidgetExt, LensExt};
 use druid::im;
-use druid::widget::TextBox;
+use druid::widget::{Flex, Label, TextBox, Maybe};
+use druid::{Data, Lens, LensExt, Widget, WidgetExt};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Data)]
 pub enum CPathTypes {
@@ -11,12 +11,13 @@ pub enum CPathTypes {
     Any,
 }
 
-
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CPath {
     #[data(same_fn = "PartialEq::eq")]
     value: Option<PathBuf>,
     ty: CPathTypes,
+    #[data(ignore)]
+    name: Option<String>,
 }
 
 impl CPath {
@@ -24,6 +25,7 @@ impl CPath {
         Self {
             value: None,
             ty: CPathTypes::Any,
+            name: None,
         }
     }
 
@@ -85,26 +87,35 @@ impl CPath {
         self.value = None;
     }
 
+    pub fn state(&self) -> State {
+        match &self.value {
+            Some(v) => self.is_valid(v).into(),
+            None => State::None,
+        }
+    }
+
     pub fn widget() -> impl Widget<Self> {
-        TextBox::new().lens(Self::value.map(
-            |value| {
-                match value {
-                    Some(v) => v
-                        .clone()
-                        .into_os_string()
-                        .into_string()
-                        .unwrap_or("".to_owned()),
-                    None => "".to_owned(),
-                }
-            },
-            |value: &mut Option<PathBuf>, x| {
-                if x.is_empty() {
-                    *value = None
-                } else {
-                    *value = Some(PathBuf::from(x))
-                }
-            },
-        ))
+        Flex::row()
+            .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":")).lens(Self::name))
+            .with_child(TextBox::new().lens(Self::value.map(
+                |value| {
+                    match value {
+                        Some(v) => v
+                            .clone()
+                            .into_os_string()
+                            .into_string()
+                            .unwrap_or("".to_owned()),
+                        None => "".to_owned(),
+                    }
+                },
+                |value: &mut Option<PathBuf>, x| {
+                    if x.is_empty() {
+                        *value = None
+                    } else {
+                        *value = Some(PathBuf::from(x))
+                    }
+                },
+            )))
     }
 }
 
@@ -122,6 +133,12 @@ impl CPathBuilder {
         self.inner.set(value).unwrap();
         self
     }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
     pub fn path_ty(mut self, ty: CPathTypes) -> Self {
         self.inner.ty = ty;
         self

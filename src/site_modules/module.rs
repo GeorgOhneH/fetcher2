@@ -13,12 +13,13 @@ use tokio::sync::{Mutex, MutexGuard};
 
 use crate::settings::DownloadSettings;
 use crate::site_modules::polybox::Polybox;
+use druid::Data;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[derive(Config, Serialize, Debug, LoginLock)]
+#[derive(Config, Serialize, Debug, LoginLock, Data, Clone)]
 pub enum Module {
     #[config(ty = "struct")]
     Minimal(Minimal),

@@ -1,6 +1,6 @@
 use crate::*;
+use druid::{Data, Lens, Widget, WidgetExt};
 use serde_yaml::Mapping;
-use druid::{Data, Widget, Lens, WidgetExt};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CCheckableStruct {
@@ -37,26 +37,47 @@ impl CCheckableStruct {
         self.inner.consume_map(map)
     }
 
+    pub fn state(&self) -> State {
+        if self.checked {
+            State::None
+        } else {
+            self.inner.state()
+        }
+    }
+
     pub fn widget() -> impl Widget<Self> {
         CStruct::widget().lens(Self::inner)
     }
 }
 
 pub struct CCheckableStructBuilder {
-    inner: CCheckableStruct,
+    checked: Option<bool>,
+    struct_builder: CStructBuilder
+
 }
 
 impl CCheckableStructBuilder {
-    pub fn new(config_struct: CStruct) -> Self {
+    pub fn new(struct_builder: CStructBuilder) -> Self {
         Self {
-            inner: CCheckableStruct::new(config_struct),
+            struct_builder,
+            checked: None,
         }
     }
     pub fn checked(mut self, checked: bool) -> Self {
-        self.inner.set_checked(checked);
+        self.checked = Some(checked);
         self
     }
+
+    pub fn gui_name(mut self, name: String) -> Self {
+        self.struct_builder = self.struct_builder.gui_name(name);
+        self
+    }
+
     pub fn build(self) -> CCheckableStruct {
-        self.inner
+        let mut r = CCheckableStruct::new(self.struct_builder.build());
+        if let Some(checked) = self.checked {
+            r.set_checked(checked);
+        }
+        r
     }
 }
