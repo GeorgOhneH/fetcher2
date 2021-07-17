@@ -1,5 +1,3 @@
-pub mod widget;
-
 use crate::error::Result;
 use crate::session::Session;
 use async_recursion::async_recursion;
@@ -17,64 +15,9 @@ use futures::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
 
-use crate::template::node::widget::{NodeData, TreeNodeWidget, RootNodeWidget, RootNodeData};
+use crate::template::nodes::node_widget::{NodeData, NodeWidget};
 use crate::template::node_type::{NodeType, NodeTypeData};
-use crate::template::widget::WidgetCommunication;
-
-#[derive(Config, Serialize, Debug)]
-pub struct RootNode {
-    #[config(inner_ty = "struct")]
-    pub children: Vec<Node>,
-}
-
-impl RootNode {
-    pub async fn prepare(
-        &mut self,
-        session: &Session,
-        dsettings: Arc<DownloadSettings>,
-    ) -> Result<()> {
-        let futures: Vec<_> = self
-            .children
-            .iter_mut()
-            .map(|child| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
-            .collect();
-
-        try_join_all(futures).await?;
-        Ok(())
-    }
-
-    pub async fn run(&self, session: &Session, dsettings: Arc<DownloadSettings>) -> Result<()> {
-        let futures: Vec<_> = self
-            .children
-            .iter()
-            .map(|child| child.run(session, Arc::clone(&dsettings)))
-            .collect();
-
-        try_join_all(futures).await?;
-        Ok(())
-    }
-
-    pub fn widget(&mut self) -> (RootNodeData, RootNodeWidget) {
-        let mut widget = RootNodeWidget::new();
-        let mut children_data = Vec::new();
-        for (child_data, child_widgets) in self
-            .children
-            .iter_mut()
-            .map(|node| node.widget()) {
-            children_data.push(child_data);
-            widget.add_child(child_widgets);
-        }
-        let data = RootNodeData {
-            children: children_data.into(),
-        };
-        (data, widget)
-    }
-
-    pub fn set_sink(&mut self, sink: ExtEventSink) {
-        self.children.iter_mut().map(|node| node.set_sink(sink.clone())).for_each(drop);
-    }
-}
-
+use crate::template::communication::WidgetCommunication;
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}
@@ -97,7 +40,7 @@ pub struct Node {
 
 impl Node {
     #[async_recursion]
-    async fn prepare<'a>(
+    pub async fn prepare<'a>(
         &'a mut self,
         session: &'a Session,
         dsettings: Arc<DownloadSettings>,
@@ -123,7 +66,7 @@ impl Node {
         Ok(())
     }
     #[async_recursion]
-    async fn run<'a>(
+    pub async fn run<'a>(
         &'a self,
         session: &'a Session,
         dsettings: Arc<DownloadSettings>,
@@ -153,26 +96,25 @@ impl Node {
         Ok(())
     }
 
-    pub fn widget(&mut self) -> (NodeData, TreeNodeWidget) {
+    pub fn widget(&mut self) -> (NodeData, NodeWidget) {
         let widget_id = WidgetId::next();
-        let mut widget = TreeNodeWidget::new(true, widget_id.clone());
+        let mut widget = NodeWidget::new(true, widget_id.clone());
         self.comm.id = Some(widget_id);
 
-        let mut children_data = Vec::new();
-        for (child_data, child_widgets) in self
+        let (data, children): (Vec<_>, Vec<_>) = self
             .children
             .iter_mut()
-            .map(|node| node.widget()) {
-            children_data.push(child_data);
-            widget.add_child(child_widgets);
-        }
-        let data = NodeData {
-            children: children_data.into(),
+            .map(|node| node.widget()).unzip();
+
+        widget.add_children(children);
+
+        let datum = NodeData {
+            children: data.into(),
             meta_data: self.meta_data.clone(),
             cached_path: self.cached_path.clone(),
             ty: self.ty.widget_data(),
         };
-        (data, widget)
+        (datum, widget)
     }
 
     pub fn set_sink(&mut self, sink: ExtEventSink) {

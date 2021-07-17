@@ -16,7 +16,7 @@ use crate::template::node_type::NodeTypeData;
 use crate::template::MetaData;
 use std::path::PathBuf;
 use druid::im::Vector;
-use crate::template::widget::PATH_UPDATED;
+use crate::template::communication::PATH_UPDATED;
 
 selectors! {
     TREE_OPEN_PARENT,
@@ -35,13 +35,13 @@ pub struct NodeData {
 
 impl NodeData {
     pub fn widget() -> impl Widget<Self> {
-        Label::dynamic(|data: &NodeData, _env| format!("{:?}", data.ty)).controller(TakeFocus)
+        Label::dynamic(|data: &NodeData, _env| format!("{:?}", data.ty)).controller(TemplateUpdate)
     }
 }
 
-struct TakeFocus;
+struct TemplateUpdate;
 
-impl<W: Widget<NodeData>> Controller<NodeData, W> for TakeFocus {
+impl<W: Widget<NodeData>> Controller<NodeData, W> for TemplateUpdate {
     fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut NodeData, env: &Env) {
         if let Event::Command(cmd) = event {
             if let Some(path) = cmd.get(PATH_UPDATED) {
@@ -53,26 +53,23 @@ impl<W: Widget<NodeData>> Controller<NodeData, W> for TakeFocus {
     }
 }
 
-/// An internal widget used to display a single node and its children
-/// This is used recursively to build the tree.
-pub struct TreeNodeWidget
+pub struct NodeWidget
 {
-    // the index of the widget in its parent
-    index: usize,
-    // The "wedge" widget,
+    pub index: usize,
+
     wedge: WidgetPod<bool, Wedge>,
-    /// The label for this node
+
     widget: WidgetPod<NodeData, Box<dyn Widget<NodeData>>>,
-    /// Whether the node is expanded or collapsed
+
     expanded: bool,
-    /// The children of this tree node widget
+
     children: Vec<WidgetPod<NodeData, Self>>,
 }
 
-impl TreeNodeWidget {
+impl NodeWidget {
     /// Create a TreeNodeWidget from a TreeNode.
     pub fn new(expanded: bool, id: WidgetId) -> Self {
-        TreeNodeWidget {
+        NodeWidget {
             index: 0,
             wedge: WidgetPod::new(Wedge::new()),
             widget: WidgetPod::new(Box::new(NodeData::widget().with_id(id))),
@@ -86,9 +83,15 @@ impl TreeNodeWidget {
         self.children.push(WidgetPod::new(child));
     }
 
+    pub fn add_children(&mut self, children: Vec<NodeWidget>) {
+        for child in children.into_iter() {
+            self.add_child(child)
+        }
+    }
+
 }
 
-impl Widget<NodeData> for TreeNodeWidget
+impl Widget<NodeData> for NodeWidget
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut NodeData, env: &Env) {
         // eprintln!("{:?}", event);
@@ -220,87 +223,6 @@ impl Widget<NodeData> for TreeNodeWidget
             for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
                 child_widget_node.paint(ctx, child_data, env);
             }
-        }
-    }
-}
-
-
-#[derive(Data, Clone, Debug)]
-pub struct RootNodeData {
-    pub children: Vector<NodeData>,
-}
-
-
-/// An internal widget used to display a single node and its children
-/// This is used recursively to build the tree.
-pub struct RootNodeWidget
-{
-    children: Vec<WidgetPod<NodeData, TreeNodeWidget>>,
-}
-
-impl RootNodeWidget {
-    /// Create a TreeNodeWidget from a TreeNode.
-    pub fn new() -> Self {
-        RootNodeWidget {
-            children: Vec::new(),
-        }
-    }
-
-    pub fn add_child(&mut self, mut child: TreeNodeWidget) {
-        child.index = self.children.len();
-        self.children.push(WidgetPod::new(child));
-    }
-
-}
-
-impl Widget<RootNodeData> for RootNodeWidget
-{
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut RootNodeData, env: &Env) {
-        for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter_mut()) {
-            child_widget_node.event(ctx, event, child_data, env);
-        }
-    }
-
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &RootNodeData, env: &Env) {
-        for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
-            child_widget_node.lifecycle(ctx, event, child_data, env);
-        }
-    }
-
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &RootNodeData, data: &RootNodeData, env: &Env) {
-        if !old_data.same(data) {
-            for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
-                child_widget_node.update(ctx, child_data, env);
-            }
-            ctx.request_layout();
-            ctx.children_changed();
-        }
-    }
-
-    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &RootNodeData, env: &Env) -> Size {
-        let mut min_width = bc.min().width;
-        let mut max_width = bc.max().width;
-        let mut size = Size::new(0., 0.);
-
-        for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
-            let child_bc = BoxConstraints::new(
-                Size::new(min_width, 0.0),
-                Size::new(max_width, f64::INFINITY),
-            );
-            let child_size = child_widget_node.layout(ctx, &child_bc, child_data, env);
-            let child_pos = Point::new(0., size.height); // We position the child at the current height
-            child_widget_node.set_origin(ctx, child_data, env, child_pos);
-            size.height += child_size.height; // Increment the height of this node by the height of this child node
-            if child_size.width > size.width {
-                size.width = child_size.width;
-            }
-        }
-        bc.constrain(size)
-    }
-
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &RootNodeData, env: &Env) {
-        for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
-            child_widget_node.paint(ctx, child_data, env);
         }
     }
 }

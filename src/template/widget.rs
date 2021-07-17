@@ -13,45 +13,15 @@ use druid::{
 
 
 use druid_widget_nursery::{selectors, Wedge};
-use crate::template::node::widget::{NodeData, TreeNodeWidget, RootNodeWidget, RootNodeData};
+use crate::template::nodes::node_widget::{NodeData, NodeWidget};
 use crate::template::Template;
 use std::path::{PathBuf, Path};
 use crate::Result;
-
-
-pub const PATH_UPDATED: Selector<SingleUse<PathBuf>> = Selector::new("blabla.blabla");
+use crate::template::nodes::root_widget::{RootNodeData, RootNodeWidget};
 
 #[derive(Debug, Clone, Data)]
 pub struct TemplateData {
     pub root: RootNodeData,
-}
-
-pub struct WidgetCommunication {
-    pub sink: Option<ExtEventSink>,
-    pub id: Option<WidgetId>,
-}
-
-impl WidgetCommunication {
-    pub fn new() -> Self {
-        Self {
-            sink: None,
-            id: None,
-        }
-    }
-
-    pub async fn send_new_path(&self, path: PathBuf) -> Result<()> {
-        let sink_clone = self.sink.clone().unwrap();
-        let id_clone = self.id.unwrap().clone();
-        tokio::task::spawn_blocking(move ||sink_clone.submit_command(PATH_UPDATED, SingleUse::new(path), id_clone)).await??;
-        Ok(())
-    }
-}
-
-
-impl Debug for WidgetCommunication {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("WidgetCommunication {{ WidgetId {:?}, is_sink: {:?} }}", self.id, self.sink.is_some()))
-    }
 }
 
 /// A tree widget for a collection of items organized in a hierachical way.

@@ -43,7 +43,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
 use url::Url;
 use druid::{Data, im, Widget, ExtEventSink};
-use crate::template::widget::WidgetCommunication;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {

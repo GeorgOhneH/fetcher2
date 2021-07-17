@@ -136,7 +136,6 @@ struct Test3 {
 }
 
 use crate::template::widget::{TemplateData, TemplateWidget};
-use crate::template::Node;
 use config::CStruct;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};

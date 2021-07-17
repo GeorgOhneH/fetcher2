@@ -1,6 +1,7 @@
-pub mod node;
+pub mod nodes;
 mod node_type;
 pub mod widget;
+pub mod communication;
 
 use crate::error::{Result, TError};
 use crate::session::Session;
@@ -13,17 +14,17 @@ use tokio::io::AsyncWriteExt;
 use druid::{Data, Lens, ExtEventSink, WidgetId};
 
 use crate::settings::DownloadSettings;
-pub use crate::template::node::{MetaData, Node};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
 use config::{Config, ConfigEnum};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::fs;
-use crate::template::node::{RootNode};
 use std::fmt::{Debug, Formatter};
-use crate::template::node::widget::RootNodeData;
-use crate::template::widget::{TemplateData, TemplateWidget, WidgetCommunication};
+use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::template::nodes::root::RootNode;
+use crate::template::nodes::node::{Node, MetaData};
+use crate::template::communication::WidgetCommunication;
 
 #[derive(Debug)]
 pub struct Template {
