@@ -109,16 +109,18 @@ impl Template {
         }
     }
 
-    pub async fn prepare(&mut self, session: &Session, dsettings: Arc<DownloadSettings>) -> Result<()> {
+    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Result<()> {
         if !self.prepared {
-            self.root.prepare(session, dsettings).await
+            let session = Session::new();
+            self.root.prepare(&session, dsettings).await
         } else {
             Ok(())
         }
     }
 
-    pub async fn run_root(&self, session: &Session, dsettings: Arc<DownloadSettings>) -> Result<()> {
-        self.root.run(session, dsettings).await
+    pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) -> Result<()> {
+        let session = Session::new();
+        self.root.run(&session, dsettings).await
     }
 
     pub async fn save(&self, path: &Path) -> Result<()> {

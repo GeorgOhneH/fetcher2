@@ -18,6 +18,7 @@ use std::sync::Arc;
 use crate::template::nodes::node_widget::{NodeData, NodeWidget};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::communication::WidgetCommunication;
+use crate::utils::spawn_drop;
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}
@@ -79,7 +80,7 @@ impl Node {
 
         if let NodeType::Site(site) = &self.ty {
             let site_clone = site.clone();
-            let handle = tokio::spawn(
+            let handle = spawn_drop(
                 site_clone.run(
                     session.clone(),
                     dsettings,

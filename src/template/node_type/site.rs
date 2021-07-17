@@ -43,6 +43,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
 use url::Url;
 use druid::{Data, im, Widget, ExtEventSink};
+use crate::utils::spawn_drop;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {
@@ -104,7 +105,7 @@ impl Site {
                 },
                 Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
-                    let handle = tokio::spawn(self_clone.consume_task(
+                    let handle = spawn_drop(self_clone.consume_task(
                         session.clone(),
                         task,
                         Arc::clone(&dsettings),
