@@ -16,15 +16,19 @@ use crate::site_modules::polybox::Polybox;
 use druid::Data;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
+use crate::template::communication::WidgetCommunication;
+use crate::template::node_type::site::UrlFetchEvent;
+use std::string::ToString;
+use strum_macros::Display;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[derive(Config, Serialize, Debug, LoginLock, Data, Clone)]
+#[derive(Config, Serialize, Debug, LoginLock, Data, Clone, Display)]
 pub enum Module {
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     Minimal(Minimal),
 
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     Polybox(Polybox),
 }
 
@@ -44,6 +48,25 @@ impl Module {
                 r
             }
         }
+    }
+
+    pub async fn real_fetch_urls(
+        &self,
+        session: Session,
+        sender: Sender<Task>,
+        base_path: PathBuf,
+        dsettings: Arc<DownloadSettings>,
+        comm: WidgetCommunication,
+    ) -> Result<()> {
+        comm.send_event(UrlFetchEvent::Start)?;
+        match self.fetch_urls(session, sender, base_path, dsettings).await {
+            Ok(()) => comm.send_event(UrlFetchEvent::Finish),
+            Err(err) => comm.send_event(UrlFetchEvent::Err(err)),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        self.to_string()
     }
 }
 
@@ -74,7 +97,7 @@ impl Default for LoginState {
 #[async_trait]
 #[enum_dispatch]
 pub trait ModuleExt {
-    async fn retrieve_urls(
+    async fn fetch_urls(
         &self,
         session: Session,
         sender: Sender<Task>,

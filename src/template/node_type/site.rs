@@ -29,8 +29,13 @@ use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
 use tokio::try_join;
 
+use crate::template::communication::WidgetCommunication;
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
+use crate::template::nodes::node_data::CurrentState;
+use crate::utils::spawn_drop;
 use dashmap::mapref::entry::Entry;
+use druid::im::Vector;
+use druid::{im, Data, ExtEventSink, Widget};
 use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
 use futures::task::Poll;
 use reqwest::header::{HeaderMap, HeaderValue};
@@ -42,18 +47,16 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
 use url::Url;
-use druid::{Data, im, Widget, ExtEventSink};
-use crate::utils::spawn_drop;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {
-    #[config(ty = "enum")]
+    #[config(ty = "Enum")]
     pub module: Module,
 
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     pub storage: SiteStorage,
 
-    #[config(inner_ty = "struct")]
+    #[config(ty = "_<Struct>")]
     pub download_args: Option<DownloadArgs>,
 }
 
@@ -71,18 +74,33 @@ impl Site {
         session: Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
+        comm: WidgetCommunication,
     ) -> Result<()> {
-        self.module.real_login(&session, &dsettings).await?;
+        comm.send_event(RunEvent::Start)?;
+        comm.send_event(LoginEvent::Start)?;
+        match self.module.real_login(&session, &dsettings).await {
+            Ok(()) => comm.send_event(LoginEvent::Finish)?,
+            Err(err) => {
+                comm.send_event(LoginEvent::Err(err))?;
+                return Ok(());
+            }
+        };
 
         let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 
-        let task_stream =
-            self.module
-                .retrieve_urls(session.clone(), sender, base_path, Arc::clone(&dsettings));
+        let task_stream = self.module.real_fetch_urls(
+            session.clone(),
+            sender,
+            base_path,
+            Arc::clone(&dsettings),
+            comm.clone(),
+        );
 
-        let consumers = Arc::clone(&self).handle_receiver(session, receiver, dsettings);
+        let consumers =
+            Arc::clone(&self).handle_receiver(session, receiver, dsettings, comm.clone());
 
         try_join!(task_stream, consumers)?;
+        comm.send_event(RunEvent::Finish)?;
         Ok(())
     }
 
@@ -91,17 +109,15 @@ impl Site {
         session: Session,
         mut receiver: Receiver<Task>,
         dsettings: Arc<DownloadSettings>,
+        comm: WidgetCommunication,
     ) -> Result<()> {
         let mut futs = FuturesUnordered::new();
-        let mut n_errors = 0;
         loop {
             tokio::select! {
                 biased;
 
-                Some(result) = futs.next() => {
-                    let msg: Result<Msg> = result?;
-                    if msg.is_ok() {} else { n_errors += 1 }
-                    println!("{:?}, {}", msg, n_errors);
+                Some(msg) = futs.next() => {
+                    self.handle_msg(msg?, &comm).await?
                 },
                 Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
@@ -111,6 +127,7 @@ impl Site {
                         Arc::clone(&dsettings),
                     ));
                     futs.push(handle);
+                    comm.send_event(DownloadEvent::Start)?;
                 },
                 else => break,
             }
@@ -118,6 +135,22 @@ impl Site {
         Ok(())
     }
 
+    async fn handle_msg(&self, msg: Result<Msg>, comm: &WidgetCommunication) -> Result<()> {
+        match msg {
+            Ok(msg) => {
+                println!("{:?}", msg);
+                self.storage.history.lock().unwrap().push(msg.clone());
+                comm.send_event(DownloadEvent::Finish(msg))?;
+            }
+            Err(err) => {
+                comm.send_event(DownloadEvent::Err(err))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    // TODO: make sure it's fine to call this function twice with same arguments
     async fn consume_task(
         self: Arc<Self>,
         session: Session,
@@ -158,12 +191,12 @@ impl Site {
         let temp_path = add_to_file_stem(&final_path, "-temp");
         let old_path = add_to_file_stem(&final_path, "-old");
 
-        if download_args
-            .extensions
-            .is_extension_forbidden(final_path.extension())
-        {
+        let extension = final_path
+            .extension()
+            .map(|os_str| os_str.to_string_lossy().to_string());
+        if download_args.extensions.is_extension_forbidden(&extension) {
             println!("{:?}", final_path);
-            return Ok(Msg::ForbiddenExtension);
+            return Ok(Msg::new(final_path, MsgKind::ForbiddenExtension(extension)));
         }
 
         let is_task_checksum_same =
@@ -186,7 +219,7 @@ impl Site {
         };
 
         if action == Action::Replace && is_task_checksum_same && !dsettings.force {
-            return Ok(Msg::AlreadyExist);
+            return Ok(Msg::new(final_path, MsgKind::AlreadyExist));
         }
 
         let request = self.build_request(
@@ -204,7 +237,7 @@ impl Site {
                 .files
                 .get_mut(&final_path)
                 .map(|mut file_data| file_data.task_checksum = task_checksum);
-            return Ok(Msg::NotModified);
+            return Ok(Msg::new(final_path, MsgKind::NotModified));
         }
 
         tokio::fs::create_dir_all(final_path.parent().unwrap()).await?;
@@ -240,7 +273,7 @@ impl Site {
             if let Some(mut file_data) = self.storage.files.get_mut(&final_path) {
                 if file_data.file_checksum == file_checksum {
                     file_data.etag = etag;
-                    return Ok(Msg::FileChecksumSame);
+                    return Ok(Msg::new(final_path, MsgKind::FileChecksumSame));
                 }
             }
         }
@@ -251,7 +284,7 @@ impl Site {
 
         std::fs::rename(&temp_path, &final_path)?;
 
-        match self.storage.files.entry(final_path) {
+        match self.storage.files.entry(final_path.clone()) {
             Entry::Occupied(mut entry) => {
                 let data = entry.get_mut();
                 data.file_checksum = file_checksum;
@@ -267,8 +300,8 @@ impl Site {
         }
 
         match action {
-            Action::AddNew => Ok(Msg::AddedFile),
-            Action::Replace => Ok(Msg::ReplacedFile),
+            Action::AddNew => Ok(Msg::new(final_path, MsgKind::AddedFile)),
+            Action::Replace => Ok(Msg::new(final_path, MsgKind::ReplacedFile(old_path))),
         }
     }
 
@@ -314,6 +347,8 @@ impl Site {
         SiteData {
             module: self.module.clone(),
             download_args: self.download_args.clone(),
+            history: self.storage.history.lock().unwrap().clone().into(),
+            state: SiteState::new(),
         }
     }
 }
@@ -332,18 +367,91 @@ pub enum Action {
 }
 
 #[derive(Debug)]
-pub enum Msg {
+pub enum SiteEvent {
+    Run(RunEvent),
+    Login(LoginEvent),
+    UrlFetch(UrlFetchEvent),
+    Download(DownloadEvent),
+}
+
+impl From<RunEvent> for SiteEvent {
+    fn from(run_event: RunEvent) -> Self {
+        SiteEvent::Run(run_event)
+    }
+}
+
+impl From<LoginEvent> for SiteEvent {
+    fn from(login_status: LoginEvent) -> Self {
+        SiteEvent::Login(login_status)
+    }
+}
+
+impl From<UrlFetchEvent> for SiteEvent {
+    fn from(fetch_status: UrlFetchEvent) -> Self {
+        SiteEvent::UrlFetch(fetch_status)
+    }
+}
+
+impl From<DownloadEvent> for SiteEvent {
+    fn from(download_status: DownloadEvent) -> Self {
+        SiteEvent::Download(download_status)
+    }
+}
+
+#[derive(Debug)]
+pub enum RunEvent {
+    Start,
+    Finish,
+}
+
+#[derive(Debug)]
+pub enum LoginEvent {
+    Start,
+    Finish,
+    Err(TError),
+}
+
+#[derive(Debug)]
+pub enum UrlFetchEvent {
+    Start,
+    Finish,
+    Err(TError),
+}
+
+#[derive(Debug)]
+pub enum DownloadEvent {
+    Start,
+    Finish(Msg),
+    Err(TError),
+}
+
+#[derive(Config, Serialize, Debug, Clone, Data)]
+pub struct Msg {
+    #[config(ty = "Enum")]
+    pub kind: MsgKind,
+    #[data(same_fn = "PartialEq::eq")]
+    pub path: PathBuf,
+}
+
+impl Msg {
+    pub fn new(path: PathBuf, kind: MsgKind) -> Self {
+        Self { path, kind }
+    }
+}
+
+#[derive(Config, Serialize, Debug, Clone, Data, PartialEq)]
+pub enum MsgKind {
     AddedFile,
-    ReplacedFile,
+    ReplacedFile(#[data(same_fn = "PartialEq::eq")] PathBuf),
     NotModified,
     FileChecksumSame,
     AlreadyExist,
-    ForbiddenExtension,
+    ForbiddenExtension(Option<String>),
 }
 
 #[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct DownloadArgs {
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     pub extensions: Extensions,
 
     #[config(default = true)]
@@ -355,16 +463,16 @@ pub struct Extensions {
     #[config(ty = "Vec")]
     pub inner: im::HashSet<String>,
 
-    #[config(ty = "enum")]
+    #[config(ty = "Enum")]
     pub mode: Mode,
 }
 
 impl Extensions {
-    pub fn is_extension_forbidden(&self, maybe_extension: Option<&OsStr>) -> bool {
+    pub fn is_extension_forbidden(&self, maybe_extension: &Option<String>) -> bool {
         match maybe_extension {
             Some(extension) => match self.mode {
-                Mode::Allowed => !self.inner.contains(&*extension.to_string_lossy()),
-                Mode::Forbidden => self.inner.contains(&*extension.to_string_lossy()),
+                Mode::Allowed => !self.inner.contains(extension),
+                Mode::Forbidden => self.inner.contains(extension),
             },
             None => false,
         }
@@ -379,8 +487,11 @@ pub enum Mode {
 
 #[derive(Config, Serialize, Debug)]
 pub struct SiteStorage {
-    #[config(ty = "HashMap", inner_ty = "struct")]
+    #[config(ty = "HashMap<_, Struct>")]
     pub files: dashmap::DashMap<PathBuf, FileData>,
+
+    #[config(ty = "_<_<Struct>>")]
+    pub history: Mutex<Vec<Msg>>,
 }
 
 #[derive(Config, Serialize, Debug)]
@@ -405,4 +516,186 @@ pub struct SiteData {
     pub module: Module,
 
     pub download_args: Option<DownloadArgs>,
+
+    pub history: Vector<Msg>,
+
+    pub state: SiteState,
+}
+
+impl SiteData {
+    pub fn name(&self) -> String {
+        self.module.name()
+    }
+
+    pub fn added_replaced(&self) -> (usize, usize) {
+        (
+            self.state.download.new_added,
+            self.state.download.new_replaced,
+        )
+    }
+}
+
+#[derive(Debug, Clone, Data)]
+pub struct SiteState {
+    pub run: usize,
+    pub login: LoginState,
+    pub fetch: FetchState,
+    pub download: DownloadState,
+}
+
+impl SiteState {
+    pub fn new() -> Self {
+        Self {
+            run: 0,
+            login: LoginState::new(),
+            fetch: FetchState::new(),
+            download: DownloadState::new(),
+        }
+    }
+
+    pub fn update(&mut self, event: SiteEvent, history: &mut Vector<Msg>) {
+        match event {
+            SiteEvent::Run(run_event) => match run_event {
+                RunEvent::Start => self.run += 1,
+                RunEvent::Finish => self.run -= 1,
+            },
+            SiteEvent::Login(login_event) => self.login.update(login_event),
+            SiteEvent::UrlFetch(fetch_event) => self.fetch.update(fetch_event),
+            SiteEvent::Download(down_event) => self.download.update(down_event, history),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Data)]
+pub struct LoginState {
+    pub count: usize,
+    pub errs: Vector<Arc<TError>>,
+}
+
+impl LoginState {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            errs: Vector::new(),
+        }
+    }
+
+    pub fn update(&mut self, event: LoginEvent) {
+        match event {
+            LoginEvent::Start => self.count += 1,
+            LoginEvent::Finish => self.count -= 1,
+            LoginEvent::Err(err) => {
+                self.errs.push_back(Arc::new(err));
+                self.count -= 1
+            }
+        }
+    }
+
+    pub fn current_state(&self) -> CurrentState {
+        if self.count != 0 {
+            CurrentState::Active
+        } else if self.errs.len() != 0 {
+            CurrentState::Error
+        } else {
+            CurrentState::Idle
+        }
+    }
+}
+
+#[derive(Debug, Clone, Data)]
+pub struct FetchState {
+    pub count: usize,
+    pub errs: Vector<Arc<TError>>,
+}
+
+impl FetchState {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            errs: Vector::new(),
+        }
+    }
+
+    pub fn update(&mut self, event: UrlFetchEvent) {
+        match event {
+            UrlFetchEvent::Start => self.count += 1,
+            UrlFetchEvent::Finish => self.count -= 1,
+            UrlFetchEvent::Err(err) => {
+                self.errs.push_back(Arc::new(err));
+                self.count -= 1
+            }
+        }
+    }
+
+    pub fn current_state(&self) -> CurrentState {
+        if self.count != 0 {
+            CurrentState::Active
+        } else if self.errs.len() != 0 {
+            CurrentState::Error
+        } else {
+            CurrentState::Idle
+        }
+    }
+}
+
+#[derive(Debug, Clone, Data)]
+pub struct DownloadState {
+    pub count: usize,
+    pub total: usize,
+    pub new_added: usize,
+    pub new_replaced: usize,
+    pub errs: Vector<Arc<TError>>,
+}
+
+impl DownloadState {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            total: 0,
+            new_added: 0,
+            new_replaced: 0,
+            errs: Vector::new(),
+        }
+    }
+
+    pub fn update(&mut self, event: DownloadEvent, history: &mut Vector<Msg>) {
+        match event {
+            DownloadEvent::Start => {
+                self.count += 1;
+                self.total += 1
+            }
+            DownloadEvent::Finish(msg) => {
+                match &msg {
+                    Msg {
+                        kind: MsgKind::AddedFile,
+                        ..
+                    } => self.new_added += 1,
+                    Msg {
+                        kind: MsgKind::ReplacedFile(_),
+                        ..
+                    } => self.new_replaced += 1,
+                    _ => {}
+                }
+                history.push_back(msg);
+                self.count -= 1;
+            }
+            DownloadEvent::Err(err) => {
+                self.errs.push_back(Arc::new(err));
+                self.count -= 1
+            }
+        }
+        if self.count == 0 {
+            self.total = 0;
+        }
+    }
+
+    pub fn state_string(&self) -> String {
+        if self.count != 0 {
+            format!("Processing {}/{}", self.total - self.count, self.total)
+        } else if self.errs.len() != 0 {
+            "Error while downloading files".to_string()
+        } else {
+            "Idle".to_string()
+        }
+    }
 }

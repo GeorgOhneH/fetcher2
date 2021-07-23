@@ -4,66 +4,50 @@ use std::sync::Arc;
 
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::{theme, WidgetExt, WidgetId};
-use druid::widget::{Label, Controller};
+use druid::widget::{Controller, Label, RawLabel};
+use druid::{theme, Rect, Selector, SingleUse, WidgetExt, WidgetId, LinearGradient, UnitPoint};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use druid_widget_nursery::{selectors, Wedge};
+use crate::template::communication::NODE_EVENT;
+use crate::template::node_type::site::SiteState;
+use crate::template::node_type::site::{
+    DownloadEvent, LoginEvent, RunEvent, SiteEvent, UrlFetchEvent,
+};
 use crate::template::node_type::NodeTypeData;
+use crate::template::nodes::node::{NodeEvent, PathEvent};
+use crate::template::nodes::node_data::NodeData;
+use crate::template::widget::TemplateWidget;
 use crate::template::MetaData;
-use std::path::PathBuf;
+use crate::TError;
 use druid::im::Vector;
-use crate::template::communication::PATH_UPDATED;
+use druid_widget_nursery::{selectors, Wedge};
+use std::path::PathBuf;
 
 selectors! {
     TREE_OPEN_PARENT,
 }
 
+pub const SELECT: Selector<SingleUse<Vec<usize>>> =
+    Selector::new("fetcher2.template_widget.select");
 
-#[derive(Data, Clone, Debug)]
-pub struct NodeData {
-    pub ty: NodeTypeData,
-    pub meta_data: MetaData,
-    pub children: Vector<NodeData>,
-
-    #[data(same_fn = "PartialEq::eq")]
-    pub cached_path: Option<PathBuf>,
-}
-
-impl NodeData {
-    pub fn widget() -> impl Widget<Self> {
-        Label::dynamic(|data: &NodeData, _env| format!("{:?}", data.ty)).controller(TemplateUpdate)
-    }
-}
-
-struct TemplateUpdate;
-
-impl<W: Widget<NodeData>> Controller<NodeData, W> for TemplateUpdate {
-    fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut NodeData, env: &Env) {
-        if let Event::Command(cmd) = event {
-            if let Some(path) = cmd.get(PATH_UPDATED) {
-                data.cached_path = Some(path.take().unwrap());
-                return;
-            }
-        }
-        child.event(ctx, event, data, env)
-    }
-}
-
-pub struct NodeWidget
-{
+pub struct NodeWidget {
     pub index: usize,
 
     wedge: WidgetPod<bool, Wedge>,
 
-    widget: WidgetPod<NodeData, Box<dyn Widget<NodeData>>>,
+    widgets: Vec<WidgetPod<NodeData, Box<dyn Widget<NodeData>>>>,
 
     expanded: bool,
 
     children: Vec<WidgetPod<NodeData, Self>>,
+
+    section_bc: Option<Vec<(f64, f64)>>,
+    section_num: usize,
+
+    selected: bool,
 }
 
 impl NodeWidget {
@@ -72,9 +56,12 @@ impl NodeWidget {
         NodeWidget {
             index: 0,
             wedge: WidgetPod::new(Wedge::new()),
-            widget: WidgetPod::new(Box::new(NodeData::widget().with_id(id))),
+            widgets: vec![WidgetPod::new(Box::new(NodeData::widget(0).with_id(id)))],
             expanded,
             children: Vec::new(),
+            section_bc: None,
+            section_num: 0,
+            selected: false,
         }
     }
 
@@ -89,24 +76,90 @@ impl NodeWidget {
         }
     }
 
-}
+    pub fn set_section_bc(&mut self, section_bc: Vec<(f64, f64)>) {
+        self.section_bc = Some(section_bc)
+    }
 
-impl Widget<NodeData> for NodeWidget
-{
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut NodeData, env: &Env) {
-        // eprintln!("{:?}", event);
-        if let Event::Notification(notif) = event {
-            if notif.is(TREE_OPEN_PARENT) {
-                ctx.set_handled();
-                self.expanded = true;
-                ctx.children_changed();
+    pub fn set_section_num(&mut self, section_num: usize) {
+        self.section_num = section_num;
+        for i in 1..section_num {
+            self.widgets.push(WidgetPod::new(NodeData::widget(i)));
+        }
+        for widget in self.children.iter_mut() {
+            widget.widget_mut().set_section_num(section_num)
+        }
+    }
+
+    pub fn updated_selection(&mut self, selection: &[usize]) {
+        if selection.is_empty() {
+            self.selected = true;
+            for widget in self.children.iter_mut() {
+                widget.widget_mut().unselect()
             }
             return;
         }
+        self.selected = false;
+        let idx = selection[0];
+        let child_selection = &selection[1..];
+        for (i, widget) in self.children.iter_mut().enumerate() {
+            if idx == i {
+                widget.widget_mut().updated_selection(child_selection)
+            } else {
+                widget.widget_mut().unselect()
+            }
+        }
+    }
 
-        self.widget.event(ctx, event, data, env);
+    pub fn unselect(&mut self) {
+        self.selected = false;
+        for widget in self.children.iter_mut() {
+            widget.widget_mut().unselect()
+        }
+    }
+}
 
-        for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter_mut()) {
+impl Widget<NodeData> for NodeWidget {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut NodeData, env: &Env) {
+        // eprintln!("{:?}", event);
+        match event {
+            Event::MouseDown(_) => {
+                ctx.set_active(true);
+                ctx.request_paint();
+            }
+            Event::MouseUp(_) => {
+                if ctx.is_active() {
+                    ctx.set_active(false);
+                    if ctx.is_hot() {
+                        println!("SENDING not");
+                        ctx.submit_notification(SELECT.with(SingleUse::new(vec![self.index])));
+                    }
+                    ctx.request_paint();
+                }
+            }
+            Event::Notification(notif) => {
+                if notif.is(TREE_OPEN_PARENT) {
+                    ctx.set_handled();
+                    self.expanded = true;
+                    ctx.children_changed();
+                } else if let Some(select) = notif.get(SELECT) {
+                    ctx.set_handled();
+                    let mut current_index = select.take().unwrap();
+                    current_index.push(self.index);
+                    println!("SENDING not {:?}", current_index);
+                    ctx.submit_notification(SELECT.with(SingleUse::new(current_index)));
+                }
+                return;
+            },
+            _ => (),
+        }
+
+        for widget in self.widgets.iter_mut() {
+            widget.event(ctx, event, data, env);
+        }
+
+        for (child_widget_node, child_data) in
+            self.children.iter_mut().zip(data.children.iter_mut())
+        {
             child_widget_node.event(ctx, event, child_data, env);
         }
 
@@ -128,9 +181,14 @@ impl Widget<NodeData> for NodeWidget
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &NodeData, env: &Env) {
         // eprintln!("{:?}", event);
         self.wedge.lifecycle(ctx, event, &self.expanded, env);
-        self.widget.lifecycle(ctx, event, data, env);
+        for widget in self.widgets.iter_mut() {
+            widget.lifecycle(ctx, event, data, env);
+        }
         for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
             child_widget_node.lifecycle(ctx, event, child_data, env);
+        }
+        if let LifeCycle::HotChanged(_) = event {
+            ctx.request_paint();
         }
     }
 
@@ -140,8 +198,12 @@ impl Widget<NodeData> for NodeWidget
             // eprintln!("{:?}", old_data);
             // eprintln!("{:?}", data);
             self.wedge.update(ctx, &self.expanded, env);
-            self.widget.update(ctx, data, env);
-            for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
+            for widget in self.widgets.iter_mut() {
+                widget.update(ctx, data, env);
+            }
+            for (child_widget_node, child_data) in
+                self.children.iter_mut().zip(data.children.iter())
+            {
                 child_widget_node.update(ctx, child_data, env);
             }
             ctx.request_layout();
@@ -149,8 +211,13 @@ impl Widget<NodeData> for NodeWidget
         }
     }
 
-    // TODO: the height calculation seems to ignore the inner widget (at least on X11). issue #61
-    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &NodeData, env: &Env) -> Size {
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &NodeData,
+        env: &Env,
+    ) -> Size {
         let basic_size = env.get(theme::BASIC_WIDGET_HEIGHT);
         let indent = env.get(theme::BASIC_WIDGET_HEIGHT); // For a lack of a better definition
         let mut min_width = bc.min().width;
@@ -167,21 +234,35 @@ impl Widget<NodeData> for NodeWidget
             .set_origin(ctx, &self.expanded, env, Point::ORIGIN);
 
         // Immediately on the right, the node widget
-        let widget_size = self.widget.layout(
-            ctx,
-            &BoxConstraints::new(
-                Size::new(min_width, basic_size),
-                Size::new(max_width, basic_size),
-            ),
-            data,
-            env,
-        );
-        self.widget
-            .set_origin(ctx, data, env, Point::new(basic_size, 0.0));
+        let mut max_widget_height = 0.;
+        for (i, ((point, width_constraint), widget)) in self
+            .section_bc
+            .as_ref()
+            .unwrap()
+            .iter()
+            .zip(self.widgets.iter_mut())
+            .enumerate()
+        {
+            let widget_size = widget.layout(
+                ctx,
+                &BoxConstraints::new(
+                    Size::new(min_width, 0.),
+                    Size::new(*width_constraint, basic_size * 1.2),
+                ),
+                data,
+                env,
+            );
+            max_widget_height = widget_size.height.max(max_widget_height);
+            if i == 0 {
+                widget.set_origin(ctx, data, env, Point::new(basic_size + point, 0.0));
+            } else {
+                widget.set_origin(ctx, data, env, Point::new(*point, 0.0));
+            }
+        }
 
         // This is the computed size of this node. We start with the size of the widget,
         // and will increase for each child node.
-        let mut size = Size::new(indent + widget_size.width, basic_size);
+        let mut size = Size::new(max_width, max_widget_height);
 
         // Below, the children nodes, but only if expanded
         if self.expanded && max_width > indent {
@@ -192,7 +273,24 @@ impl Widget<NodeData> for NodeWidget
             }
             max_width -= indent;
 
-            for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
+            let child_section_bc: Vec<_> = self
+                .section_bc
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+                .map(|(i, (x, width))| {
+                    if i == 0 {
+                        (*x, *width)
+                    } else {
+                        (x - indent, *width)
+                    }
+                })
+                .collect();
+
+            for (child_widget_node, child_data) in
+                self.children.iter_mut().zip(data.children.iter())
+            {
                 // In case we have lazily instanciated children nodes,
                 // we may skip some indices. This catches up the correct height.
 
@@ -201,6 +299,9 @@ impl Widget<NodeData> for NodeWidget
                     Size::new(min_width, 0.0),
                     Size::new(max_width, f64::INFINITY),
                 );
+                child_widget_node
+                    .widget_mut()
+                    .set_section_bc(child_section_bc.clone());
                 let child_size = child_widget_node.layout(ctx, &child_bc, child_data, env);
                 let child_pos = Point::new(indent, size.height); // We position the child at the current height
                 child_widget_node.set_origin(ctx, child_data, env, child_pos);
@@ -218,9 +319,49 @@ impl Widget<NodeData> for NodeWidget
             // we paint the wedge only if there are children to expand
             self.wedge.paint(ctx, &self.expanded, env);
         }
-        self.widget.paint(ctx, data, env);
+        let mut highlight_rect = self.wedge.layout_rect();
+        let mut any_child_hot = false;
+        for widget in self.widgets.iter_mut() {
+            let clip_rect = widget.layout_rect();
+            highlight_rect = highlight_rect.union(clip_rect);
+            any_child_hot = widget.is_hot() || any_child_hot;
+            let background_color = env.get(theme::BACKGROUND_LIGHT);
+            ctx.fill(clip_rect, &background_color);
+        }
+
+        if self.selected {
+            let background_gradient = LinearGradient::new(
+                UnitPoint::TOP,
+                UnitPoint::BOTTOM,
+                (env.get(theme::PRIMARY_LIGHT), env.get(theme::PRIMARY_DARK)),
+            );
+            ctx.fill(highlight_rect, &background_gradient);
+        } else if ctx.is_active() {
+            let background_gradient = LinearGradient::new(
+                UnitPoint::TOP,
+                UnitPoint::BOTTOM,
+                (
+                    env.get(theme::BACKGROUND_LIGHT),
+                    env.get(theme::BACKGROUND_DARK),
+                ),
+            );
+            ctx.fill(highlight_rect, &background_gradient);
+        }
+
+
+        if ctx.is_hot() && !any_child_hot {
+            ctx.stroke(highlight_rect, &env.get(theme::BORDER_LIGHT), 1.);
+        }
+
+
+        for widget in self.widgets.iter_mut() {
+            widget.paint(ctx, data, env);
+        }
+
         if self.expanded {
-            for (child_widget_node, child_data) in self.children.iter_mut().zip(data.children.iter()) {
+            for (child_widget_node, child_data) in
+                self.children.iter_mut().zip(data.children.iter())
+            {
                 child_widget_node.paint(ctx, child_data, env);
             }
         }

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Settings {
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     pub downs: DownloadSettings,
 }
 
@@ -17,7 +17,7 @@ pub struct DownloadSettings {
 
     pub save_path: PathBuf,
 
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     pub download_args: DownloadArgs,
 
     #[config(default = false)]

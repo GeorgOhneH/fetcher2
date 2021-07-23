@@ -68,7 +68,7 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
     });
 
     match template.prepare(dsettings.clone()).await {
-        Ok(()) => {}
+        Ok(prep_status) => {}
         Err(err) => {
             print!("{:?}", err);
             println!("{}", err.backtrace().unwrap());
@@ -78,6 +78,7 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
 
     let mut futs = FuturesUnordered::new();
     let mut abort_handles = Vec::new();
+    let mut time = Instant::now();
     loop {
         tokio::select! {
             Ok(msg) = rx.recv_async() => {
@@ -88,7 +89,8 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                         let future = Abortable::new(template.run_root(dsettings.clone()), abort_registration);
                         abort_handles.push(abort_handle);
                         futs.push(future);
-                        println!("{:?}, {:?}", abort_handles.len(), futs.len())
+                        println!("{:?}, {:?}", abort_handles.len(), futs.len());
+                        time = Instant::now();
                     },
                     Msg::Cancel => {
                         for handle in abort_handles.iter() {
@@ -99,7 +101,7 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                 }
             }
             Some(result) = futs.next() => {
-                println!("finished future {:?}", result);
+                println!("finished future {:?}, time: {:?}", result, time.elapsed());
                 match result {
                     Ok(Ok(())) => {}
                     Ok(Err(err)) => {

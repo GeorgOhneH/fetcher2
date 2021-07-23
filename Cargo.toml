@@ -37,6 +37,11 @@ urlencoding = "1.3"
 quick-xml = { version = "0.22", features = ["serialize", "escape-html"] }
 flume = "0.10"
 atomic-counter = "1"
+tracing = "0.1"
+strum = "0.21"
+strum_macros = "0.21"
+pulldown-cmark = "0.8.0"
+open = "1"
 
 druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "f19ddf1"  }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }

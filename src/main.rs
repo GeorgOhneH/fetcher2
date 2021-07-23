@@ -13,6 +13,7 @@ mod site_modules;
 mod task;
 mod template;
 mod utils;
+pub mod widgets;
 
 pub use error::{Result, TError};
 
@@ -73,10 +74,10 @@ struct Test {
     // #[config(default = 0, min = 0)]
     // int: isize,
     // path: PathBuf,
-    #[config(ty = "enum")]
+    #[config(ty = "Enum")]
     efsdfs: Test2,
 
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     efsd3rfs: Test3,
 }
 
@@ -107,12 +108,7 @@ use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationEr
 use druid::widget::{
     Button, CrossAxisAlignment, Flex, Label, LineBreaking, List, Scroll, Spinner, Switch, TextBox,
 };
-use druid::{
-    im, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
-    ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx,
-    Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod,
-    WindowDesc,
-};
+use druid::{im, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx, Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod, WindowDesc, MouseButton};
 use druid_widget_nursery::Tree;
 use flume;
 use futures::future::BoxFuture;
@@ -177,10 +173,10 @@ pub fn main() {
 fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
     let mut lists = Flex::column().cross_axis_alignment(CrossAxisAlignment::Start);
 
-    lists.add_child(
-        Label::dynamic(|data, _env| format!("{:?}", data))
-            .with_line_break_mode(LineBreaking::WordWrap),
-    );
+    // lists.add_child(
+    //     Label::dynamic(|data, _env| format!("{:?}", data))
+    //         .with_line_break_mode(LineBreaking::WordWrap),
+    // );
     lists.add_child(Button::new("Start").on_click(|ctx, _, _| {
         ctx.submit_command(Command::new(
             MSG_THREAD,

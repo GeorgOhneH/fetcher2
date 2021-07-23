@@ -64,7 +64,7 @@ lazy_static! {
 pub struct Polybox {
     pub id: String,
 
-    #[config(ty = "enum")]
+    #[config(ty = "Enum")]
     pub mode: Mode,
 }
 
@@ -126,7 +126,7 @@ impl Polybox {
 
 #[async_trait]
 impl ModuleExt for Polybox {
-    async fn retrieve_urls(
+    async fn fetch_urls(
         &self,
         session: Session,
         sender: Sender<Task>,

@@ -16,7 +16,8 @@ use crate::template::node_type::NodeTypeData;
 use std::path::PathBuf;
 use druid::im::Vector;
 use crate::template::nodes::node::MetaData;
-use crate::template::nodes::node_widget::{NodeData, NodeWidget};
+use crate::template::nodes::node_widget::{NodeWidget};
+use crate::template::nodes::node_data::NodeData;
 
 
 #[derive(Data, Clone, Debug)]
@@ -30,6 +31,8 @@ pub struct RootNodeData {
 pub struct RootNodeWidget
 {
     children: Vec<WidgetPod<NodeData, NodeWidget>>,
+    section_bc: Option<Vec<(f64, f64)>>,
+    section_num: usize,
 }
 
 impl RootNodeWidget {
@@ -37,6 +40,8 @@ impl RootNodeWidget {
     pub fn new() -> Self {
         RootNodeWidget {
             children: Vec::new(),
+            section_bc: None,
+            section_num: 0,
         }
     }
 
@@ -48,6 +53,32 @@ impl RootNodeWidget {
     pub fn add_children(&mut self, children: Vec<NodeWidget>) {
         for child in children.into_iter() {
             self.add_child(child)
+        }
+    }
+
+    pub fn set_section_bc(&mut self, section_bc: Vec<(f64, f64)>) {
+        self.section_bc = Some(section_bc)
+    }
+
+    pub fn set_section_num(&mut self, section_num: usize) {
+        self.section_num = section_num;
+        for widget in self.children.iter_mut() {
+            widget.widget_mut().set_section_num(section_num)
+        }
+    }
+
+    pub fn updated_selection(&mut self, selection: &[usize]) {
+        if selection.is_empty() {
+            panic!("Should never be empty")
+        }
+        let idx = selection[0];
+        let child_selection = &selection[1..];
+        for (i, widget) in self.children.iter_mut().enumerate() {
+            if idx == i {
+                widget.widget_mut().updated_selection(child_selection)
+            } else {
+                widget.widget_mut().unselect()
+            }
         }
     }
 
@@ -87,6 +118,8 @@ impl Widget<RootNodeData> for RootNodeWidget
                 Size::new(min_width, 0.0),
                 Size::new(max_width, f64::INFINITY),
             );
+
+            child_widget_node.widget_mut().set_section_bc(self.section_bc.as_ref().unwrap().clone());
             let child_size = child_widget_node.layout(ctx, &child_bc, child_data, env);
             let child_pos = Point::new(0., size.height); // We position the child at the current height
             child_widget_node.set_origin(ctx, child_data, env, child_pos);

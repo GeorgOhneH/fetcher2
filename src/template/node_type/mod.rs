@@ -4,8 +4,8 @@ use config::{Config, ConfigEnum};
 use config_derive::Config;
 use serde::Serialize;
 
-mod folder;
-mod site;
+pub mod folder;
+pub mod site;
 mod utils;
 
 use crate::settings::DownloadSettings;
@@ -22,9 +22,9 @@ use crate::template::node_type::folder::FolderData;
 
 #[derive(Config, Serialize, Debug)]
 pub enum NodeType {
-    #[config(ty = "struct")]
+    #[config(ty = "Struct")]
     Folder(Folder),
-    #[config(inner_ty = "struct")]
+    #[config(ty = "_<Struct>")]
     Site(Arc<Site>),
 }
 
@@ -52,4 +52,38 @@ impl NodeType {
 pub enum NodeTypeData {
     Folder(FolderData),
     Site(SiteData),
+}
+
+impl NodeTypeData {
+    pub fn folder(&self) -> Option<&FolderData> {
+        match self {
+            NodeTypeData::Folder(folder) => Some(folder),
+            _ => None,
+        }
+    }
+    pub fn folder_mut(&mut self) -> Option<&mut FolderData> {
+        match self {
+            NodeTypeData::Folder(folder) => Some(folder),
+            _ => None,
+        }
+    }
+    pub fn site(&self) -> Option<&SiteData> {
+        match self {
+            NodeTypeData::Site(site) => Some(site),
+            _ => None,
+        }
+    }
+    pub fn site_mut(&mut self) -> Option<&mut SiteData> {
+        match self {
+            NodeTypeData::Site(site) => Some(site),
+            _ => None,
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            Self::Folder(folder) => folder.name(),
+            Self::Site(site) => site.name(),
+        }
+    }
 }

@@ -23,7 +23,7 @@ pub struct Minimal {
 
 #[async_trait]
 impl ModuleExt for Minimal {
-    async fn retrieve_urls(
+    async fn fetch_urls(
         &self,
         session: Session,
         sender: Sender<Task>,

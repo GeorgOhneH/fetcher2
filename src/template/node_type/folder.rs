@@ -26,3 +26,9 @@ impl Folder {
 pub struct FolderData {
     name: String,
 }
+
+impl FolderData {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+}
