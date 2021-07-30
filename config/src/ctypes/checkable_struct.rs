@@ -1,6 +1,7 @@
 use crate::*;
-use druid::{Data, Lens, Widget, WidgetExt};
+use druid::{Data, Lens, Widget, WidgetExt, Color};
 use serde_yaml::Mapping;
+use druid::widget::{Flex, CrossAxisAlignment, Label, Maybe, Container, List};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CCheckableStruct {
@@ -68,8 +69,8 @@ impl CCheckableStructBuilder {
         self
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
-        self.struct_builder = self.struct_builder.gui_name(name);
+    pub fn name(mut self, name: String) -> Self {
+        self.struct_builder = self.struct_builder.name(name);
         self
     }
 

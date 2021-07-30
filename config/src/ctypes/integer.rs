@@ -1,7 +1,8 @@
 use crate::*;
 use druid::text::{Formatter, Selection, Validation, ValidationError};
-use druid::widget::{Flex, Label, TextBox, Maybe};
+use druid::widget::{Flex, Label, TextBox, Maybe, Stepper};
 use druid::{Data, Lens, Widget, WidgetExt, TextAlignment};
+use crate::widgets::IntStepper;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CInteger {
@@ -83,7 +84,7 @@ impl CIntegerBuilder {
         self
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
+    pub fn name(mut self, name: String) -> Self {
         self.inner.name = Some(name);
         self
     }

@@ -42,6 +42,7 @@ strum = "0.21"
 strum_macros = "0.21"
 pulldown-cmark = "0.8.0"
 open = "1"
+tracing-subscriber = "0.2"
 
 druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "f19ddf1"  }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }

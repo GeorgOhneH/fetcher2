@@ -1,5 +1,8 @@
 use crate::*;
-use druid::widget::{Container, CrossAxisAlignment, Flex, FlexParams, Label, List, ListIter, MainAxisAlignment, Maybe};
+use druid::widget::{
+    Container, CrossAxisAlignment, Flex, FlexParams, Label, List, ListIter, MainAxisAlignment,
+    Maybe,
+};
 use druid::{im, Color};
 use druid::{Data, Lens, Widget, WidgetExt};
 use serde_yaml::{Mapping, Value};
@@ -7,24 +10,28 @@ use std::collections::hash_map::Iter;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {
-    inner: im::OrdMap<String, CKwarg>,
+    inner: Vector<CKwarg>,
+    index_map: im::OrdMap<String, usize>,
     name: Option<String>,
 }
 
 impl CStruct {
     fn new() -> Self {
         Self {
-            inner: im::OrdMap::new(),
+            inner: Vector::new(),
+            index_map: im::OrdMap::new(),
             name: None,
         }
     }
 
     pub fn get(&self, name: &str) -> Option<&CKwarg> {
-        self.inner.get(name)
+        let idx = self.index_map.get(name)?;
+        Some(self.inner.get(*idx).unwrap())
     }
 
     pub fn get_mut(&mut self, name: &str) -> Option<&mut CKwarg> {
-        self.inner.get_mut(name)
+        let idx = self.index_map.get(name)?;
+        Some(self.inner.get_mut(*idx).unwrap())
     }
 
     pub fn get_ty(&self, name: &str) -> Option<&CType> {
@@ -50,35 +57,43 @@ impl CStruct {
         }
     }
 
-    pub fn iter(&self) -> im::ordmap::Iter<String, CKwarg> {
+    pub fn iter(&self) -> im::vector::Iter<CKwarg> {
         self.inner.iter()
     }
 
     pub(crate) fn consume_map(&mut self, mut map: Mapping) -> Result<(), ConfigError> {
         let mut result = Ok(());
-        for (key, ckwarg) in self.inner.clone().iter() {
-            match map.remove(&Value::String(key.to_string())) {
+        for ckwarg in self.inner.clone().iter() {
+            let name = ckwarg.name.clone();
+            let key = self
+                .index_map
+                .get(&name)
+                .ok_or(InvalidError::new(format!("{} not found in struct", name)))?;
+            match map.remove(&Value::String(ckwarg.name.clone())) {
                 Some(value) => {
                     let mut kwarg_clone = ckwarg.clone();
                     match kwarg_clone.consume_value(value) {
-                        Ok(()) => self.inner[key] = kwarg_clone,
+                        Ok(()) => self.inner[*key] = kwarg_clone,
                         Err(err) => result = Err(err),
                     }
                 }
-                None => result = Err(RequiredError::new(key, "Missing value(s)").into()),
+                None => result = Err(RequiredError::new(&name, "Missing value(s)").into()),
             }
         }
         result
     }
 
     pub fn state(&self) -> State {
-        self.inner.values().map(|ckwarg| ckwarg.state()).collect()
+        self.inner.iter().map(|ckwarg| ckwarg.state()).collect()
     }
 
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
             .cross_axis_alignment(CrossAxisAlignment::Start)
-            .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone())).lens(Self::name))
+            .with_child(
+                Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone()))
+                    .lens(Self::name),
+            )
             .with_child(
                 Container::new(List::new(|| CKwarg::widget()).with_spacing(5.).padding(5.))
                     .border(Color::GRAY, 2.),
@@ -111,12 +126,14 @@ impl CStructBuilder {
         }
     }
     pub fn arg(mut self, arg: CKwarg) -> Self {
-        self.inner.inner.insert(arg.name().clone(), arg);
+        let idx = self.inner.inner.len();
+        self.inner.index_map.insert(arg.name().clone(), idx);
+        self.inner.inner.push_back(arg);
         self
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
+    pub fn name<T: Into<String>>(mut self, name: T) -> Self {
+        self.inner.name = Some(name.into());
         self
     }
 
@@ -211,7 +228,7 @@ impl CKwarg {
         }
     }
 
-    fn widget() -> impl Widget<Self> {
+    pub fn widget() -> impl Widget<Self> {
         Flex::column()
             .with_child(CType::widget().lens(Self::ty))
             .with_child(WarningLabel::new())
@@ -259,6 +276,7 @@ use druid::{
     UpdateCtx, WidgetPod,
 };
 
+use druid::im::Vector;
 use druid::widget::SizedBox;
 
 pub struct WarningLabel {
@@ -276,15 +294,12 @@ impl WarningLabel {
 }
 
 impl Widget<CKwarg> for WarningLabel {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut CKwarg, env: &Env) {
-        if self.active {
-            self.label.event(ctx, event, &mut (), env);
-        }
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut CKwarg, env: &Env) {
+        self.label.event(ctx, event, &mut (), env);
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &CKwarg, env: &Env) {
         if let LifeCycle::WidgetAdded = event {
-            println!("{:?}", data.error_msg());
             match data.error_msg() {
                 None => self.active = false,
                 Some(msg) => {
@@ -293,9 +308,7 @@ impl Widget<CKwarg> for WarningLabel {
                 }
             }
         }
-        if self.active {
-            self.label.lifecycle(ctx, event, &(), env)
-        }
+        self.label.lifecycle(ctx, event, &(), env)
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CKwarg, data: &CKwarg, env: &Env) {
@@ -306,16 +319,14 @@ impl Widget<CKwarg> for WarningLabel {
                 self.label.set_text(msg);
             }
         }
-        if self.active {
-            self.label.update(ctx, &(), &(), env);
-        }
+        self.label.update(ctx, &(), &(), env);
     }
 
     fn layout(
         &mut self,
         ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &CKwarg,
+        _data: &CKwarg,
         env: &Env,
     ) -> Size {
         if self.active {
@@ -325,7 +336,7 @@ impl Widget<CKwarg> for WarningLabel {
         }
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &CKwarg, env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, _data: &CKwarg, env: &Env) {
         if self.active {
             self.label.paint(ctx, &(), env);
         }

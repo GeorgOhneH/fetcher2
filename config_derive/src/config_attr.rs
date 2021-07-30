@@ -18,7 +18,7 @@ pub enum ConfigAttr {
     OtherSingle(Ident),
 
     // ident = "string literal"
-    GuiName(Ident, LitStr),
+    Name(Ident, LitStr),
     // ty = "Vec(_)", ty = "_(HashMap(_, String))"
     Type(Ident, LitStr),
     OtherLitStr(Ident, LitStr),
@@ -51,7 +51,7 @@ impl Parse for ConfigAttr {
                 let lit: LitStr = input.parse()?;
 
                 match &*name_str {
-                    "gui_name" => Ok(GuiName(name, lit)),
+                    "name" => Ok(Name(name, lit)),
                     "ty" => Ok(Type(name, lit)),
 
                     _ => Ok(OtherLitStr(name, lit)),

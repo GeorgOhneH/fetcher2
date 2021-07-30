@@ -33,7 +33,7 @@ fn gen_kwargs(fields: &Punctuated<Field, Comma>) -> TokenStream {
             let field_name_str = LitStr::new(&field_name.to_string(), field_name.span());
             let match_arg = quote! {app.get_ty(&#field_name_str.to_string()).unwrap()};
             let typ = parse_type(&field.ty, &field.attrs);
-            gen_arg(&typ, match_arg, field_name.span())
+            gen_arg(&typ, match_arg, field_name.span(), &field_name_str)
         })
         .collect();
 

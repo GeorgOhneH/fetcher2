@@ -1,5 +1,5 @@
 use crate::template::widget::{TemplateData, TemplateWidget};
-use crate::template::Template;
+use crate::template::{Template, NodeIndex};
 use config::CStruct;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
@@ -17,7 +17,7 @@ use druid_widget_nursery::Tree;
 use flume;
 use futures::future::BoxFuture;
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -29,6 +29,7 @@ use crate::background_thread::background_main;
 #[derive(Debug)]
 pub enum Msg {
     StartAll,
+    StartByIndex(HashSet<NodeIndex>),
     Cancel,
 }
 

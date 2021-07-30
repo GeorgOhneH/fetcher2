@@ -1,10 +1,13 @@
 #![allow(dead_code)]
+#![feature(backtrace)]
 use serde::Serialize;
 use std::collections::HashMap;
 
 use std::fmt::Debug;
 mod ctypes;
 mod errors;
+mod widgets;
+
 pub use crate::ctypes::*;
 pub use crate::errors::*;
 
@@ -18,6 +21,10 @@ pub trait Config: Sized + Send + Serialize + Debug {
         app.load_from_string(data)?;
         let result = Self::parse_from_app(&app)?;
         Ok(result)
+    }
+
+    fn default() -> Result<Self, RequiredError> {
+        Self::parse_from_app(&Self::builder().build())
     }
 }
 

@@ -17,8 +17,10 @@ use std::sync::Arc;
 
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node::{Node, PrepareStatus};
-use crate::template::nodes::node_widget::{NodeWidget};
+use crate::template::nodes::node_widget::NodeWidget;
 use crate::template::nodes::root_widget::{RootNodeData, RootNodeWidget};
+use crate::template::NodeIndex;
+use std::collections::HashSet;
 
 #[derive(Config, Serialize, Debug)]
 pub struct RootNode {
@@ -35,7 +37,10 @@ impl RootNode {
         let futures: Vec<_> = self
             .children
             .iter_mut()
-            .map(|child| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
+            .enumerate()
+            .map(|(idx, child)| {
+                child.prepare(session, Arc::clone(&dsettings), PathBuf::new(), vec![idx])
+            })
             .collect();
 
         if try_join_all(futures)
@@ -49,11 +54,16 @@ impl RootNode {
         }
     }
 
-    pub async fn run(&self, session: &Session, dsettings: Arc<DownloadSettings>) -> Result<()> {
+    pub async fn run(
+        &self,
+        session: &Session,
+        dsettings: Arc<DownloadSettings>,
+        indexes: Option<&HashSet<NodeIndex>>,
+    ) -> Result<()> {
         let futures: Vec<_> = self
             .children
             .iter()
-            .map(|child| child.run(session, Arc::clone(&dsettings)))
+            .map(|child| child.run(session, Arc::clone(&dsettings), indexes))
             .collect();
 
         try_join_all(futures).await?;

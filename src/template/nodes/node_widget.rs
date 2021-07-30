@@ -130,7 +130,6 @@ impl Widget<NodeData> for NodeWidget {
                 if ctx.is_active() {
                     ctx.set_active(false);
                     if ctx.is_hot() {
-                        println!("SENDING not");
                         ctx.submit_notification(SELECT.with(SingleUse::new(vec![self.index])));
                     }
                     ctx.request_paint();
@@ -145,7 +144,6 @@ impl Widget<NodeData> for NodeWidget {
                     ctx.set_handled();
                     let mut current_index = select.take().unwrap();
                     current_index.push(self.index);
-                    println!("SENDING not {:?}", current_index);
                     ctx.submit_notification(SELECT.with(SingleUse::new(current_index)));
                 }
                 return;

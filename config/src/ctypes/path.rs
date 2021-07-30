@@ -129,12 +129,12 @@ impl CPathBuilder {
             inner: CPath::new(),
         }
     }
-    pub fn default(mut self, value: &str) -> Self {
+    pub fn default(mut self, value: String) -> Self {
         self.inner.set(value).unwrap();
         self
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
+    pub fn name(mut self, name: String) -> Self {
         self.inner.name = Some(name);
         self
     }

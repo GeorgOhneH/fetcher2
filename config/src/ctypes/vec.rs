@@ -1,14 +1,16 @@
 use crate::{CType, ConfigError, State};
 
 use druid::im::Vector;
-use druid::widget::{Button, Flex, List, ListIter};
-use druid::{im, Widget};
+use druid::widget::{Button, Controller, Flex, ListIter};
+use druid::{im, Env, Event, EventCtx, Selector, Widget, SingleUse, LifeCycleCtx, LifeCycle, UpdateCtx};
 use druid::{lens, Data, Lens, LensExt, WidgetExt};
 use serde_yaml::Sequence;
+use std::ops::Deref;
+use crate::widgets::List;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CVec {
-    inner: im::Vector<CItem>,
+    inner: Vector<CItem>,
     #[data(ignore)]
     template_fn: fn() -> CType,
     #[data(ignore)]
@@ -27,6 +29,20 @@ impl CVec {
     pub fn get(&self) -> &im::Vector<CItem> {
         &self.inner
     }
+    pub fn get_mut(&mut self) -> &mut im::Vector<CItem> {
+        &mut self.inner
+    }
+
+    pub fn push(&mut self, ty: CType) {
+        self.inner.push_back(CItem::new(ty, self.inner.len()))
+    }
+
+    pub fn remove(&mut self, idx: usize) {
+        self.inner.remove(idx);
+        for (i, item) in self.inner.iter_mut().enumerate() {
+            item.index = i;
+        }
+    }
 
     pub fn get_template(&self) -> CType {
         (self.template_fn)()
@@ -37,16 +53,7 @@ impl CVec {
     }
 
     pub fn state(&self) -> State {
-        self.inner
-            .iter()
-            .filter_map(|citem| {
-                if citem.valid {
-                    Some(citem.ty.state())
-                } else {
-                    None
-                }
-            })
-            .collect()
+        self.inner.iter().map(|item| item.ty.state()).collect()
     }
 
     pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), ConfigError> {
@@ -55,7 +62,7 @@ impl CVec {
         for value in seq {
             let mut template = self.get_template();
             match template.consume_value(value) {
-                Ok(()) => self.inner.push_back(CItem::new(template)),
+                Ok(()) => self.push(template),
                 Err(err) => result = Err(err),
             }
         }
@@ -69,24 +76,46 @@ impl CVec {
                     Flex::row()
                         .with_child(CType::widget().lens(CItem::ty))
                         .with_child(Button::new("Delete").on_click(
-                            |_ctx, item: &mut CItem, _env| {
-                                // We have access to both child's data and shared data.
-                                // Remove element from right list.
-                                item.valid = false;
+                            |ctx, item: &mut CItem, _env| {
+                                ctx.submit_notification(DELETE.with(item.index))
                             },
                         ))
                 })
-                .lens(CVec::inner.map(
-                    |inner: &im::Vector<CItem>| inner.clone(),
-                    |inner: &mut im::Vector<CItem>, mut data: im::Vector<CItem>| {
-                        data.retain(|item| item.valid);
-                        *inner = data;
-                    },
-                )),
+                .controller(DeleteController::new()),
             )
             .with_child(Button::new("Add").on_click(|_, c_vec: &mut Self, _env| {
-                c_vec.inner.push_back(CItem::new(c_vec.get_template()))
+                c_vec.push(c_vec.get_template())
             }))
+    }
+}
+
+pub const DELETE: Selector<usize> = Selector::new("fetcher2_config.vec.delete");
+
+struct DeleteController {}
+
+impl DeleteController {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl<W: Widget<CVec>> Controller<CVec, W> for DeleteController {
+    fn event(
+        &mut self,
+        child: &mut W,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut CVec,
+        env: &Env,
+    ) {
+        if let Event::Notification(notfi) = event {
+            if let Some(idx) = notfi.get(DELETE) {
+                data.remove(*idx);
+                ctx.children_changed();
+                ctx.set_handled()
+            }
+        };
+        child.event(ctx, event, data, env)
     }
 }
 
@@ -101,7 +130,7 @@ impl CVecBuilder {
         }
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
+    pub fn name(mut self, name: String) -> Self {
         self.inner.name = Some(name);
         self
     }
@@ -113,18 +142,13 @@ impl CVecBuilder {
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CItem {
-    pub valid: bool,
+    pub index: usize,
     pub ty: CType,
 }
 
 impl CItem {
-    pub fn new(ty: CType) -> Self {
-        Self { valid: true, ty }
+    pub fn new(ty: CType, idx: usize) -> Self {
+        Self { index: idx, ty }
     }
 }
 
-impl From<CType> for CItem {
-    fn from(ty: CType) -> Self {
-        Self::new(ty)
-    }
-}

@@ -41,7 +41,7 @@ fn gen_arg(field: &Field, typ: &ConfigType) -> TokenStream {
     let builder_args = attrs_to_args(&config_attrs);
     let name = LitStr::new(&field_name.to_string(), span);
     let sup_type = gen_type(typ, &config_attrs, field.span(), Some(&name));
-    let is_required = typ.is_inside_option();
+    let is_required = !typ.is_inside_option();
     quote_spanned! {span=>
         ::config::CKwargBuilder::new(
             #name.to_string(),

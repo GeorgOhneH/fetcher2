@@ -128,7 +128,7 @@ impl CHashMapBuilder {
         }
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
+    pub fn name(mut self, name: String) -> Self {
         self.inner.name = Some(name);
         self
     }

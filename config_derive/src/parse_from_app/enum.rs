@@ -33,7 +33,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 let field = &unnamed[0];
                 let config_type = parse_type(&field.ty, &var.attrs);
-                let config = gen_arg(&config_type, quote! {carg.get().unwrap()}, field.span());
+                let config = gen_arg(&config_type, quote! {carg.get().unwrap()}, field.span(), &name_lit);
                 quote! {
                     #name_lit => {
                         match #config {

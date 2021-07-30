@@ -1,9 +1,9 @@
-use crate::error::{Result, TErrorKind, DefaultOk};
+use crate::error::{TErrorFast, Result, TErrorKind};
 use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
-use soup::prelude::*;
 use druid::Data;
+use soup::prelude::*;
 
 use config::ConfigEnum;
 use config_derive::Config;
@@ -89,7 +89,7 @@ impl Polybox {
         let resp = session.get(url.clone()).send().await?;
 
         let text = resp.text().await?;
-        let token = &TOKEN_RE.captures(&text).d_ok()?[1];
+        let token = &TOKEN_RE.captures(&text).wrong_format()?[1];
 
         let data = [("requesttoken", token), ("password", password)];
 
@@ -111,7 +111,12 @@ impl Polybox {
         let url = INDEX_URL.join("f/").unwrap().join(&self.id)?;
         let response = session
             .get(url)
-            .basic_auth(&dsettings.username, Some(&dsettings.password))
+            .basic_auth(
+                dsettings.try_username()?,
+                Some(
+                    dsettings.try_password()?,
+                ),
+            )
             .send()
             .await?;
 
@@ -155,11 +160,11 @@ impl ModuleExt for Polybox {
             Mode::Private => {
                 let dire_path = self.dire_path(&session, &dsettings).await?;
                 let url = USER_WEBDAV_URL
-                    .join(&format!("{}/", dsettings.username))?
+                    .join(&format!("{}/", dsettings.try_username()?))?
                     .join(&dire_path[1..])?;
                 let response = session
                     .request(Method::from_str("PROPFIND").unwrap(), url)
-                    .basic_auth(&dsettings.username, Some(&dsettings.password))
+                    .basic_auth(dsettings.try_username()?, Some(dsettings.try_password()?))
                     .body(PROPFIND_DATA)
                     .headers(HEADERS.clone())
                     .send()
@@ -178,8 +183,8 @@ impl ModuleExt for Polybox {
                     .parse(
                         sender,
                         base_path,
-                        &dsettings.username,
-                        Some(&dsettings.password),
+                        dsettings.try_username()?,
+                        Some(dsettings.try_password()?),
                         n_skip,
                     )
                     .await?;
@@ -201,7 +206,7 @@ impl ModuleExt for Polybox {
         match &self.mode {
             Mode::Private => {
                 let dir_path = self.dire_path(session, dsettings).await?;
-                let folder_name = dir_path.split("/").last().d_ok()?;
+                let folder_name = dir_path.split("/").last().wrong_format()?;
                 return Ok(PathBuf::from(folder_name));
             }
             Mode::Shared(password) => {
@@ -216,7 +221,7 @@ impl ModuleExt for Polybox {
 
                 let response = new_session
                     .get(url)
-                    .basic_auth(&dsettings.username, Some(&dsettings.password))
+                    .basic_auth(dsettings.try_username()?, Some(dsettings.try_password()?))
                     .send()
                     .await?;
 
@@ -224,12 +229,15 @@ impl ModuleExt for Polybox {
                 let soup = Soup::new(&text);
                 let data_node = soup
                     .tag("body")
-                    .find().d_ok()?
+                    .find()
+                    .wrong_format()?
                     .tag("header")
-                    .find().d_ok()?
+                    .find()
+                    .wrong_format()?
                     .tag("div")
-                    .find().d_ok()?;
-                let name = data_node.get("data-name").d_ok()?;
+                    .find()
+                    .wrong_format()?;
+                let name = data_node.get("data-name").wrong_format()?;
                 Ok(PathBuf::from(name))
             }
         }

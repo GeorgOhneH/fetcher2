@@ -14,7 +14,7 @@ use druid::{
 
 #[derive(Debug, Clone, Data)]
 pub struct CEnum {
-    inner: im::OrdMap<String, CArg>,
+    inner: OrdMap<String, CArg>,
     selected: Option<String>,
     name: Option<String>,
 }
@@ -115,8 +115,13 @@ impl CEnumBuilder {
         self
     }
 
-    pub fn gui_name(mut self, name: String) -> Self {
+    pub fn name(mut self, name: String) -> Self {
         self.inner.name = Some(name);
+        self
+    }
+
+    pub fn default(mut self, name: String) -> Self {
+        self.inner.set_selected(name).expect("Default for EnumConfig doesn't exist");
         self
     }
 
@@ -213,6 +218,8 @@ use std::marker::PhantomData;
 use druid::keyboard_types::Key;
 use druid::lens::Identity;
 use druid::widget::{Controller, CrossAxisAlignment, Label, LabelText};
+use druid::im::OrdMap;
+
 //
 // // NOTE: This is copied from Button. Should those be generic, or maybe set in the environment?
 const LABEL_INSETS: Insets = Insets::uniform_xy(8., 2.);

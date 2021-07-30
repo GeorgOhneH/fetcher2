@@ -22,7 +22,7 @@ use crate::template::widget::{TemplateData, TemplateWidget};
 use config::{Config, ConfigEnum};
 use druid::widget::prelude::*;
 use druid::widget::Label;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
@@ -33,6 +33,8 @@ pub struct Template {
     root: RootNode,
     comm: WidgetCommunication,
 }
+
+pub type NodeIndex = Vec<usize>;
 
 impl Template {
     pub fn new() -> Self {
@@ -67,9 +69,11 @@ impl Template {
                         })),
                         children: vec![].into(),
                         meta_data: MetaData {},
+                        index: Vec::new(),
                     }]
                     .into(),
                     meta_data: MetaData {},
+                    index: Vec::new(),
                 },
                 Node {
                     cached_path: None,
@@ -87,6 +91,7 @@ impl Template {
                     })),
                     children: vec![].into(),
                     meta_data: MetaData {},
+                    index: Vec::new(),
                 },
                 // Node {
                 //     ty: NodeType::Site(Arc::new(Site {
@@ -121,7 +126,12 @@ impl Template {
 
     pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) -> Result<()> {
         let session = Session::new();
-        self.root.run(&session, dsettings).await
+        self.root.run(&session, dsettings, None).await
+    }
+
+    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: Option<HashSet<NodeIndex>>) -> Result<()> {
+        let session = Session::new();
+        self.root.run(&session, dsettings, indexes.as_ref()).await
     }
 
     pub async fn save(&self, path: &Path) -> Result<()> {

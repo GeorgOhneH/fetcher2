@@ -13,7 +13,7 @@ use crate::config_type::{ConfigHashType, ConfigType};
 pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span, name: Option<&LitStr>) -> TokenStream {
     let args = attrs_to_sub_args(config_attrs);
     let gui_fn = if let Some(name) = name {
-        quote! {.gui_name(#name.to_string())}
+        quote! {.name(#name.to_string())}
     } else {
         quote! {}
     };
@@ -152,7 +152,7 @@ pub fn attrs_to_sub_args(config_attrs: &[ConfigAttr]) -> TokenStream {
             ConfigAttr::OtherSingle(name) => Some(quote! {#name()}),
             ConfigAttr::OtherLitStr(name, lit) => Some(quote! {#name(#lit.to_string())}),
             ConfigAttr::Other(name, expr) => Some(quote! {#name(#expr)}),
-            ConfigAttr::GuiName(name, value) => Some(quote! {#name(#value.to_string())}),
+            ConfigAttr::Name(name, value) => Some(quote! {#name(#value.to_string())}),
             _ => None,
         })
         .collect();

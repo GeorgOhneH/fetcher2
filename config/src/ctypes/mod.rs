@@ -26,7 +26,9 @@ use serde_yaml::Value;
 use druid::{Data, Widget, WidgetExt, lens, LensExt};
 use druid_enums::Matcher;
 use std::iter::FromIterator;
+use druid::widget::Label;
 
+#[derive(Debug)]
 pub enum State {
     Valid,
     None,

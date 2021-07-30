@@ -123,10 +123,11 @@ pub fn gen_set(
                 };
                 let a: std::result::Result<Vec<::config::CItem>, ::config::InvalidError> = #set_arg
                     .into_iter()
-                    .map(| value | {
+                    .enumerate()
+                    .map(| (idx, value) | {
                         let mut temp = config_vec.get_template();
                         match #sub_setter {
-                            Ok(_) => Ok(::config::CItem::new(temp)),
+                            Ok(_) => Ok(::config::CItem::new(temp, idx)),
                             Err(err) => Err(err),
                         }
                     })

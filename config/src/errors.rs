@@ -1,4 +1,5 @@
 use thiserror::Error;
+use std::backtrace::Backtrace;
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -36,6 +37,7 @@ impl InvalidError {
 pub struct RequiredError {
     field: String,
     msg: String,
+    backtrace: Backtrace,
 }
 
 impl RequiredError {
@@ -43,6 +45,7 @@ impl RequiredError {
         Self {
             field: field.to_owned(),
             msg: msg.to_owned(),
+            backtrace: Backtrace::capture(),
         }
     }
 }

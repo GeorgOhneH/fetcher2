@@ -1,10 +1,10 @@
 use crate::task::Task;
+use druid::ExtEventError;
 use std::backtrace::Backtrace;
+use std::convert::Infallible;
+use std::ops::FromResidual;
 use thiserror::Error;
 use tokio::time::error::Elapsed;
-use std::ops::FromResidual;
-use std::convert::Infallible;
-use druid::ExtEventError;
 
 pub type Result<T> = std::result::Result<T, TError>;
 
@@ -38,17 +38,17 @@ pub enum TErrorKind {
     #[error("Previous login attempt was unsuccessful")]
     PreviousLoginError,
 
+    #[error("For this module is the username/password required")]
+    LoginDataRequired,
+
     #[error("Login Data was not correct")]
     LoginError,
 
-    #[error("Expected different format from data")]
+    #[error("Got unexpected data from server")]
     WrongFormat,
 
     #[error("The Etag was not well formatted")]
     ETagFormat,
-
-    #[error("Something")]
-    Something,
 
     #[error("Xml error: {0}")]
     Xml(String),
@@ -84,12 +84,12 @@ pub enum TErrorKind {
     ExtEventError(#[from] ExtEventError),
 }
 
-pub trait DefaultOk<T> {
-    fn d_ok(self) -> Result<T>;
+pub trait TErrorFast<T> {
+    fn wrong_format(self) -> Result<T>;
 }
 
-impl<T> DefaultOk<T> for Option<T> {
-    fn d_ok(self) -> Result<T> {
-        self.ok_or_else(|| TError::new(TErrorKind::Something))
+impl<T> TErrorFast<T> for Option<T> {
+    fn wrong_format(self) -> Result<T> {
+        self.ok_or_else(|| TError::new(TErrorKind::WrongFormat))
     }
 }

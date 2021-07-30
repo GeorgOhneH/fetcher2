@@ -18,10 +18,12 @@ use std::sync::Arc;
 use crate::template::communication::WidgetCommunication;
 use crate::template::node_type::site::{SiteEvent, SiteState};
 use crate::template::node_type::{NodeType, NodeTypeData};
-use crate::template::nodes::node_widget::{NodeWidget};
+use crate::template::nodes::node_data::{NodeData, NodeState};
+use crate::template::nodes::node_widget::NodeWidget;
+use crate::template::NodeIndex;
 use crate::utils::spawn_drop;
 use crate::TError;
-use crate::template::nodes::node_data::{NodeState, NodeData};
+use std::collections::HashSet;
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}
@@ -40,6 +42,11 @@ pub struct Node {
     #[serde(skip)]
     #[config(skip = WidgetCommunication::new())]
     pub comm: WidgetCommunication,
+
+    // Will be set after prepare
+    #[serde(skip)]
+    #[config(skip = Vec::new())]
+    pub index: NodeIndex,
 }
 
 #[derive(PartialEq)]
@@ -55,7 +62,10 @@ impl Node {
         session: &'a Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
+        index: NodeIndex,
     ) -> Result<PrepareStatus> {
+        self.index = index.clone();
+
         if let Some(path) = &self.cached_path {
             self.comm.send_event(PathEvent::Cached(path.clone()))?;
             return Ok(PrepareStatus::Success);
@@ -78,10 +88,16 @@ impl Node {
         self.cached_path = Some(path.clone());
         self.comm.send_event(PathEvent::Finish(path.clone()))?;
 
-        let mut futures: Vec<_> = self
+        let index_clone = self.index.clone();
+        let futures: Vec<_> = self
             .children
             .iter_mut()
-            .map(|child| child.prepare(session, Arc::clone(&dsettings), path.clone()))
+            .enumerate()
+            .map(|(idx, child)| {
+                let mut child_index = index_clone.clone();
+                child_index.push(idx);
+                child.prepare(session, Arc::clone(&dsettings), path.clone(), child_index)
+            })
             .collect();
 
         if try_join_all(futures)
@@ -99,28 +115,31 @@ impl Node {
         &'a self,
         session: &'a Session,
         dsettings: Arc<DownloadSettings>,
+        indexes: Option<&'a HashSet<NodeIndex>>,
     ) -> Result<()> {
         let mut futures: Vec<_> = self
             .children
             .iter()
-            .map(|child| child.run(session, Arc::clone(&dsettings)))
+            .map(|child| child.run(session, Arc::clone(&dsettings), indexes))
             .collect();
 
-        if let NodeType::Site(site) = &self.ty {
-            let site_clone = site.clone();
-            let handle = spawn_drop(
-                site_clone.run(
-                    session.clone(),
-                    dsettings,
-                    self.cached_path
-                        .as_ref()
-                        .expect("Called run before prepare")
-                        .clone(),
-                    self.comm.clone(),
-                ),
-            );
-            futures.push(Box::pin(async move { handle.await? }))
-        };
+        if indexes.map_or(true, |indexes| indexes.contains(&self.index)) {
+            if let NodeType::Site(site) = &self.ty {
+                let site_clone = site.clone();
+                let handle = spawn_drop(
+                    site_clone.run(
+                        session.clone(),
+                        dsettings,
+                        self.cached_path
+                            .as_ref()
+                            .expect("Called run before prepare")
+                            .clone(),
+                        self.comm.clone(),
+                    ),
+                );
+                futures.push(Box::pin(async move { handle.await? }))
+            }
+        }
 
         try_join_all(futures).await?;
         Ok(())
@@ -168,7 +187,7 @@ impl From<PathEvent> for NodeEvent {
 }
 
 impl<T> From<T> for NodeEvent
-    where
+where
     T: Into<SiteEvent>,
 {
     fn from(site_status: T) -> Self {

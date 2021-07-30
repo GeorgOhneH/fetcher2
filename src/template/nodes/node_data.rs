@@ -5,7 +5,7 @@ use std::sync::Arc;
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
-use druid::{theme, WidgetExt, WidgetId};
+use druid::{theme, Menu, WidgetExt, WidgetId, MenuItem};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
@@ -19,11 +19,11 @@ use crate::template::node_type::site::{
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
 use crate::template::MetaData;
-use crate::TError;
+use crate::{AppData, TError};
 use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
-use std::path::PathBuf;
 use futures::StreamExt;
+use std::path::PathBuf;
 
 #[derive(Data, Clone, Debug)]
 pub struct NodeData {
@@ -72,24 +72,22 @@ impl NodeData {
     fn state_string(&self) -> String {
         match &self.ty {
             NodeTypeData::Folder(_) => "".to_string(),
-            NodeTypeData::Site(site) => {
-                match self.state.current_state() {
-                    CurrentState::Active => "Calculation Path".to_string(),
-                    CurrentState::Error => "Error while calculation Path".to_string(),
-                    CurrentState::Idle => match site.state.run {
-                        0 => "Idle".to_string(),
-                        _ => match site.state.login.current_state() {
-                            CurrentState::Active => "Logging in".to_string(),
-                            CurrentState::Error => "Login while logging in".to_string(),
-                            CurrentState::Idle => match site.state.fetch.current_state() {
-                                CurrentState::Active => "Fetching Urls".to_string(),
-                                CurrentState::Error => "Error while fetching Urls".to_string(),
-                                CurrentState::Idle => site.state.download.state_string(),
-                            },
-                        }
-                    }
-                }
-            }
+            NodeTypeData::Site(site) => match self.state.current_state() {
+                CurrentState::Active => "Calculation Path".to_string(),
+                CurrentState::Error => "Error while calculation Path".to_string(),
+                CurrentState::Idle => match site.state.run {
+                    0 => "Idle".to_string(),
+                    _ => match site.state.login.current_state() {
+                        CurrentState::Active => "Logging in".to_string(),
+                        CurrentState::Error => "Login while logging in".to_string(),
+                        CurrentState::Idle => match site.state.fetch.current_state() {
+                            CurrentState::Active => "Fetching Urls".to_string(),
+                            CurrentState::Error => "Error while fetching Urls".to_string(),
+                            CurrentState::Idle => site.state.download.state_string(),
+                        },
+                    },
+                },
+            },
         }
     }
 
@@ -108,6 +106,34 @@ impl NodeData {
             _ => panic!("Not implemented"),
         }
     }
+}
+
+// pub struct ContextMenuController;
+//
+// impl<W: Widget<AppData>> Controller<AppData, W> for ContextMenuController {
+//     fn event(
+//         &mut self,
+//         child: &mut W,
+//         ctx: &mut EventCtx,
+//         event: &Event,
+//         data: &mut AppData,
+//         env: &Env,
+//     ) {
+//         match event {
+//             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
+//                 ctx.show_context_menu(make_node_menu(), mouse.pos);
+//             }
+//             _ => child.event(ctx, event, data, env),
+//         }
+//     }
+// }
+
+fn make_node_menu() -> Menu<AppData> {
+    Menu::empty()
+        .entry(
+            MenuItem::new("Hello2")
+                .on_activate(|_ctx, data: &mut AppData, _env| {  }),
+        )
 }
 
 pub enum CurrentState {
@@ -184,19 +210,25 @@ impl<W: Widget<NodeData>> Controller<NodeData, W> for TemplateUpdate {
         data: &mut NodeData,
         env: &Env,
     ) {
-        if let Event::Command(cmd) = event {
-            if let Some(event) = cmd.get(NODE_EVENT) {
-                match event.take().unwrap() {
-                    NodeEvent::Path(path_event) => {
-                        data.state.path.update(path_event, &mut data.cached_path)
-                    }
-                    NodeEvent::Site(site_event) => {
-                        let site = data.ty.site_mut().unwrap();
-                        site.state.update(site_event, &mut site.history)
-                    }
-                }
-                return;
+        match event {
+            Event::MouseDown(ref mouse) if mouse.button.is_right() => {
+                ctx.show_context_menu(make_node_menu(), mouse.window_pos);
             }
+            Event::Command(cmd) => {
+                if let Some(event) = cmd.get(NODE_EVENT) {
+                    match event.take().unwrap() {
+                        NodeEvent::Path(path_event) => {
+                            data.state.path.update(path_event, &mut data.cached_path)
+                        }
+                        NodeEvent::Site(site_event) => {
+                            let site = data.ty.site_mut().unwrap();
+                            site.state.update(site_event, &mut site.history)
+                        }
+                    }
+                    return;
+                }
+            },
+            _ => (),
         }
         child.event(ctx, event, data, env)
     }

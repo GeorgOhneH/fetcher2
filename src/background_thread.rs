@@ -33,7 +33,7 @@ use config_derive::Config;
 use futures::future::{AbortHandle, Abortable, Aborted};
 use futures::prelude::stream::FuturesUnordered;
 use futures::stream::FuturesOrdered;
-use futures::StreamExt;
+use futures::{StreamExt, FutureExt};
 use log::{debug, error, info, log_enabled, Level};
 use serde::Serialize;
 use std::collections::HashSet;
@@ -54,8 +54,8 @@ pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: T
 
 async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Template) {
     let dsettings = Arc::new(DownloadSettings {
-        username: std::env::var("USERNAME").unwrap(),
-        password: std::env::var("PASSWORD").unwrap(),
+        username: Some(std::env::var("USERNAME").unwrap()),
+        password: Some(std::env::var("PASSWORD").unwrap()),
         save_path: PathBuf::from("C:\\programming\\rust\\fetcher2\\test"),
         download_args: DownloadArgs {
             extensions: Extensions {
@@ -64,6 +64,7 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
             },
             keep_old_files: true,
         },
+        x: Vector::new(),
         force: false,
     });
 
@@ -86,7 +87,15 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                 match msg {
                     Msg::StartAll => {
                         let (abort_handle, abort_registration) = AbortHandle::new_pair();
-                        let future = Abortable::new(template.run_root(dsettings.clone()), abort_registration);
+                        let future = Abortable::new(template.run_root(dsettings.clone()), abort_registration).boxed();
+                        abort_handles.push(abort_handle);
+                        futs.push(future);
+                        println!("{:?}, {:?}", abort_handles.len(), futs.len());
+                        time = Instant::now();
+                    },
+                    Msg::StartByIndex(indexes) => {
+                        let (abort_handle, abort_registration) = AbortHandle::new_pair();
+                        let future = Abortable::new(template.run(dsettings.clone(), Some(indexes)), abort_registration).boxed();
                         abort_handles.push(abort_handle);
                         futs.push(future);
                         println!("{:?}, {:?}", abort_handles.len(), futs.len());

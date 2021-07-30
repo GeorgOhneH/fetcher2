@@ -451,19 +451,19 @@ pub enum MsgKind {
 
 #[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct DownloadArgs {
-    #[config(ty = "Struct")]
+    #[config(ty = "Struct", name = "Extension Filter")]
     pub extensions: Extensions,
 
-    #[config(default = true)]
+    #[config(default = true, name = "Keep Old Files")]
     pub keep_old_files: bool,
 }
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Extensions {
-    #[config(ty = "Vec")]
+    #[config(ty = "Vec", name = "Extension")]
     pub inner: im::HashSet<String>,
 
-    #[config(ty = "Enum")]
+    #[config(ty = "Enum", default = "Forbidden", name = "Mode")]
     pub mode: Mode,
 }
 

@@ -9,13 +9,13 @@ use syn::{
 
 use crate::config_type::{ConfigHashType, ConfigType};
 
-pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStream {
+pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, field_name: &LitStr) -> TokenStream {
     if let ConfigType::Skip(expr) = typ {
         return quote! {
             Ok(#expr)
         }
     }
-    let option_arg = gen_option_arg(typ, match_arg, span);
+    let option_arg = gen_option_arg(typ, match_arg, span, field_name);
     match &typ {
         ConfigType::Wrapper(_, _, _) => option_arg,
         _ if typ.is_inside_option() => {
@@ -33,7 +33,7 @@ pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStr
             quote! {match #option_arg {
                 Ok(value) => match value {
                     Some(x) => Ok(x),
-                    None => Err(::config::RequiredError::new("TODO", "Must be Option?")),
+                    None => Err(::config::RequiredError::new(#field_name, "Must be Option?")),
                 },
                 Err(err) => Err(err),
             }}
@@ -41,7 +41,7 @@ pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStr
     }
 }
 
-pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> TokenStream {
+pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, field_name: &LitStr) -> TokenStream {
     match typ {
         ConfigType::String(_) | ConfigType::OptionString(_) => quote! {{
             match #match_arg {
@@ -68,7 +68,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
             }
         }},
         ConfigType::Wrapper(_, inner_ty, name) => {
-            let inner_token = gen_arg(inner_ty, quote! {inner}, span);
+            let inner_token = gen_arg(inner_ty, quote! {inner}, span, field_name);
             quote! {{
                 match #match_arg {
                     ::config::CType::Wrapper(cwrapper) => {
@@ -81,7 +81,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
             }}
         }
         ConfigType::Vec(path, sub_type) => {
-            let sub_value = gen_arg(sub_type, quote! {subtype}, span);
+            let sub_value = gen_arg(sub_type, quote! {subtype}, span, field_name);
             quote! {{
                 let a: std::result::Result<#path, ::config::RequiredError> = match #match_arg {
                     ::config::CType::Vec(cvec) => cvec
@@ -102,7 +102,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span) -> T
         }
         ConfigType::HashMap(path, key_ty, value_ty) => {
             let real_key = gen_hash_arg(key_ty, quote! {keytype}, span);
-            let real_value = gen_arg(value_ty, quote! {valuetype}, span);
+            let real_value = gen_arg(value_ty, quote! {valuetype}, span, field_name);
             quote! {{
                 let a: std::result::Result<#path, ::config::RequiredError> = match #match_arg {
                     ::config::CType::HashMap(cmap) => cmap
