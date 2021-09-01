@@ -40,14 +40,13 @@ selectors! {
 }
 
 /// A tree widget for a collection of items organized in a hierarchical way.
-pub struct Tree<T, L>
+pub struct Tree<T, L, const N: usize>
     where
         T: TreeNode,
         L: Lens<T, bool>,
 {
     /// The root node of this tree
-    root_node: WidgetPod<T, TreeNodeWidget<T, L>>,
-    chroot: WidgetId,
+    root_node: WidgetPod<T, TreeNodeWidget<T, L, N>>,
 }
 
 /// A tree node `Data`. This is the data expected by the tree widget.
@@ -198,7 +197,7 @@ impl<T: TreeNode, L: Lens<T, bool>> Widget<T> for Wedge<T, L> {
     }
 }
 
-type TreeItemFactory<T> = Arc<Box<dyn Fn() -> Box<dyn Widget<T>>>>;
+type TreeItemFactory<T, const N: usize> = [Arc<Box<dyn Fn() -> Box<dyn Widget<T>>>>; N];
 type OpenerFactory<T> = dyn Fn() -> Box<dyn Widget<T>>;
 
 fn make_wedge<T: TreeNode, L: Lens<T, bool>>(expand_lens: L) -> Wedge<T, L> {
@@ -210,7 +209,7 @@ fn make_wedge<T: TreeNode, L: Lens<T, bool>>(expand_lens: L) -> Wedge<T, L> {
 
 /// An internal widget used to display a single node and its children
 /// This is used recursively to build the tree.
-struct TreeNodeWidget<T, L>
+struct TreeNodeWidget<T, L, const N: usize>
     where
         T: TreeNode,
         L: Lens<T, bool>,
@@ -220,11 +219,11 @@ struct TreeNodeWidget<T, L>
     // The "opener" widget,
     opener: WidgetPod<T, Opener<T>>,
     /// The label for this node
-    widget: WidgetPod<T, Box<dyn Widget<T>>>,
+    widgets: [WidgetPod<T, Box<dyn Widget<T>>>; N],
     /// The children of this tree node widget
     children: Vec<WidgetPod<T, Self>>,
     /// A factory closure for the user defined widget
-    make_widget: TreeItemFactory<T>,
+    make_widget: TreeItemFactory<T, N>,
     /// A factory closure for the user defined opener
     make_opener: Arc<Box<OpenerFactory<T>>>,
     /// The user must provide a Lens<T, bool> that tells if
@@ -232,10 +231,10 @@ struct TreeNodeWidget<T, L>
     expand_lens: L,
 }
 
-impl<T: TreeNode, L: Lens<T, bool> + Clone> TreeNodeWidget<T, L> {
+impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L, N> {
     /// Create a TreeNodeWidget from a TreeNode.
     fn new(
-        make_widget: TreeItemFactory<T>,
+        make_widget: TreeItemFactory<T, N>,
         make_opener: Arc<Box<OpenerFactory<T>>>,
         index: usize,
         expand_lens: L, // expanded: bool,
@@ -245,7 +244,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> TreeNodeWidget<T, L> {
             opener: WidgetPod::new(Opener {
                 widget: WidgetPod::new(make_opener.clone()()),
             }),
-            widget: WidgetPod::new(Box::new((make_widget)())),
+            widgets: make_widget.map(|widget_fn| WidgetPod::new((widget_fn)())),
             // expanded,
             children: Vec::new(),
             make_widget,
@@ -280,7 +279,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> TreeNodeWidget<T, L> {
     }
 }
 
-impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
+impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNodeWidget<T, L, N> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
         // match event {
         //     Event::MouseMove(_) => (),
@@ -323,14 +322,15 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
                 ctx.children_changed();
                 None
             }
-            Event::Notification(notif) if notif.is(TREE_NOTIFY_PARENT) => {
-                if self.widget.id() != notif.source() {
-                    let notif = notif.get(TREE_NOTIFY_PARENT).unwrap();
-                    ctx.submit_command(TREE_NOTIFY_PARENT.with(*notif).to(self.widget.id()));
-                    ctx.set_handled();
-                }
-                None
-            }
+            // TODO?
+            // Event::Notification(notif) if notif.is(TREE_NOTIFY_PARENT) => {
+            //     if self.widget.id() != notif.source() {
+            //         let notif = notif.get(TREE_NOTIFY_PARENT).unwrap();
+            //         ctx.submit_command(TREE_NOTIFY_PARENT.with(*notif).to(self.widget.id()));
+            //         ctx.set_handled();
+            //     }
+            //     None
+            // }
             _ => Some(event),
         };
 
@@ -342,7 +342,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
             return;
         }
 
-        self.widget.event(ctx, event, data, env);
+        self.widgets.iter_mut().for_each(|widget| widget.event(ctx, event, data, env));
 
         if data.is_branch() {
             // send the event to the opener if the widget is visible or the event also targets
@@ -394,7 +394,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
         self.opener.lifecycle(ctx, event, data, env);
-        self.widget.lifecycle(ctx, event, data, env);
+        self.widgets.iter_mut().for_each(|widget| widget.lifecycle(ctx, event, data, env));
         if data.is_branch() & (event.should_propagate_to_hidden() | self.expand_lens.get(data)) {
             for (index, child_widget_node) in self.children.iter_mut().enumerate() {
                 let child_tree_node = data.get_child(index);
@@ -404,7 +404,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &T, data: &T, env: &Env) {
-        self.widget.update(ctx, data, env);
+        self.widgets.iter_mut().for_each(|widget| widget.update(ctx, data, env));
         self.opener.update(ctx, data, env);
 
         if self.update_children(data) {
@@ -443,7 +443,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
         self.opener.set_origin(ctx, data, env, Point::ORIGIN);
 
         // Immediately on the right, the node widget
-        let widget_size = self.widget.layout(
+        let widget_size = self.widgets.layout(
             ctx,
             &BoxConstraints::new(
                 Size::new(min_width, basic_size),
@@ -452,7 +452,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
             data,
             env,
         );
-        self.widget
+        self.widgets
             .set_origin(ctx, data, env, Point::new(basic_size, 0.0));
 
         // This is the computed size of this node. We start with the size of the widget,
@@ -497,7 +497,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
         self.opener.paint(ctx, data, env);
-        self.widget.paint(ctx, data, env);
+        self.widgets.paint(ctx, data, env);
         if data.is_branch() & self.expand_lens.get(data) {
             for (index, child_widget_node) in self.children.iter_mut().enumerate() {
                 let child_tree_node = data.get_child(index);
@@ -508,10 +508,10 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
 }
 
 /// Tree Implementation
-impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Tree<T, L> {
+impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize> Tree<T, L, N> {
     /// Create a new Tree widget
     pub fn new<W: Widget<T> + 'static>(
-        make_widget: impl Fn() -> W + 'static,
+        make_widget: [(String, impl Fn() -> W + 'static); N],
         expand_lens: L,
     ) -> Self {
         let make_widget: TreeItemFactory<T> = Arc::new(Box::new(move || Box::new(make_widget())));
@@ -525,8 +525,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Tree<T, L> {
                 0,
                 expand_lens,
             )),
-            // dummy chroot id at creation.
-            chroot: WidgetId::next(),
         }
     }
 
@@ -545,7 +543,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Tree<T, L> {
 
 
 // Implement the Widget trait for Tree
-impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Widget<T> for Tree<T, L> {
+impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize> Widget<T> for Tree<T, L, N> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
         self.root_node.event(ctx, event, data, env);
     }
