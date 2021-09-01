@@ -178,20 +178,20 @@ pub fn main() {
     template.set_sink(sink.clone());
     let delegate = TemplateDelegate::new(sink, template);
 
-    use tracing_subscriber::prelude::*;
-    let filter_layer = tracing_subscriber::filter::LevelFilter::DEBUG;
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        // Display target (eg "my_crate::some_mod::submod") with logs
-        .with_target(true);
-
-    tracing_subscriber::registry()
-        .with(filter_layer)
-        .with(fmt_layer)
-        .init();
+    // use tracing_subscriber::prelude::*;
+    // let filter_layer = tracing_subscriber::filter::LevelFilter::DEBUG;
+    // let fmt_layer = tracing_subscriber::fmt::layer()
+    //     // Display target (eg "my_crate::some_mod::submod") with logs
+    //     .with_target(true);
+    //
+    // tracing_subscriber::registry()
+    //     .with(filter_layer)
+    //     .with(fmt_layer)
+    //     .init();
 
     app_launcher
         .delegate(delegate)
-        // .log_to_console()
+        .log_to_console()
         .launch(data)
         .expect("launch failed");
 }

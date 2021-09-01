@@ -1,19 +1,3 @@
-// Copyright 2020 The Druid Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-//! A tree widget.
-
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::marker::PhantomData;
@@ -28,14 +12,8 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::selectors;
+use druid_widget_nursery::selectors;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ChrootStatus {
-    YES,
-    NO,
-    ROOT,
-}
 
 // TODO:
 //   - TREE_CLOSE command that mirrors TreeOpen
@@ -53,17 +31,7 @@ selectors! {
     TREE_CHILD_SHOW,
     /// Command sent to children on close
     TREE_CHILD_HIDE,
-    /// Notification that moves the root of the tree to the first encountered branch node.
-    TREE_CHROOT,
-    /// Notificattion that ask a parent to register a chroot a this index.
-    /// Mostly for internal use.
-    TREE_CHROOT_CHILD: usize,
-    /// Notification that moves the chroot to the parent of the current virtual root.
-    /// Does nothing on the actual root.
-    TREE_CHROOT_UP,
-    /// Notify a child that it's now the chroot
-    TREE_NOTIFY_CHROOT: ChrootStatus,
-    /// Submitted as a notification, from the user's widget, the Selector payload is submited as
+    /// Submitted as a notification, from the user's widget, the Selector payload is submitted as
     /// a command to its parent. It's a workaround to simulate notifications between user's tree
     /// widgets.
     TREE_NOTIFY_PARENT: Selector,
@@ -71,7 +39,7 @@ selectors! {
     TREE_ACTIVATE_NODE,
 }
 
-/// A tree widget for a collection of items organized in a hierachical way.
+/// A tree widget for a collection of items organized in a hierarchical way.
 pub struct Tree<T, L>
     where
         T: TreeNode,
@@ -103,55 +71,9 @@ pub trait TreeNode
     /// Returns a mutable reference to the node's child at the given index
     fn for_child_mut(&mut self, index: usize, cb: impl FnMut(&mut Self, usize));
 
-    /// If a node is somewhere between the root and the virtual root return the
-    /// index of the next children in the this path otherwise return `None`
-    ///
-    /// The default implementation returns always `None`, disalowing chrooting.
-    ///
-    /// Here's a tree with get_chroot result for each node:
-    ///
-    /// - actual_root Some(1)
-    ///   - node0 None
-    ///     - node0-0 None
-    ///   - node1 Some(0)
-    ///     - virtual_root None
-    ///     - node1-1 None
-    ///
-    /// In this case the virutal root is `/actual_root/node1/virtual_root`
-    fn get_chroot(&self) -> Option<usize> {
-        None
-    }
-
-    /// Set the chroot of this widget to the provided index
-    #[allow(unused_variables)]
-    fn chroot(&mut self, idx: Option<usize>) {}
-
-    /// `is_branch` must return `true` if the data is considerd as a branch.
+    /// `is_branch` must return `true` if the data is considered as a branch.
     /// The default implementation returns `true` when `children_count()` is
     /// more than 0.
-    fn is_branch(&self) -> bool {
-        self.children_count() > 0
-    }
-
-    /// Remove the child at `index`
-    #[allow(unused_variables)]
-    fn rm_child(&mut self, index: usize) {}
-}
-
-
-pub trait TreeNodeRoot
-    where
-        Self: Data + std::fmt::Debug,
-{
-    /// Returns how many children are below this node. It could be zero if this is a leaf.
-    fn children_count(&self) -> usize;
-
-    /// Returns a reference to the node's child at the given index
-    fn get_child(&self, index: usize) -> &Self;
-
-    /// Returns a mutable reference to the node's child at the given index
-    fn for_child_mut(&mut self, index: usize, cb: impl FnMut(&mut Self, usize));
-
     fn is_branch(&self) -> bool {
         self.children_count() > 0
     }
@@ -383,7 +305,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
                 }
             }
             Event::Notification(notif) if notif.is(TREE_NODE_REMOVE) => {
-                // we were comanded to remove ourselves. Let's tell our parent.
+                // we were commanded to remove ourselves. Let's tell our parent.
                 ctx.submit_notification(TREE_CHILD_REMOVE_INTERNAL.with(self.index as i32));
                 ctx.set_handled();
                 None
@@ -401,34 +323,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
                 ctx.children_changed();
                 None
             }
-            Event::Notification(notif) if notif.is(TREE_CHROOT) => {
-                data.chroot(None);
-                ctx.submit_notification(TREE_CHROOT_CHILD.with(self.index));
-                ctx.set_handled();
-                None
-            }
-            Event::Notification(notif) if notif.is(TREE_CHROOT_CHILD) => {
-                let chroot_idx = notif.get(TREE_CHROOT_CHILD).unwrap();
-                data.chroot(Some(*chroot_idx));
-                ctx.submit_notification(TREE_CHROOT_CHILD.with(self.index));
-                ctx.set_handled();
-                None
-            }
-            Event::Command(cmd) if cmd.is(TREE_NOTIFY_CHROOT) => {
-                ctx.submit_command(cmd.clone().to(self.widget.id()));
-                ctx.submit_command(cmd.clone().to(self.opener.id()));
-                ctx.children_changed();
-                ctx.request_paint();
-                ctx.set_handled();
-                None
-            }
-            Event::Notification(notif) if notif.is(TREE_CHROOT_UP) => {
-                if data.get_chroot().is_some() {
-                    data.chroot(None);
-                    ctx.set_handled();
-                }
-                None
-            }
             Event::Notification(notif) if notif.is(TREE_NOTIFY_PARENT) => {
                 if self.widget.id() != notif.source() {
                     let notif = notif.get(TREE_NOTIFY_PARENT).unwrap();
@@ -441,7 +335,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
         };
 
         // get the unhandled event or return
-        let event = if let Some(evt) = event { evt } else { return };
+        let event = if let Some(evt) = event { evt } else { return; };
 
         // don't go further with unhandled notifications
         if let Event::Notification(_) = event {
@@ -454,9 +348,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
             // send the event to the opener if the widget is visible or the event also targets
             // hidden widgets.
             let before = self.expand_lens.get(data);
-            if chrooted.is_none() | event.should_propagate_to_hidden() {
-                self.opener.event(ctx, event, data, env);
-            }
+            self.opener.event(ctx, event, data, env);
             let expanded = self.expand_lens.get(data);
 
             if expanded != before {
@@ -481,8 +373,8 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
                 ctx.request_layout();
             }
             // Forward to children nodes
-            if event.should_propagate_to_hidden() | (expanded & before) {
-                // forward inconditionaly
+            if event.should_propagate_to_hidden() {
+                // forward unconditionally
                 for (index, child_widget_node) in self.children.iter_mut().enumerate() {
                     data.for_child_mut(index, |data: &mut T, _index: usize| {
                         if child_widget_node.is_initialized() {
@@ -490,16 +382,17 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
                         }
                     });
                 }
+            } else if expanded & before {
+                for (index, child_widget_node) in self.children.iter_mut().enumerate() {
+                    data.for_child_mut(index, |data: &mut T, _index: usize| {
+                        child_widget_node.event(ctx, event, data, env)
+                    });
+                }
             }
         }
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
-        if let Some(idx) = data.get_chroot() {
-            if !event.should_propagate_to_hidden() {
-                return self.children[idx].lifecycle(ctx, event, data.get_child(idx), env);
-            }
-        }
         self.opener.lifecycle(ctx, event, data, env);
         self.widget.lifecycle(ctx, event, data, env);
         if data.is_branch() & (event.should_propagate_to_hidden() | self.expand_lens.get(data)) {
@@ -535,7 +428,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
 
     // TODO: the height calculation ignores the inner widget height. issue #61
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
-
         let basic_size = env.get(theme::BASIC_WIDGET_HEIGHT);
         let indent = env.get(theme::BASIC_WIDGET_HEIGHT); // For a lack of a better definition
         let mut min_width = bc.min().width;
@@ -578,7 +470,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
 
             let mut next_index: usize = 0;
             for (index, child_widget_node) in self.children.iter_mut().enumerate() {
-                // In case we have lazily instanciated children nodes,
+                // In case we have lazily instantiated children nodes,
                 // we may skip some indices. This catches up the correct height.
                 if index != next_index {
                     size.height += (index - next_index) as f64 * basic_size;
@@ -604,10 +496,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone> Widget<T> for TreeNodeWidget<T, L> {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        // if we're in the chroot path, paint the chroot child.
-        if let Some(idx) = data.get_chroot() {
-            return self.children[idx].paint(ctx, data.get_child(idx), env);
-        }
         self.opener.paint(ctx, data, env);
         self.widget.paint(ctx, data, env);
         if data.is_branch() & self.expand_lens.get(data) {
@@ -637,7 +525,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Tree<T, L> {
                 0,
                 expand_lens,
             )),
-            // dumy chroot id at creation.
+            // dummy chroot id at creation.
             chroot: WidgetId::next(),
         }
     }
@@ -655,88 +543,18 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Tree<T, L> {
     }
 }
 
-/// Default tree, supplying Label if the nodes implement the Display trait.
-/// TODO: this DOES NOT implement `Default`, as we must pass the expand_lens.
-///       At least, find a less confusing name.
-impl<T: TreeNode + Display, L: Lens<T, bool> + Clone + 'static> Tree<T, L> {
-    pub fn default(expand_lens: L) -> Self {
-        let make_widget: TreeItemFactory<T> = Arc::new(Box::new(|| {
-            Box::new(Label::dynamic(|data: &T, _env| format!("{}", data)))
-        }));
-        let el = expand_lens.clone();
-        let make_opener: Arc<Box<OpenerFactory<T>>> =
-            Arc::new(Box::new(move || Box::new(make_wedge(el.clone()))));
-        Tree {
-            root_node: WidgetPod::new(TreeNodeWidget::new(
-                make_widget,
-                make_opener,
-                0,
-                expand_lens,
-            )),
-            chroot: WidgetId::next(),
-        }
-    }
-}
 
 // Implement the Widget trait for Tree
 impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Widget<T> for Tree<T, L> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
-        if let Event::Notification(notif) = event {
-            if notif.is(TREE_CHROOT_CHILD) {
-                ctx.set_handled();
-                let root_node_id = self.root_node.id();
-                let (chroot, _) = Tree::<T, L>::get_chroot_from(&mut self.root_node, data);
-                if chroot.id() != self.chroot {
-                    ctx.submit_command(
-                        TREE_NOTIFY_CHROOT
-                            .with(if chroot.id() == root_node_id {
-                                ChrootStatus::ROOT
-                            } else {
-                                ChrootStatus::YES
-                            })
-                            .to(chroot.id()),
-                    );
-                    ctx.submit_command(TREE_NOTIFY_CHROOT.with(ChrootStatus::NO).to(self.chroot));
-                    self.chroot = chroot.id();
-                }
-                ctx.children_changed();
-            }
-            return;
-        }
-        // self.chroot_up.event(ctx, event, &mut (), env);
         self.root_node.event(ctx, event, data, env);
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
-        if let LifeCycle::WidgetAdded = event {
-            // self.root_node.widget_mut().make_widget();
-            // init the chroot state.
-            let root_node_id = self.root_node.id();
-            let (chroot, _) = Tree::<T, L>::get_chroot_from(&mut self.root_node, data);
-            if chroot.id() != root_node_id {
-                ctx.submit_command(TREE_NOTIFY_CHROOT.with(ChrootStatus::YES).to(chroot.id()));
-            }
-            ctx.submit_command(TREE_NOTIFY_CHROOT.with(ChrootStatus::ROOT).to(root_node_id));
-        }
         self.root_node.lifecycle(ctx, event, data, env);
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &T, data: &T, env: &Env) {
-        let root_node_id = self.root_node.id();
-        let (chroot, _) = Tree::<T, L>::get_chroot_from(&mut self.root_node, data);
-        if chroot.id() != self.chroot {
-            ctx.submit_command(
-                TREE_NOTIFY_CHROOT
-                    .with(if chroot.id() == root_node_id {
-                        ChrootStatus::ROOT
-                    } else {
-                        ChrootStatus::YES
-                    })
-                    .to(chroot.id()),
-            );
-            ctx.submit_command(TREE_NOTIFY_CHROOT.with(ChrootStatus::NO).to(self.chroot));
-            self.chroot = chroot.id();
-        }
         self.root_node.update(ctx, data, env);
     }
 
@@ -748,7 +566,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone + 'static> Widget<T> for Tree<T, L> {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        let (root, chroot_data) = Tree::<T, L>::get_chroot_from(&mut self.root_node, data);
-        root.paint(ctx, chroot_data, env);
+        self.root_node.paint(ctx, data, env);
     }
 }

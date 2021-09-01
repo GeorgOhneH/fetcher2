@@ -10,7 +10,7 @@ edition = "2018"
 config_derive = { path = "./config_derive" }
 config = { path = "./config" }
 fetcher2_macro = { path = "./fetcher2_macro" }
-clap = "3.0.0-beta.2"
+#clap = "3.0.0-beta.2"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_yaml = "0.8"
 async-trait = "0.1"
@@ -44,6 +44,6 @@ pulldown-cmark = "0.8.0"
 open = "1"
 tracing-subscriber = "0.2"
 
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "f19ddf1"  }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }
 druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery" }

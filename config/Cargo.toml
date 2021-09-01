@@ -13,7 +13,6 @@ serde_yaml = "0.8"
 lazy_static = "1"
 thiserror = "1.0"
 log = "0.4"
-track = "0.1"
-druid = { git = "https://github.com/linebender/druid.git", features = ["im"], rev = "f19ddf1" }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }
 druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery" }
