@@ -65,7 +65,7 @@ impl<T, const N: usize> Header<T, N> {
             is_bar_hover: false,
             click_offset: 0.0,
             current: None,
-            children: children.into_iter(|child| WidgetPod::new(child).boxed()),
+            children: children.map(|child| WidgetPod::new(child).boxed()),
         }
     }
 
@@ -85,12 +85,8 @@ impl<T, const N: usize> Header<T, N> {
     ///
     /// The value must be between `0.0` and `1.0`, inclusive.
     /// The default split point is `0.5`.
-    pub fn split_point(mut self, split_point: f64) -> Self {
-        assert!(
-            (0.0..=1.0).contains(&split_point),
-            "split_point must be in the range [0.0-1.0]!"
-        );
-        self.chosen_size = split_point;
+    pub fn split_point(mut self, size: [f64; N]) -> Self {
+        self.effective_size = size;
         self
     }
 
@@ -98,10 +94,8 @@ impl<T, const N: usize> Header<T, N> {
     ///
     /// The value must be greater than or equal to `0.0`.
     /// The value will be rounded up to the nearest integer.
-    pub fn min_size(mut self, first: f64, second: f64) -> Self {
-        assert!(first >= 0.0);
-        assert!(second >= 0.0);
-        self.min_size = (first.ceil(), second.ceil());
+    pub fn min_size(mut self, size: [f64; N]) -> Self {
+        self.min_size = size;
         self
     }
 
@@ -177,7 +171,7 @@ impl<T, const N: usize> Header<T, N> {
     /// given the specified total size.
     fn bar_edges(&self) -> [(f64, f64); N] {
         let bar_area = self.bar_area();
-        let result = [(0., 0.); N];
+        let mut result = [(0., 0.); N];
         let mut total_size = 0.;
         for (idx, size) in self.effective_size.iter().enumerate() {
             result[idx] = (size + total_size, total_size + size + bar_area);
@@ -192,11 +186,11 @@ impl<T, const N: usize> Header<T, N> {
             Axis::Horizontal => (mouse_pos.x, size.width),
             Axis::Vertical => (mouse_pos.x, size.height),
         };
-        for (idx, (edge1, edge2)) in self.bar_edges().into_iter().enumerate() {
-            if max_size < edge2 {
+        for (idx, (edge1, edge2)) in self.bar_edges().iter().enumerate() {
+            if max_size < *edge2 {
                 break;
             }
-            if m_pos >= edge1 && m_pos <= edge2 {
+            if m_pos >= *edge1 && m_pos <= *edge2 {
                 return Some(idx);
             }
         }
@@ -206,7 +200,7 @@ impl<T, const N: usize> Header<T, N> {
     /// Set a new chosen split point.
     fn update_split_point(&mut self, idx: usize, mouse_pos: f64) {
         let min_limit = self.min_size[idx];
-        let size = self.widget_start(idx) - mouse_pos;
+        let size = mouse_pos - self.widget_start(idx);
         self.effective_size[idx] = size.max(min_limit);
     }
 
@@ -221,56 +215,57 @@ impl<T, const N: usize> Header<T, N> {
 
     fn paint_solid_bar(&mut self, ctx: &mut PaintCtx, env: &Env) {
         let size = ctx.size();
-        let (edge1, edge2) = self.bar_edges();
         let padding = self.bar_padding();
-        let rect = match self.split_axis {
-            Axis::Horizontal => Rect::from_points(
-                Point::new(edge1 + padding.ceil(), 0.0),
-                Point::new(edge2 - padding.floor(), size.height),
-            ),
-            Axis::Vertical => Rect::from_points(
-                Point::new(0.0, edge1 + padding.ceil()),
-                Point::new(size.width, edge2 - padding.floor()),
-            ),
-        };
-        let splitter_color = self.bar_color(env);
-        ctx.fill(rect, &splitter_color);
+        for (edge1, edge2) in self.bar_edges() {
+            let rect = match self.split_axis {
+                Axis::Horizontal => Rect::from_points(
+                    Point::new(edge1 + padding.ceil(), 0.0),
+                    Point::new(edge2 - padding.floor(), size.height),
+                ),
+                Axis::Vertical => Rect::from_points(
+                    Point::new(0.0, edge1 + padding.ceil()),
+                    Point::new(size.width, edge2 - padding.floor()),
+                ),
+            };
+            let splitter_color = self.bar_color(env);
+            ctx.fill(rect, &splitter_color);
+        }
     }
 
-    fn paint_stroked_bar(&mut self, ctx: &mut PaintCtx, env: &Env) {
-        let size = ctx.size();
-        // Set the line width to a third of the splitter bar size,
-        // because we'll paint two equal lines at the edges.
-        let line_width = (self.bar_size / 3.0).floor();
-        let line_midpoint = line_width / 2.0;
-        let (edge1, edge2) = self.bar_edges(size);
-        let padding = self.bar_padding();
-        let (line1, line2) = match self.split_axis {
-            Axis::Horizontal => (
-                Line::new(
-                    Point::new(edge1 + line_midpoint + padding.ceil(), 0.0),
-                    Point::new(edge1 + line_midpoint + padding.ceil(), size.height),
-                ),
-                Line::new(
-                    Point::new(edge2 - line_midpoint - padding.floor(), 0.0),
-                    Point::new(edge2 - line_midpoint - padding.floor(), size.height),
-                ),
-            ),
-            Axis::Vertical => (
-                Line::new(
-                    Point::new(0.0, edge1 + line_midpoint + padding.ceil()),
-                    Point::new(size.width, edge1 + line_midpoint + padding.ceil()),
-                ),
-                Line::new(
-                    Point::new(0.0, edge2 - line_midpoint - padding.floor()),
-                    Point::new(size.width, edge2 - line_midpoint - padding.floor()),
-                ),
-            ),
-        };
-        let splitter_color = self.bar_color(env);
-        ctx.stroke(line1, &splitter_color, line_width);
-        ctx.stroke(line2, &splitter_color, line_width);
-    }
+    // fn paint_stroked_bar(&mut self, ctx: &mut PaintCtx, env: &Env) {
+    //     let size = ctx.size();
+    //     // Set the line width to a third of the splitter bar size,
+    //     // because we'll paint two equal lines at the edges.
+    //     let line_width = (self.bar_size / 3.0).floor();
+    //     let line_midpoint = line_width / 2.0;
+    //     let (edge1, edge2) = self.bar_edges(size);
+    //     let padding = self.bar_padding();
+    //     let (line1, line2) = match self.split_axis {
+    //         Axis::Horizontal => (
+    //             Line::new(
+    //                 Point::new(edge1 + line_midpoint + padding.ceil(), 0.0),
+    //                 Point::new(edge1 + line_midpoint + padding.ceil(), size.height),
+    //             ),
+    //             Line::new(
+    //                 Point::new(edge2 - line_midpoint - padding.floor(), 0.0),
+    //                 Point::new(edge2 - line_midpoint - padding.floor(), size.height),
+    //             ),
+    //         ),
+    //         Axis::Vertical => (
+    //             Line::new(
+    //                 Point::new(0.0, edge1 + line_midpoint + padding.ceil()),
+    //                 Point::new(size.width, edge1 + line_midpoint + padding.ceil()),
+    //             ),
+    //             Line::new(
+    //                 Point::new(0.0, edge2 - line_midpoint - padding.floor()),
+    //                 Point::new(size.width, edge2 - line_midpoint - padding.floor()),
+    //             ),
+    //         ),
+    //     };
+    //     let splitter_color = self.bar_color(env);
+    //     ctx.stroke(line1, &splitter_color, line_width);
+    //     ctx.stroke(line2, &splitter_color, line_width);
+    // }
 }
 
 impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
@@ -369,93 +364,83 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
         bc.debug_check("Split");
-
-        let mut my_size = bc.max();
         let bar_area = self.bar_area();
-        let reduced_size = Size::new(
-            (my_size.width - bar_area).max(0.),
-            (my_size.height - bar_area).max(0.),
-        );
+        let mut my_size = Size::new(0., 0.);
+        let mut current_length = 0.;
+        let mut paint_rect = Rect::ZERO;
+        // TODO clean up
+        for (idx, child) in self.children.iter_mut().enumerate() {
+            let child_bc = match self.split_axis {
+                Axis::Horizontal => {
+                    let child_width = self.effective_size[idx];
+                    BoxConstraints::new(
+                        Size::new(child_width, bc.min().height),
+                        Size::new(child_width, bc.max().height),
+                    )
+                }
+                Axis::Vertical => {
+                    let child_height = self.effective_size[idx];
+                    BoxConstraints::new(
+                        Size::new(bc.min().width, child_height),
+                        Size::new(bc.max().width, child_height),
+                    )
+                }
+            };
+            let child_size = child.layout(ctx, &child_bc, data, env);
 
-        let (child1_bc, child2_bc) = match self.split_axis {
-            Axis::Horizontal => {
-                let child1_width = (reduced_size.width * self.effective_size)
-                    .floor()
-                    .max(0.0);
-                let child2_width = (reduced_size.width - child1_width).max(0.0);
-                (
-                    BoxConstraints::new(
-                        Size::new(child1_width, bc.min().height),
-                        Size::new(child1_width, bc.max().height),
-                    ),
-                    BoxConstraints::new(
-                        Size::new(child2_width, bc.min().height),
-                        Size::new(child2_width, bc.max().height),
-                    ),
-                )
-            }
-            Axis::Vertical => {
-                let child1_height = (reduced_size.height * self.effective_size)
-                    .floor()
-                    .max(0.0);
-                let child2_height = (reduced_size.height - child1_height).max(0.0);
-                (
-                    BoxConstraints::new(
-                        Size::new(bc.min().width, child1_height),
-                        Size::new(bc.max().width, child1_height),
-                    ),
-                    BoxConstraints::new(
-                        Size::new(bc.min().width, child2_height),
-                        Size::new(bc.max().width, child2_height),
-                    ),
-                )
-            }
-        };
-        let child1_size = self.child1.layout(ctx, &child1_bc, data, env);
-        let child2_size = self.child2.layout(ctx, &child2_bc, data, env);
+            let child_pos = match self.split_axis {
+                Axis::Horizontal => {
+                    my_size.height = my_size.height.max(child_size.height);
+                    let p = Point::new(current_length, 0.0);
+                    current_length += child_size.width + bar_area;
+                    p
+                }
+                Axis::Vertical => {
+                    my_size.width = my_size.width.max(child_size.width);
+                    let p = Point::new(0.0, current_length);
+                    current_length += child_size.height + bar_area;
+                    p
+                }
+            };
+            child.set_origin(ctx, data, env, child_pos);
 
-        // Top-left align for both children, out of laziness.
-        // Reduce our unsplit direction to the larger of the two widgets
-        let child1_pos = Point::ORIGIN;
-        let child2_pos = match self.split_axis {
-            Axis::Horizontal => {
-                my_size.height = child1_size.height.max(child2_size.height);
-                Point::new(child1_size.width + bar_area, 0.0)
-            }
-            Axis::Vertical => {
-                my_size.width = child1_size.width.max(child2_size.width);
-                Point::new(0.0, child1_size.height + bar_area)
-            }
-        };
-        self.child1.set_origin(ctx, data, env, child1_pos);
-        self.child2.set_origin(ctx, data, env, child2_pos);
+            paint_rect = paint_rect.union(child.paint_rect());
+        }
 
-        let paint_rect = self.child1.paint_rect().union(self.child2.paint_rect());
+        // TODO?
+        // let paint_rect = self.child1.paint_rect().union(self.child2.paint_rect());
+        // let insets = paint_rect - my_size.to_rect();
+        // ctx.set_paint_insets(insets);
         let insets = paint_rect - my_size.to_rect();
         ctx.set_paint_insets(insets);
 
-        trace!("Computed layout: size={}, insets={:?}", my_size, insets);
-        my_size
+        match self.split_axis {
+            Axis::Horizontal => my_size.width = current_length,
+            Axis::Vertical => my_size.height = current_length,
+        }
+        bc.constrain(my_size)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        if self.solid {
-            self.paint_solid_bar(ctx, env);
-        } else {
-            self.paint_stroked_bar(ctx, env);
+        // if self.solid {
+        //     self.paint_solid_bar(ctx, env);
+        // } else {
+        //     self.paint_stroked_bar(ctx, env);
+        // }
+        self.paint_solid_bar(ctx, env);
+        for child in self.children.iter_mut() {
+            child.paint(ctx, data, env)
         }
-        self.child1.paint(ctx, data, env);
-        self.child2.paint(ctx, data, env);
     }
 
-    fn debug_state(&self, data: &T) -> DebugState {
-        DebugState {
-            display_name: self.short_type_name().to_string(),
-            children: vec![
-                self.child1.widget().debug_state(data),
-                self.child2.widget().debug_state(data),
-            ],
-            ..Default::default()
-        }
-    }
+    // fn debug_state(&self, data: &T) -> DebugState {
+    //     DebugState {
+    //         display_name: self.short_type_name().to_string(),
+    //         children: vec![
+    //             self.child1.widget().debug_state(data),
+    //             self.child2.widget().debug_state(data),
+    //         ],
+    //         ..Default::default()
+    //     }
+    // }
 }

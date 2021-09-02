@@ -1,5 +1,5 @@
 mod split;
-mod tree;
-mod header;
+// mod tree;
+pub mod header;
 
 pub use split::{Split, SplitOrBox};

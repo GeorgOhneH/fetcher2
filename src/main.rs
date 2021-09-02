@@ -129,6 +129,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
+use crate::widgets::header::Header;
 
 #[derive(Clone, Lens, Debug, Data)]
 struct AppData {
@@ -190,13 +191,14 @@ pub fn main() {
     //     .init();
 
     app_launcher
-        .delegate(delegate)
+        // .delegate(delegate)
         .log_to_console()
         .launch(data)
         .expect("launch failed");
 }
 
 fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
+    let header = Header::columns([Label::new("Hello"), Label::new("Hello2"), Label::new("Hello3")]).draggable(true);
     let start = Button::new("Start").on_click(|ctx, _, _| {
         ctx.submit_command(Command::new(
             MSG_THREAD,
@@ -238,8 +240,9 @@ fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
         .with_child(start)
         .with_child(stop)
         .with_child(settings)
+        .with_child(header)
         .with_flex_child(Scroll::new(template).vertical().lens(AppData::template), 1.)
-    // .debug_paint_layout()
+    .debug_paint_layout()
 }
 
 #[derive(Clone, Lens, Debug, Data)]
