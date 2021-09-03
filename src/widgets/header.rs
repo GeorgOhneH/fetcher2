@@ -16,8 +16,8 @@
 
 use druid::debug_state::DebugState;
 use druid::kurbo::Line;
-use druid::widget::{Axis, Label};
 use druid::widget::prelude::*;
+use druid::widget::{Axis, Label};
 use druid::{theme, Color, Cursor, Data, Point, Rect, WidgetPod};
 
 /// A container containing two other widgets, splitting the area either horizontally or vertically.
@@ -50,10 +50,7 @@ impl<T, const N: usize> Header<T, N> {
     ///
     /// Horizontal split axis means that the children are left and right.
     /// Vertical split axis means that the children are up and down.
-    fn new(
-        split_axis: Axis,
-        children: [impl Widget<T> + 'static; N],
-    ) -> Self {
+    fn new(split_axis: Axis, children: [impl Widget<T> + 'static; N]) -> Self {
         Header {
             split_axis,
             effective_size: [100.0; N],
@@ -165,6 +162,17 @@ impl<T, const N: usize> Header<T, N> {
 
     fn widget_end(&self, idx: usize) -> f64 {
         self.widget_start(idx) + self.effective_size[idx]
+    }
+
+    pub fn widget_pos(&self) -> [(f64, f64); N] {
+        let bar_area = self.bar_area();
+        let mut result = [(0., 0.); N];
+        let mut total_size = 0.;
+        for (idx, size) in self.effective_size.iter().enumerate() {
+            result[idx] = (total_size, total_size+size);
+            total_size += size + bar_area
+        }
+        result
     }
 
     /// Returns the location of the edges of the splitter bar area,
@@ -325,7 +333,8 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
                         ctx.request_layout();
                     } else {
                         // If not active, set cursor when hovering state changes
-                        let hover = ctx.is_hot() && self.bar_hit_test(ctx.size(), mouse.pos).is_some();
+                        let hover =
+                            ctx.is_hot() && self.bar_hit_test(ctx.size(), mouse.pos).is_some();
                         if hover != self.is_bar_hover {
                             self.is_bar_hover = hover;
                             if hover {

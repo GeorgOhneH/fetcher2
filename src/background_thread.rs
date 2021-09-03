@@ -53,6 +53,7 @@ pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: T
 }
 
 async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Template) {
+    return;
     let dsettings = Arc::new(DownloadSettings {
         username: Some(std::env::var("USERNAME").unwrap()),
         password: Some(std::env::var("PASSWORD").unwrap()),

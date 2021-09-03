@@ -18,6 +18,7 @@ use druid::im::Vector;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_widget::{NodeWidget};
 use crate::template::nodes::node_data::NodeData;
+use crate::widgets::tree::{TreeNode, TreeNodeRoot};
 
 
 #[derive(Data, Clone, Debug)]
@@ -25,6 +26,24 @@ pub struct RootNodeData {
     pub children: Vector<NodeData>,
 }
 
+
+impl TreeNodeRoot<NodeData> for RootNodeData {
+    fn children_count(&self) -> usize {
+        self.children.len()
+    }
+
+    fn get_child(&self, index: usize) -> &NodeData {
+        &self.children[index]
+    }
+
+    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut NodeData, usize)) {
+        cb(&mut self.children[index], index);
+    }
+
+    fn rm_child(&mut self, index: usize) {
+        self.children.remove(index);
+    }
+}
 
 /// An internal widget used to display a single node and its children
 /// This is used recursively to build the tree.

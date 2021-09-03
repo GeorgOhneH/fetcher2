@@ -2,6 +2,7 @@
 #![feature(try_trait_v2)]
 #![feature(control_flow_enum)]
 #![feature(backtrace)]
+#![feature(type_alias_impl_trait)]
 #![allow(unused_imports)]
 
 mod background_thread;
@@ -102,7 +103,10 @@ struct Test3 {
 
 use crate::cstruct_window::CStructWindow;
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
+use crate::template::nodes::node_data::NodeData;
 use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::widgets::header::Header;
+use crate::widgets::tree::Tree;
 use config::CStruct;
 use config::State;
 use druid::im::{vector, Vector};
@@ -118,7 +122,6 @@ use druid::{
     MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx,
     Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowLevel,
 };
-use druid_widget_nursery::Tree;
 use flume;
 use futures::future::BoxFuture;
 use std::any::Any;
@@ -129,7 +132,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
-use crate::widgets::header::Header;
+use crate::template::nodes::root_widget::RootNodeData;
 
 #[derive(Clone, Lens, Debug, Data)]
 struct AppData {
@@ -198,7 +201,25 @@ pub fn main() {
 }
 
 fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
-    let header = Header::columns([Label::new("Hello"), Label::new("Hello2"), Label::new("Hello3")]).draggable(true);
+    // let header = Header::columns([
+    //     Label::new("Hello"),
+    //     Label::new("Hello2"),
+    //     Label::new("Hello3"),
+    // ])
+    // .draggable(true);
+    let tree = Tree::new(
+        [
+            Label::new("Hello"),
+            Label::new("Hello2"),
+            Label::new("Hello3"),
+        ],
+        [
+            Arc::new(|| Box::new(Label::new("Hello"))),
+            Arc::new(|| Box::new(Label::new("Hello2"))),
+            Arc::new(|| Box::new(Label::new("Hello3"))),
+        ],
+        NodeData::expanded,
+    ).lens(AppData::template.then(TemplateData::root));
     let start = Button::new("Start").on_click(|ctx, _, _| {
         ctx.submit_command(Command::new(
             MSG_THREAD,
@@ -240,9 +261,10 @@ fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
         .with_child(start)
         .with_child(stop)
         .with_child(settings)
-        .with_child(header)
+        // .with_child(header)
+        .with_child(tree)
         .with_flex_child(Scroll::new(template).vertical().lens(AppData::template), 1.)
-    .debug_paint_layout()
+        .debug_paint_layout()
 }
 
 #[derive(Clone, Lens, Debug, Data)]
@@ -264,32 +286,32 @@ fn hello3() -> impl Widget<Vector<bool>> {
     Flex::column()
         .with_child(List::new(|| Checkbox::new("Hello").center()))
         .with_child(
-            Button::new("Add")
-                .on_click(|_, c_vec: &mut Vector<bool>, _env| c_vec.push_back(false))
+            Button::new("Add").on_click(|_, c_vec: &mut Vector<bool>, _env| c_vec.push_back(false)),
         )
 }
 fn hello2() -> impl Widget<Hello> {
     Flex::column()
         .with_child(hello3())
         .with_child(
-            Button::new("Sub Window").on_click(|ctx, data: &mut Vector<bool>, env| {
-                let window = ctx.window();
-                let win_pos = window.get_position();
-                let (win_size_w, win_size_h) = window.get_size().into();
-                let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-                let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-                ctx.new_sub_window(
-                    WindowConfig::default()
-                        .show_titlebar(true)
-                        .window_size(Size::new(size_w, size_h))
-                        .set_position(pos)
-                        .set_level(WindowLevel::Modal),
-                    hello3(),
-                    data.clone(),
-                    env.clone(),
-                );
-            })
-                .padding(0.) // So it's enclosed in a WidgetPod, (just a nop),
+            Button::new("Sub Window")
+                .on_click(|ctx, data: &mut Vector<bool>, env| {
+                    let window = ctx.window();
+                    let win_pos = window.get_position();
+                    let (win_size_w, win_size_h) = window.get_size().into();
+                    let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
+                    let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+                    ctx.new_sub_window(
+                        WindowConfig::default()
+                            .show_titlebar(true)
+                            .window_size(Size::new(size_w, size_h))
+                            .set_position(pos)
+                            .set_level(WindowLevel::Modal),
+                        hello3(),
+                        data.clone(),
+                        env.clone(),
+                    );
+                })
+                .padding(0.), // So it's enclosed in a WidgetPod, (just a nop),
         )
         .lens(Hello::vec)
 }

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![feature(backtrace)]
+#![feature(int_roundings)]
 use serde::Serialize;
 use std::collections::HashMap;
 

@@ -8,7 +8,7 @@ use druid::widget::Label;
 use druid::{theme, ExtEventSink, Rect, Selector, SingleUse, WidgetId};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod,
+    Point, UpdateCtx, Widget, WidgetPod, Lens,
 };
 
 use crate::template::nodes::node_widget::{NodeWidget, SELECT};
@@ -21,7 +21,7 @@ use druid_widget_nursery::{selectors, Wedge};
 use std::cmp::max;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Data)]
+#[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {
     pub root: RootNodeData,
     pub selected: Option<Vector<usize>>,

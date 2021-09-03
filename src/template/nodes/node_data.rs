@@ -8,7 +8,7 @@ use druid::widget::{Controller, Label};
 use druid::{theme, Menu, WidgetExt, WidgetId, MenuItem};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod,
+    Point, UpdateCtx, Widget, WidgetPod, Lens,
 };
 
 use crate::template::communication::NODE_EVENT;
@@ -24,9 +24,11 @@ use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 use std::path::PathBuf;
+use crate::widgets::tree::TreeNode;
 
-#[derive(Data, Clone, Debug)]
+#[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {
+    pub expanded: bool,
     pub ty: NodeTypeData,
     pub meta_data: MetaData,
     pub children: Vector<NodeData>,
@@ -108,6 +110,23 @@ impl NodeData {
     }
 }
 
+impl TreeNode for NodeData {
+    fn children_count(&self) -> usize {
+        self.children.len()
+    }
+
+    fn get_child(&self, index: usize) -> &Self {
+        &self.children[index]
+    }
+
+    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Self, usize)) {
+        cb(&mut self.children[index], index);
+    }
+
+    fn rm_child(&mut self, index: usize) {
+        self.children.remove(index);
+    }
+}
 // pub struct ContextMenuController;
 //
 // impl<W: Widget<AppData>> Controller<AppData, W> for ContextMenuController {

@@ -156,6 +156,7 @@ impl Node {
         widget.add_children(children);
 
         let datum = NodeData {
+            expanded: true,
             children: data.into(),
             meta_data: self.meta_data.clone(),
             cached_path: self.cached_path.clone(),
