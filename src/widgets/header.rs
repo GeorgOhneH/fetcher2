@@ -20,6 +20,12 @@ use druid::widget::prelude::*;
 use druid::widget::{Axis, Label};
 use druid::{theme, Color, Cursor, Data, Point, Rect, WidgetPod};
 
+use druid_widget_nursery::selectors;
+
+selectors! {
+    HEADER_SIZE_CHANGED,
+}
+
 /// A container containing two other widgets, splitting the area either horizontally or vertically.
 pub struct Header<T, const N: usize> {
     split_axis: Axis,
@@ -169,7 +175,7 @@ impl<T, const N: usize> Header<T, N> {
         let mut result = [(0., 0.); N];
         let mut total_size = 0.;
         for (idx, size) in self.effective_size.iter().enumerate() {
-            result[idx] = (total_size, total_size+size);
+            result[idx] = (total_size, total_size + size);
             total_size += size + bar_area
         }
         result
@@ -330,6 +336,7 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
                             Axis::Vertical => mouse.pos.y,
                         } - self.click_offset;
                         self.update_split_point(self.current.unwrap(), effective_pos);
+                        ctx.submit_notification(HEADER_SIZE_CHANGED);
                         ctx.request_layout();
                     } else {
                         // If not active, set cursor when hovering state changes

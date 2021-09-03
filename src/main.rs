@@ -103,7 +103,7 @@ struct Test3 {
 
 use crate::cstruct_window::CStructWindow;
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
-use crate::template::nodes::node_data::NodeData;
+use crate::template::nodes::node_data::{NodeData, TemplateUpdate};
 use crate::template::widget::{TemplateData, TemplateWidget};
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
@@ -132,7 +132,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
-use crate::template::nodes::root_widget::RootNodeData;
+use crate::template::nodes::root_data::RootNodeData;
 
 #[derive(Clone, Lens, Debug, Data)]
 struct AppData {
@@ -194,32 +194,19 @@ pub fn main() {
     //     .init();
 
     app_launcher
-        // .delegate(delegate)
+        .delegate(delegate)
         .log_to_console()
         .launch(data)
         .expect("launch failed");
 }
 
-fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
+fn ui_builder() -> impl Widget<AppData> {
     // let header = Header::columns([
     //     Label::new("Hello"),
     //     Label::new("Hello2"),
     //     Label::new("Hello3"),
     // ])
     // .draggable(true);
-    let tree = Tree::new(
-        [
-            Label::new("Hello"),
-            Label::new("Hello2"),
-            Label::new("Hello3"),
-        ],
-        [
-            Arc::new(|| Box::new(Label::new("Hello"))),
-            Arc::new(|| Box::new(Label::new("Hello2"))),
-            Arc::new(|| Box::new(Label::new("Hello3"))),
-        ],
-        NodeData::expanded,
-    ).lens(AppData::template.then(TemplateData::root));
     let start = Button::new("Start").on_click(|ctx, _, _| {
         ctx.submit_command(Command::new(
             MSG_THREAD,
@@ -262,9 +249,8 @@ fn ui_builder(template: TemplateWidget) -> impl Widget<AppData> {
         .with_child(stop)
         .with_child(settings)
         // .with_child(header)
-        .with_child(tree)
-        .with_flex_child(Scroll::new(template).vertical().lens(AppData::template), 1.)
-        .debug_paint_layout()
+        .with_flex_child(Scroll::new(TemplateData::build_widget()).vertical().lens(AppData::template), 1.)
+        // .debug_paint_layout()
 }
 
 #[derive(Clone, Lens, Debug, Data)]

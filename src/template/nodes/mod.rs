@@ -1,6 +1,5 @@
-pub mod node_widget;
 pub mod root;
-pub mod root_widget;
+pub mod root_data;
 pub mod node;
 pub mod node_data;
 
@@ -21,7 +20,6 @@ use futures::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
 
-use crate::template::nodes::node_widget::{NodeWidget};
 use crate::template::node_type::{NodeType, NodeTypeData};
 
 

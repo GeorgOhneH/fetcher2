@@ -12,8 +12,7 @@ use druid::{
 };
 
 use crate::template::node_type::site::{Msg, SiteEvent};
-use crate::template::nodes::node_widget::{NodeWidget};
-use crate::template::nodes::root_widget::{RootNodeData, RootNodeWidget};
+use crate::template::nodes::root_data::{RootNodeData};
 use crate::template::Template;
 use crate::{Result, TError};
 use druid_widget_nursery::{selectors, Wedge};

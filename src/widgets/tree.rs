@@ -12,7 +12,7 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::widgets::header::Header;
+use crate::widgets::header::{Header, HEADER_SIZE_CHANGED};
 use druid_widget_nursery::selectors;
 use std::process::id;
 
@@ -436,6 +436,11 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
+        if let LifeCycle::WidgetAdded = event {
+            if self.update_children(data) {
+                ctx.children_changed();
+            }
+        }
         self.opener.lifecycle(ctx, event, data, env);
         self.widgets
             .iter_mut()
@@ -522,7 +527,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
                 (current_height - basic_size).max(0.) / 2.,
             ),
         );
-
         if self.expand_lens.get(data) {
             for (idx, child) in self.children.iter_mut().enumerate() {
                 let child_bc = BoxConstraints::new(
@@ -794,6 +798,16 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     for Tree<R, T, L, N>
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
+        match event {
+            Event::Notification(notif) if notif.is(HEADER_SIZE_CHANGED) => {
+                ctx.set_handled();
+                let sizes = self.header.widget().widget_pos();
+                self.root_node.widget_mut().update_sizes(sizes);
+                ctx.request_layout();
+                return;
+            }
+            _ => (),
+        }
         self.header.event(ctx, event, data, env);
         self.root_node.event(ctx, event, data, env);
     }

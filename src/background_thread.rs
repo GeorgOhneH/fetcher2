@@ -1,5 +1,5 @@
 use crate::delegate::{Msg, TemplateDelegate};
-use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::template::widget::{TemplateData};
 use config::CStruct;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
@@ -53,7 +53,6 @@ pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: T
 }
 
 async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Template) {
-    return;
     let dsettings = Arc::new(DownloadSettings {
         username: Some(std::env::var("USERNAME").unwrap()),
         password: Some(std::env::var("PASSWORD").unwrap()),

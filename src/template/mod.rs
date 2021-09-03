@@ -155,17 +155,6 @@ impl Template {
         Ok(())
     }
 
-    pub fn widget(&mut self) -> (TemplateData, TemplateWidget) {
-        let (root_data, root_widget) = self.root.widget();
-        let data = TemplateData { root: root_data, selected: None };
-        let header = vec![
-            Label::new("Name").boxed(),
-            Label::new("Added|Replaced 0|0").align_right().boxed(),
-            Label::new("Status").boxed(),
-        ];
-        (data, TemplateWidget::new(root_widget, header))
-    }
-
     pub fn set_sink(&mut self, sink: ExtEventSink) {
         self.comm.sink = Some(sink.clone());
         self.root.set_sink(sink);

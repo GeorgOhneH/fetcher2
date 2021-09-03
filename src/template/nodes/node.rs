@@ -19,7 +19,6 @@ use crate::template::communication::WidgetCommunication;
 use crate::template::node_type::site::{SiteEvent, SiteState};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node_data::{NodeData, NodeState};
-use crate::template::nodes::node_widget::NodeWidget;
 use crate::template::NodeIndex;
 use crate::utils::spawn_drop;
 use crate::TError;
@@ -143,27 +142,6 @@ impl Node {
 
         try_join_all(futures).await?;
         Ok(())
-    }
-
-    pub fn widget(&mut self) -> (NodeData, NodeWidget) {
-        let widget_id = WidgetId::next();
-        let mut widget = NodeWidget::new(true, widget_id.clone());
-        self.comm.id = Some(widget_id);
-
-        let (data, children): (Vec<_>, Vec<_>) =
-            self.children.iter_mut().map(|node| node.widget()).unzip();
-
-        widget.add_children(children);
-
-        let datum = NodeData {
-            expanded: true,
-            children: data.into(),
-            meta_data: self.meta_data.clone(),
-            cached_path: self.cached_path.clone(),
-            ty: self.ty.widget_data(),
-            state: NodeState::new(),
-        };
-        (datum, widget)
     }
 
     pub fn set_sink(&mut self, sink: ExtEventSink) {

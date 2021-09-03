@@ -17,8 +17,7 @@ use std::sync::Arc;
 
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node::{Node, PrepareStatus};
-use crate::template::nodes::node_widget::NodeWidget;
-use crate::template::nodes::root_widget::{RootNodeData, RootNodeWidget};
+use crate::template::nodes::root_data::{RootNodeData};
 use crate::template::NodeIndex;
 use std::collections::HashSet;
 

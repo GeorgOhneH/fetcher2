@@ -40,7 +40,7 @@ pub struct NodeData {
 }
 
 impl NodeData {
-    fn name(&self) -> String {
+    pub fn name(&self) -> String {
         if let Some(cache_path) = self.cached_path.as_ref() {
             cache_path
                 .file_name()
@@ -51,14 +51,14 @@ impl NodeData {
         }
     }
 
-    fn added_replaced(&self) -> (usize, usize) {
+    pub fn added_replaced(&self) -> (usize, usize) {
         match &self.ty {
             NodeTypeData::Site(site) => site.added_replaced(),
             NodeTypeData::Folder(_) => self.added_replaced_folder(),
         }
     }
 
-    fn added_replaced_folder(&self) -> (usize, usize) {
+    pub fn added_replaced_folder(&self) -> (usize, usize) {
         let init = match &self.ty {
             NodeTypeData::Site(site) => site.added_replaced(),
             NodeTypeData::Folder(_) => (0, 0),
@@ -71,7 +71,7 @@ impl NodeData {
             })
     }
 
-    fn state_string(&self) -> String {
+    pub fn state_string(&self) -> String {
         match &self.ty {
             NodeTypeData::Folder(_) => "".to_string(),
             NodeTypeData::Site(site) => match self.state.current_state() {
@@ -90,22 +90,6 @@ impl NodeData {
                     },
                 },
             },
-        }
-    }
-
-    pub fn widget(num: usize) -> Box<dyn Widget<Self>> {
-        match num {
-            0 => Label::dynamic(|data: &NodeData, _env| data.name())
-                .controller(TemplateUpdate)
-                .boxed(),
-            1 => Label::dynamic(|data: &NodeData, _env| {
-                let (add, repl) = data.added_replaced();
-                format!("{}|{}", add, repl)
-            })
-            .align_right()
-            .boxed(),
-            2 => Label::dynamic(|data: &NodeData, _| data.state_string()).boxed(),
-            _ => panic!("Not implemented"),
         }
     }
 }
@@ -218,7 +202,7 @@ impl PathState {
     }
 }
 
-struct TemplateUpdate;
+pub struct TemplateUpdate;
 
 impl<W: Widget<NodeData>> Controller<NodeData, W> for TemplateUpdate {
     fn event(
