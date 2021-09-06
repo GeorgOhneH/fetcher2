@@ -5,10 +5,10 @@ use std::sync::Arc;
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
-use druid::{theme, Menu, WidgetExt, WidgetId, MenuItem};
+use druid::{theme, Menu, MenuItem, WidgetExt, WidgetId};
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod, Lens,
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
+    Point, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::template::communication::NODE_EVENT;
@@ -19,12 +19,12 @@ use crate::template::node_type::site::{
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
 use crate::template::{MetaData, NodeIndex};
+use crate::widgets::tree::TreeNode;
 use crate::{AppData, TError};
-use druid::im::Vector;
+use druid::im::{HashSet, Vector};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 use std::path::PathBuf;
-use crate::widgets::tree::TreeNode;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {
@@ -35,6 +35,8 @@ pub struct NodeData {
 
     #[data(same_fn = "PartialEq::eq")]
     pub cached_path_segment: Option<PathBuf>,
+    #[data(same_fn = "PartialEq::eq")]
+    pub path: Option<PathBuf>,
 
     pub state: NodeState,
 }
@@ -56,8 +58,25 @@ impl NodeData {
         }
     }
 
+    pub fn child_indexes(
+        &self,
+        current_idx: NodeIndex,
+        set: &mut std::collections::HashSet<NodeIndex>,
+    ) {
+        for (i, child) in self.children.iter().enumerate() {
+            let mut child_idx = current_idx.clone();
+            child_idx.push(i);
+            child.child_indexes(child_idx, set);
+        }
+        set.insert(current_idx);
+    }
+
     pub fn name(&self) -> String {
-        if let Some(cache_path) = self.cached_path_segment.as_ref() {
+        if let Some(path) = &self.path {
+            path.file_name()
+                .map(|os_str| os_str.to_string_lossy().to_string())
+                .unwrap_or("Root".to_owned())
+        } else if let Some(cache_path) = self.cached_path_segment.as_ref() {
             cache_path
                 .file_name()
                 .map(|os_str| os_str.to_string_lossy().to_string())
@@ -127,33 +146,6 @@ impl TreeNode for NodeData {
         self.children.remove(index);
     }
 }
-// pub struct ContextMenuController;
-//
-// impl<W: Widget<AppData>> Controller<AppData, W> for ContextMenuController {
-//     fn event(
-//         &mut self,
-//         child: &mut W,
-//         ctx: &mut EventCtx,
-//         event: &Event,
-//         data: &mut AppData,
-//         env: &Env,
-//     ) {
-//         match event {
-//             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
-//                 ctx.show_context_menu(make_node_menu(), mouse.pos);
-//             }
-//             _ => child.event(ctx, event, data, env),
-//         }
-//     }
-// }
-
-fn make_node_menu() -> Menu<AppData> {
-    Menu::empty()
-        .entry(
-            MenuItem::new("Hello2")
-                .on_activate(|_ctx, data: &mut AppData, _env| {  }),
-        )
-}
 
 pub enum CurrentState {
     Idle,
@@ -198,23 +190,22 @@ impl PathState {
         }
     }
 
-    pub fn update(&mut self, event: PathEvent, cache_path: &mut Option<PathBuf>) {
+    pub fn update(&mut self, event: PathEvent, path: &mut Option<PathBuf>) {
         match event {
             PathEvent::Start => {
                 self.count += 1;
             }
-            PathEvent::Finish(path) => {
-                *cache_path = Some(path);
+            PathEvent::Finish(new_path) => {
+                *path = Some(new_path);
                 self.count -= 1;
             }
             PathEvent::Err(err) => {
                 self.count -= 1;
                 self.errs.push_back(Arc::new(err));
             }
-            PathEvent::Cached(path) => {
-                *cache_path = Some(path);
+            PathEvent::Cached(new_path) => {
+                *path = Some(new_path);
             }
         }
     }
 }
-

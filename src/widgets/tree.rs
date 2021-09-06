@@ -15,6 +15,7 @@ use druid::{
 use crate::widgets::header::{Header, HEADER_SIZE_CHANGED};
 use druid_widget_nursery::selectors;
 use std::process::id;
+use crate::template::NodeIndex;
 
 // TODO:
 //   - TREE_CLOSE command that mirrors TreeOpen
@@ -313,6 +314,17 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
             child.widget_mut().update_sizes(sizes)
         }
         self.sizes = sizes
+    }
+
+    pub fn at(&self, p: Point, idx: &mut Vec<usize>) {
+        idx.push(self.index);
+        for child in &self.children {
+            let rect = child.layout_rect();
+            if rect.contains(p) {
+                child.widget().at(Point::new(p.x-rect.x0, p.y-rect.y0), idx);
+                return;
+            }
+        }
     }
 }
 
@@ -632,16 +644,24 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
         }
         self.sizes = sizes
     }
+
+    pub fn at(&self, p: Point) -> Option<NodeIndex> {
+        for child in &self.children {
+            let rect = child.layout_rect();
+            if rect.contains(p) {
+                let mut r = Vec::new();
+                child.widget().at(Point::new(p.x-rect.x0, p.y-rect.y0), &mut r);
+                return Some(r);
+            }
+        }
+        None
+    }
 }
 
 impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<R>
     for TreeNodeRootWidget<R, T, L, N>
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
-        // match event {
-        //     Event::MouseMove(_) => (),
-        //     _ => eprintln!("{:?} {:?}", ctx.widget_id(), event),
-        // }
         let event = match event {
             Event::Notification(notif) if notif.is(TREE_OPEN) => {
                 panic!("should not happen")
@@ -797,7 +817,16 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     //     self
     // }
 }
-
+impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize> Tree<R, T, L, N> {
+    pub fn node_at(&self, p: Point) -> Option<NodeIndex> {
+        let rect = self.root_node.layout_rect();
+        if rect.contains(p) {
+            self.root_node.widget().at(Point::new(p.x-rect.x0, p.y-rect.y0))
+        } else {
+            None
+        }
+    }
+}
 // Implement the Widget trait for Tree
 impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize> Widget<R>
     for Tree<R, T, L, N>

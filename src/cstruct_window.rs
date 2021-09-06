@@ -30,8 +30,8 @@ use tokio::time::Duration;
 
 #[derive(Clone, Lens, Debug, Data)]
 pub struct CStructWindow<T> {
-    value: Option<T>,
-    c_struct: Option<CStruct>,
+    pub value: Option<T>,
+    pub c_struct: Option<CStruct>,
 }
 
 impl<T> CStructWindow<T> {

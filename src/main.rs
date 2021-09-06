@@ -137,8 +137,8 @@ use crate::template::communication::RawCommunication;
 
 #[derive(Clone, Lens, Debug, Data)]
 struct AppData {
-    template: TemplateData,
-    settings_window: CStructWindow<Settings>,
+    pub template: TemplateData,
+    pub settings_window: CStructWindow<Settings>,
 }
 
 //
@@ -166,7 +166,7 @@ pub fn main() {
     //
     // base_config.chain(stdout_config).apply().unwrap();
 
-    let mut cstruct = Test::builder().build();
+    let cstruct = Test::builder().build();
     // let mut test: Test = Test::parse_from_app(&cstruct).unwrap();
     // test.efsdfs = Some(Test2::Bar);
     // test.update_app(&mut cstruct).unwrap();
@@ -176,7 +176,7 @@ pub fn main() {
     let app_launcher = AppLauncher::with_window(main_window);
 
     let sink = app_launcher.get_external_handle();
-    let mut template = Template::new(RawCommunication::new(sink.clone()));
+    let template = Template::new(RawCommunication::new(sink.clone()));
     let data = AppData {
         template: template.widget_data(),
         settings_window: CStructWindow::new(),
@@ -186,7 +186,7 @@ pub fn main() {
 
     use tracing_subscriber::prelude::*;
     let filter_layer = tracing_subscriber::filter::LevelFilter::DEBUG;
-    let mut filter = tracing_subscriber::filter::EnvFilter::default()
+    let filter = tracing_subscriber::filter::EnvFilter::default()
         .add_directive("my_crate=trace".parse().unwrap())
         .add_directive("druid=trace".parse().unwrap())
         .add_directive("druid_widget_nursery=trace".parse().unwrap());

@@ -194,7 +194,7 @@ impl ModuleExt for Polybox {
         Ok(())
     }
 
-    fn website_url(&self, _dsettings: &DownloadSettings) -> String {
+    fn website_url(&self) -> String {
         "todo!()".to_owned()
     }
 

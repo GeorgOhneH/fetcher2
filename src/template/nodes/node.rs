@@ -176,6 +176,7 @@ impl Node {
             cached_path_segment: self.cached_path_segment.clone(),
             ty: self.ty.widget_data(),
             state: NodeState::new(),
+            path: None
         }
     }
 }

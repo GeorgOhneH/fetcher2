@@ -109,7 +109,7 @@ pub trait ModuleExt {
         Ok(())
     }
 
-    fn website_url(&self, dsettings: &DownloadSettings) -> String;
+    fn website_url(&self) -> String;
 
     async fn folder_name(&self, session: &Session, dsettings: &DownloadSettings)
         -> Result<PathBuf>;

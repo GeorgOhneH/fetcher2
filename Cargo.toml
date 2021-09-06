@@ -41,7 +41,7 @@ tracing = "0.1"
 strum = "0.21"
 strum_macros = "0.21"
 pulldown-cmark = "0.8.0"
-open = "1"
+open = "2"
 tracing-subscriber = "0.2"
 
 druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
