@@ -700,6 +700,11 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> 
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &R, env: &Env) {
+        if let LifeCycle::WidgetAdded = event {
+            if self.update_children(data) {
+                ctx.children_changed();
+            }
+        }
         for (index, child_widget_node) in self.children.iter_mut().enumerate() {
             let child_tree_node = data.get_child(index);
             child_widget_node.lifecycle(ctx, event, child_tree_node, env);

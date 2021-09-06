@@ -14,11 +14,11 @@ use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
 use tokio::io::AsyncWriteExt;
 
 use crate::settings::DownloadSettings;
-use crate::template::communication::WidgetCommunication;
+use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
-use crate::template::nodes::node::{MetaData, Node, PrepareStatus};
-use crate::template::nodes::root::RootNode;
-use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::template::nodes::node::{MetaData, Node, RawNode};
+use crate::template::nodes::root::{RootNode, RawRootNode};
+use crate::template::widget::{TemplateData};
 use config::{Config, ConfigEnum};
 use druid::widget::prelude::*;
 use druid::widget::Label;
@@ -31,20 +31,19 @@ use tokio::fs;
 #[derive(Debug)]
 pub struct Template {
     root: RootNode,
-    comm: WidgetCommunication,
+    raw_comm: RawCommunication,
 }
 
 pub type NodeIndex = Vec<usize>;
 
 impl Template {
-    pub fn new() -> Self {
-        let mut app = Node::builder().build();
+    pub fn new(comm: RawCommunication) -> Self {
+        let mut raw_app = RawNode::builder().build();
 
-        let root = RootNode {
+        let file_root = RawRootNode {
             children: vec![
-                Node {
-                    cached_path: None,
-                    comm: WidgetCommunication::new(),
+                RawNode {
+                    cached_path_segment: None,
                     ty: NodeType::Site(Arc::new(Site {
                         module: Module::Polybox(Polybox {
                             id: "TnFKtU4xoe5gIZy".to_owned(),
@@ -56,9 +55,8 @@ impl Template {
                         },
                         download_args: None,
                     })),
-                    children: vec![Node {
-                        cached_path: None,
-                        comm: WidgetCommunication::new(),
+                    children: vec![RawNode {
+                        cached_path_segment: None,
                         ty: NodeType::Site(Arc::new(Site {
                             module: Module::Minimal(Minimal { parameters: None }),
                             storage: SiteStorage {
@@ -69,15 +67,12 @@ impl Template {
                         })),
                         children: vec![].into(),
                         meta_data: MetaData {},
-                        index: Vec::new(),
                     }]
                     .into(),
                     meta_data: MetaData {},
-                    index: Vec::new(),
                 },
-                Node {
-                    cached_path: None,
-                    comm: WidgetCommunication::new(),
+                RawNode {
+                    cached_path_segment: None,
                     ty: NodeType::Site(Arc::new(Site {
                         module: Module::Polybox(Polybox {
                             id: "1929777502".to_owned(),
@@ -91,7 +86,6 @@ impl Template {
                     })),
                     children: vec![].into(),
                     meta_data: MetaData {},
-                    index: Vec::new(),
                 },
                 // Node {
                 //     ty: NodeType::Site(Arc::new(Site {
@@ -111,31 +105,32 @@ impl Template {
             .into(),
         };
 
-        root.update_app(&mut app).unwrap();
+        file_root.update_app(&mut raw_app).unwrap();
+        let raw_root = RawRootNode::parse_from_app(&raw_app).unwrap();
 
         Self {
-            root: RootNode::parse_from_app(&app).unwrap(),
-            comm: WidgetCommunication::new(),
+            root: raw_root.transform(comm.clone()),
+            raw_comm: comm,
         }
     }
 
-    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Result<PrepareStatus> {
+    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> std::result::Result<(), ()> {
         let session = Session::new();
         self.root.prepare(&session, dsettings).await
     }
 
-    pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) -> Result<()> {
+    pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) {
         let session = Session::new();
         self.root.run(&session, dsettings, None).await
     }
 
-    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: Option<HashSet<NodeIndex>>) -> Result<()> {
+    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: Option<HashSet<NodeIndex>>) {
         let session = Session::new();
         self.root.run(&session, dsettings, indexes.as_ref()).await
     }
 
     pub async fn save(&self, path: &Path) -> Result<()> {
-        let template_str = serde_yaml::to_string(&self.root)?;
+        let template_str = serde_yaml::to_string(&self.root.clone().raw())?;
 
         let mut f = fs::OpenOptions::new()
             .write(true)
@@ -151,12 +146,15 @@ impl Template {
 
     pub async fn load(&mut self, path: &Path) -> Result<()> {
         let x = String::from_utf8(fs::read(path).await?)?;
-        self.root = RootNode::load_from_str(&*x)?;
+        let raw_root = RawRootNode::load_from_str(&*x)?;
+        self.root = raw_root.transform(self.raw_comm.clone());
         Ok(())
     }
 
-    pub fn set_sink(&mut self, sink: ExtEventSink) {
-        self.comm.sink = Some(sink.clone());
-        self.root.set_sink(sink);
+    pub fn widget_data(&self) -> TemplateData {
+        TemplateData {
+            root: self.root.widget_data(),
+            selected: None,
+        }
     }
 }

@@ -71,8 +71,7 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
     match template.prepare(dsettings.clone()).await {
         Ok(prep_status) => {}
         Err(err) => {
-            print!("{:?}", err);
-            println!("{}", err.backtrace().unwrap());
+            print!("Got error in prepare exit...");
             return;
         }
     };
@@ -111,15 +110,6 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
             }
             Some(result) = futs.next() => {
                 println!("finished future {:?}, time: {:?}", result, time.elapsed());
-                match result {
-                    Ok(Ok(())) => {}
-                    Ok(Err(err)) => {
-                        print!("{:?}", err);
-                        println!("{}", err.backtrace().unwrap());
-                        return;
-                    },
-                    Err(err) => {},
-                }
             },
             else => {println!("BREAK LOOP");break},
         }

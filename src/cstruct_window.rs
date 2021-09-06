@@ -1,6 +1,6 @@
 
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
-use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::template::widget::{TemplateData};
 use config::{CStruct, Config};
 use config::State;
 use druid::im::{vector, Vector};

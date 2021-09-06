@@ -27,9 +27,9 @@ use futures::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
-use tokio::try_join;
+use tokio::join;
 
-use crate::template::communication::WidgetCommunication;
+use crate::template::communication::Communication;
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
@@ -47,6 +47,7 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
 use url::Url;
+use tokio::task::JoinError;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {
@@ -74,15 +75,16 @@ impl Site {
         session: Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
-        comm: WidgetCommunication,
-    ) -> Result<()> {
-        comm.send_event(RunEvent::Start)?;
-        comm.send_event(LoginEvent::Start)?;
+        comm: Communication,
+    ) {
+        comm.send_event(RunEvent::Start);
+        comm.send_event(LoginEvent::Start);
         match self.module.real_login(&session, &dsettings).await {
-            Ok(()) => comm.send_event(LoginEvent::Finish)?,
+            Ok(()) => comm.send_event(LoginEvent::Finish),
             Err(err) => {
-                comm.send_event(LoginEvent::Err(err))?;
-                return Ok(());
+                comm.send_event(LoginEvent::Err(err));
+                comm.send_event(RunEvent::Finish);
+                return;
             }
         };
 
@@ -99,9 +101,8 @@ impl Site {
         let consumers =
             Arc::clone(&self).handle_receiver(session, receiver, dsettings, comm.clone());
 
-        try_join!(task_stream, consumers)?;
-        comm.send_event(RunEvent::Finish)?;
-        Ok(())
+        join!(task_stream, consumers);
+        comm.send_event(RunEvent::Finish);
     }
 
     async fn handle_receiver(
@@ -109,15 +110,15 @@ impl Site {
         session: Session,
         mut receiver: Receiver<Task>,
         dsettings: Arc<DownloadSettings>,
-        comm: WidgetCommunication,
-    ) -> Result<()> {
+        comm: Communication,
+    ) {
         let mut futs = FuturesUnordered::new();
         loop {
             tokio::select! {
                 biased;
 
                 Some(msg) = futs.next() => {
-                    self.handle_msg(msg?, &comm).await?
+                    self.handle_msg(msg, &comm).await;
                 },
                 Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
@@ -127,27 +128,24 @@ impl Site {
                         Arc::clone(&dsettings),
                     ));
                     futs.push(handle);
-                    comm.send_event(DownloadEvent::Start)?;
+                    comm.send_event(DownloadEvent::Start);
                 },
                 else => break,
             }
         }
-        Ok(())
     }
 
-    async fn handle_msg(&self, msg: Result<Msg>, comm: &WidgetCommunication) -> Result<()> {
-        match msg {
+    async fn handle_msg(&self, msg: std::result::Result<Result<Msg>, JoinError>, comm: &Communication) {
+        match msg.unwrap() {
             Ok(msg) => {
                 println!("{:?}", msg);
                 self.storage.history.lock().unwrap().push(msg.clone());
-                comm.send_event(DownloadEvent::Finish(msg))?;
+                comm.send_event(DownloadEvent::Finish(msg));
             }
             Err(err) => {
-                comm.send_event(DownloadEvent::Err(err))?;
+                comm.send_event(DownloadEvent::Err(err));
             }
         }
-
-        Ok(())
     }
 
     // TODO: make sure it's fine to call this function twice with same arguments

@@ -103,8 +103,8 @@ struct Test3 {
 
 use crate::cstruct_window::CStructWindow;
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
-use crate::template::nodes::node_data::{NodeData, TemplateUpdate};
-use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::template::nodes::node_data::{NodeData};
+use crate::template::widget::{TemplateData};
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 use config::CStruct;
@@ -133,6 +133,7 @@ use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
 use crate::template::nodes::root_data::RootNodeData;
+use crate::template::communication::RawCommunication;
 
 #[derive(Clone, Lens, Debug, Data)]
 struct AppData {
@@ -169,33 +170,39 @@ pub fn main() {
     // let mut test: Test = Test::parse_from_app(&cstruct).unwrap();
     // test.efsdfs = Some(Test2::Bar);
     // test.update_app(&mut cstruct).unwrap();
-    let mut template = Template::new();
-    let (data, widget) = template.widget();
-    let data = AppData {
-        template: data,
-        settings_window: CStructWindow::new(),
-    };
-    let main_window = WindowDesc::new(ui_builder(widget))
+
+    let main_window = WindowDesc::new(ui_builder())
         .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
     let app_launcher = AppLauncher::with_window(main_window);
+
     let sink = app_launcher.get_external_handle();
-    template.set_sink(sink.clone());
+    let mut template = Template::new(RawCommunication::new(sink.clone()));
+    let data = AppData {
+        template: template.widget_data(),
+        settings_window: CStructWindow::new(),
+    };
+
     let delegate = TemplateDelegate::new(sink, template);
 
-    // use tracing_subscriber::prelude::*;
-    // let filter_layer = tracing_subscriber::filter::LevelFilter::DEBUG;
-    // let fmt_layer = tracing_subscriber::fmt::layer()
-    //     // Display target (eg "my_crate::some_mod::submod") with logs
-    //     .with_target(true);
-    //
-    // tracing_subscriber::registry()
-    //     .with(filter_layer)
-    //     .with(fmt_layer)
-    //     .init();
+    use tracing_subscriber::prelude::*;
+    let filter_layer = tracing_subscriber::filter::LevelFilter::DEBUG;
+    let mut filter = tracing_subscriber::filter::EnvFilter::default()
+        .add_directive("my_crate=trace".parse().unwrap())
+        .add_directive("druid=trace".parse().unwrap())
+        .add_directive("druid_widget_nursery=trace".parse().unwrap());
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        // Display target (eg "my_crate::some_mod::submod") with logs
+        .with_target(true);
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(filter)
+        .init();
 
     app_launcher
         .delegate(delegate)
-        .log_to_console()
+        // .log_to_console()
         .launch(data)
         .expect("launch failed");
 }
@@ -249,8 +256,8 @@ fn ui_builder() -> impl Widget<AppData> {
         .with_child(stop)
         .with_child(settings)
         // .with_child(header)
-        .with_flex_child(Scroll::new(TemplateData::build_widget()).vertical().lens(AppData::template), 1.)
-        // .debug_paint_layout()
+        .with_child(TemplateData::build_widget().lens(AppData::template))
+        .debug_paint_layout()
 }
 
 #[derive(Clone, Lens, Debug, Data)]

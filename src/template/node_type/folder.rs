@@ -5,7 +5,7 @@ use config_derive::Config;
 use config::Config;
 use druid::Data;
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone)]
 pub struct Folder {
     name: String,
 }

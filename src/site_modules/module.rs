@@ -13,13 +13,13 @@ use tokio::sync::{Mutex, MutexGuard};
 
 use crate::settings::DownloadSettings;
 use crate::site_modules::polybox::Polybox;
-use druid::Data;
-use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
-use crate::template::communication::WidgetCommunication;
+use crate::template::communication::Communication;
 use crate::template::node_type::site::UrlFetchEvent;
+use druid::Data;
 use std::string::ToString;
+use std::sync::Arc;
 use strum_macros::Display;
+use tokio::sync::mpsc::Sender;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
@@ -56,9 +56,9 @@ impl Module {
         sender: Sender<Task>,
         base_path: PathBuf,
         dsettings: Arc<DownloadSettings>,
-        comm: WidgetCommunication,
-    ) -> Result<()> {
-        comm.send_event(UrlFetchEvent::Start)?;
+        comm: Communication,
+    ) {
+        comm.send_event(UrlFetchEvent::Start);
         match self.fetch_urls(session, sender, base_path, dsettings).await {
             Ok(()) => comm.send_event(UrlFetchEvent::Finish),
             Err(err) => comm.send_event(UrlFetchEvent::Err(err)),

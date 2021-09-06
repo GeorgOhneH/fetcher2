@@ -1,4 +1,4 @@
-use crate::template::widget::{TemplateData, TemplateWidget};
+use crate::template::widget::{TemplateData};
 use crate::template::{Template, NodeIndex};
 use config::CStruct;
 use druid::im::{vector, Vector};

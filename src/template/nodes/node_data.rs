@@ -18,7 +18,7 @@ use crate::template::node_type::site::{
 };
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
-use crate::template::MetaData;
+use crate::template::{MetaData, NodeIndex};
 use crate::{AppData, TError};
 use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
@@ -34,14 +34,30 @@ pub struct NodeData {
     pub children: Vector<NodeData>,
 
     #[data(same_fn = "PartialEq::eq")]
-    pub cached_path: Option<PathBuf>,
+    pub cached_path_segment: Option<PathBuf>,
 
     pub state: NodeState,
 }
 
 impl NodeData {
+    pub fn node(&self, idx: &[usize]) -> &NodeData {
+        if idx.len() == 0 {
+            self
+        } else {
+            self.children[idx[0]].node(&idx[1..])
+        }
+    }
+
+    pub fn node_mut(&mut self, idx: &[usize]) -> &mut NodeData {
+        if idx.len() == 0 {
+            self
+        } else {
+            self.children[idx[0]].node_mut(&idx[1..])
+        }
+    }
+
     pub fn name(&self) -> String {
-        if let Some(cache_path) = self.cached_path.as_ref() {
+        if let Some(cache_path) = self.cached_path_segment.as_ref() {
             cache_path
                 .file_name()
                 .map(|os_str| os_str.to_string_lossy().to_string())
@@ -202,37 +218,3 @@ impl PathState {
     }
 }
 
-pub struct TemplateUpdate;
-
-impl<W: Widget<NodeData>> Controller<NodeData, W> for TemplateUpdate {
-    fn event(
-        &mut self,
-        child: &mut W,
-        ctx: &mut EventCtx,
-        event: &Event,
-        data: &mut NodeData,
-        env: &Env,
-    ) {
-        match event {
-            Event::MouseDown(ref mouse) if mouse.button.is_right() => {
-                ctx.show_context_menu(make_node_menu(), mouse.window_pos);
-            }
-            Event::Command(cmd) => {
-                if let Some(event) = cmd.get(NODE_EVENT) {
-                    match event.take().unwrap() {
-                        NodeEvent::Path(path_event) => {
-                            data.state.path.update(path_event, &mut data.cached_path)
-                        }
-                        NodeEvent::Site(site_event) => {
-                            let site = data.ty.site_mut().unwrap();
-                            site.state.update(site_event, &mut site.history)
-                        }
-                    }
-                    return;
-                }
-            },
-            _ => (),
-        }
-        child.event(ctx, event, data, env)
-    }
-}

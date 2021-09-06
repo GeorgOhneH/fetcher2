@@ -18,11 +18,30 @@ use druid::im::Vector;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::{TreeNode, TreeNodeRoot};
+use crate::template::NodeIndex;
 
 
 #[derive(Data, Clone, Debug)]
 pub struct RootNodeData {
     pub children: Vector<NodeData>,
+}
+
+impl RootNodeData {
+    pub fn node(&self, idx: &[usize]) -> &NodeData {
+        if idx.len() == 0 {
+            panic!("Can't access root node")
+        } else {
+            self.children[idx[0]].node(&idx[1..])
+        }
+    }
+
+    pub fn node_mut(&mut self, idx: &[usize]) -> &mut NodeData {
+        if idx.len() == 0 {
+            panic!("Can't access root node")
+        } else {
+            self.children[idx[0]].node_mut(&idx[1..])
+        }
+    }
 }
 
 

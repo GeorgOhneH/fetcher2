@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use crate::template::node_type::site::SiteData;
 use crate::template::node_type::folder::FolderData;
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Serialize, Debug, Clone)]
 pub enum NodeType {
     #[config(ty = "Struct")]
     Folder(Folder),
