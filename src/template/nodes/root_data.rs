@@ -17,8 +17,8 @@ use std::path::PathBuf;
 use druid::im::Vector;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
-use crate::widgets::tree::{TreeNode, TreeNodeRoot};
 use crate::template::NodeIndex;
+use crate::widgets::tree::root::TreeNodeRoot;
 
 
 #[derive(Data, Clone, Debug)]
