@@ -13,7 +13,7 @@ use druid::{
 };
 
 use crate::template::NodeIndex;
-use crate::widgets::header::{Header, HEADER_SIZE_CHANGED};
+use crate::widgets::header::{Header};
 use druid_widget_nursery::selectors;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::node::{TreeNode, TREE_ACTIVATE_NODE};

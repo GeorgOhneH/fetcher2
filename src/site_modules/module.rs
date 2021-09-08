@@ -33,13 +33,13 @@ pub enum Module {
 }
 
 impl Module {
-    pub async fn real_login(&self, session: &Session, dsettings: &DownloadSettings) -> Result<()> {
+    pub async fn login(&self, session: &Session, dsettings: &DownloadSettings) -> Result<()> {
         let mut lock = self.get_lock(&session.login_mutex).await;
         match &*lock {
             LoginState::Success => Ok(()),
             LoginState::Failure => Err(TErrorKind::PreviousLoginError.into()),
             LoginState::Uninitiated => {
-                let r = self.login(session, dsettings).await;
+                let r = self.login_impl(session, dsettings).await;
                 *lock = if r.is_ok() {
                     LoginState::Success
                 } else {
@@ -50,7 +50,7 @@ impl Module {
         }
     }
 
-    pub async fn real_fetch_urls(
+    pub async fn fetch_urls(
         &self,
         session: Session,
         sender: Sender<Task>,
@@ -59,10 +59,21 @@ impl Module {
         comm: Communication,
     ) {
         comm.send_event(UrlFetchEvent::Start);
-        match self.fetch_urls(session, sender, base_path, dsettings).await {
+        match self
+            .fetch_urls_impl(session, sender, base_path, dsettings)
+            .await
+        {
             Ok(()) => comm.send_event(UrlFetchEvent::Finish),
             Err(err) => comm.send_event(UrlFetchEvent::Err(err)),
         }
+    }
+
+    pub async fn folder_name(
+        &self,
+        session: &Session,
+        dsettings: &DownloadSettings,
+    ) -> Result<PathBuf> {
+        self.folder_name_impl(session, dsettings).await
     }
 
     pub fn name(&self) -> String {
@@ -97,7 +108,7 @@ impl Default for LoginState {
 #[async_trait]
 #[enum_dispatch]
 pub trait ModuleExt {
-    async fn fetch_urls(
+    async fn fetch_urls_impl(
         &self,
         session: Session,
         sender: Sender<Task>,
@@ -105,12 +116,15 @@ pub trait ModuleExt {
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()>;
 
-    async fn login(&self, _session: &Session, _dsettings: &DownloadSettings) -> Result<()> {
+    async fn login_impl(&self, _session: &Session, _dsettings: &DownloadSettings) -> Result<()> {
         Ok(())
     }
 
-    fn website_url(&self) -> String;
+    fn website_url_impl(&self) -> String;
 
-    async fn folder_name(&self, session: &Session, dsettings: &DownloadSettings)
-        -> Result<PathBuf>;
+    async fn folder_name_impl(
+        &self,
+        session: &Session,
+        dsettings: &DownloadSettings,
+    ) -> Result<PathBuf>;
 }

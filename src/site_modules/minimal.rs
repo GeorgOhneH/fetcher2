@@ -23,7 +23,7 @@ pub struct Minimal {
 
 #[async_trait]
 impl ModuleExt for Minimal {
-    async fn fetch_urls(
+    async fn fetch_urls_impl(
         &self,
         session: Session,
         sender: Sender<Task>,
@@ -79,7 +79,7 @@ impl ModuleExt for Minimal {
         Ok(())
     }
 
-    async fn login(&self, _session: &Session, dsettings: &DownloadSettings) -> Result<()> {
+    async fn login_impl(&self, _session: &Session, dsettings: &DownloadSettings) -> Result<()> {
         println!("LOGIN MINIMAL");
         let url =
             url::Url::parse("https://moodle-app2.let.ethz.ch/auth/shibboleth/login.php").unwrap();
@@ -89,11 +89,11 @@ impl ModuleExt for Minimal {
         Ok(())
     }
 
-    fn website_url(&self) -> String {
+    fn website_url_impl(&self) -> String {
         "todo!()".to_owned()
     }
 
-    async fn folder_name(
+    async fn folder_name_impl(
         &self,
         _session: &Session,
         _dsettings: &DownloadSettings,

@@ -1,34 +1,28 @@
-// Copyright 2019 The Druid Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-//! A widget which splits an area in two, with a settable ratio, and optional draggable resizing.
-
 use druid::debug_state::DebugState;
 use druid::kurbo::Line;
 use druid::widget::prelude::*;
 use druid::widget::{Axis, Label};
 use druid::{theme, Color, Cursor, Data, Point, Rect, WidgetPod};
 
-use druid_widget_nursery::selectors;
+#[derive(Clone)]
+pub struct HeaderConstrains<const N: usize> {
+    pub sizes: [(f64, f64); N],
+    pub max_width: f64,
+}
 
-selectors! {
-    HEADER_SIZE_CHANGED,
+impl<const N: usize> HeaderConstrains<N> {
+    pub fn empty() -> Self {
+        HeaderConstrains {
+            sizes: [(0., 0.); N],
+            max_width: 0.,
+        }
+    }
 }
 
 /// A container containing two other widgets, splitting the area either horizontally or vertically.
 pub struct Header<T, const N: usize> {
     split_axis: Axis,
+    wanted_size: [f64; N],
     effective_size: [f64; N],
     min_sizes: [f64; N],
     // Integers only
@@ -59,7 +53,8 @@ impl<T, const N: usize> Header<T, N> {
     fn new(split_axis: Axis, children: [impl Widget<T> + 'static; N]) -> Self {
         Header {
             split_axis,
-            effective_size: [100.0; N],
+            wanted_size: [100.0; N],
+            effective_size: [0.; N],
             min_sizes: [0.0; N],
             bar_size: 6.0,
             min_bar_area: 6.0,
@@ -89,7 +84,7 @@ impl<T, const N: usize> Header<T, N> {
     /// The value must be between `0.0` and `1.0`, inclusive.
     /// The default split point is `0.5`.
     pub fn sizes(&mut self, size: [f64; N]) {
-        self.effective_size = size;
+        self.wanted_size = size;
     }
 
     /// Builder-style method to set the minimum size for both sides of the split axis.
@@ -169,15 +164,18 @@ impl<T, const N: usize> Header<T, N> {
         self.widget_start(idx) + self.effective_size[idx]
     }
 
-    pub fn widget_pos(&self) -> [(f64, f64); N] {
+    pub fn constrains(&self) -> HeaderConstrains<N> {
         let bar_area = self.bar_area();
-        let mut result = [(0., 0.); N];
+        let mut sizes = [(0., 0.); N];
         let mut total_size = 0.;
         for (idx, size) in self.effective_size.iter().enumerate() {
-            result[idx] = (total_size, total_size + size);
+            sizes[idx] = (total_size, total_size + size);
             total_size += size + bar_area
         }
-        result
+        HeaderConstrains {
+            sizes,
+            max_width: total_size,
+        }
     }
 
     /// Returns the location of the edges of the splitter bar area,
@@ -214,7 +212,7 @@ impl<T, const N: usize> Header<T, N> {
     fn update_split_point(&mut self, idx: usize, mouse_pos: f64) {
         let min_limit = self.min_sizes[idx];
         let size = mouse_pos - self.widget_start(idx);
-        self.effective_size[idx] = size.max(min_limit);
+        self.wanted_size[idx] = size.max(min_limit);
     }
 
     /// Returns the color of the splitter bar.
@@ -244,41 +242,6 @@ impl<T, const N: usize> Header<T, N> {
             ctx.fill(rect, &splitter_color);
         }
     }
-
-    // fn paint_stroked_bar(&mut self, ctx: &mut PaintCtx, env: &Env) {
-    //     let size = ctx.size();
-    //     // Set the line width to a third of the splitter bar size,
-    //     // because we'll paint two equal lines at the edges.
-    //     let line_width = (self.bar_size / 3.0).floor();
-    //     let line_midpoint = line_width / 2.0;
-    //     let (edge1, edge2) = self.bar_edges(size);
-    //     let padding = self.bar_padding();
-    //     let (line1, line2) = match self.split_axis {
-    //         Axis::Horizontal => (
-    //             Line::new(
-    //                 Point::new(edge1 + line_midpoint + padding.ceil(), 0.0),
-    //                 Point::new(edge1 + line_midpoint + padding.ceil(), size.height),
-    //             ),
-    //             Line::new(
-    //                 Point::new(edge2 - line_midpoint - padding.floor(), 0.0),
-    //                 Point::new(edge2 - line_midpoint - padding.floor(), size.height),
-    //             ),
-    //         ),
-    //         Axis::Vertical => (
-    //             Line::new(
-    //                 Point::new(0.0, edge1 + line_midpoint + padding.ceil()),
-    //                 Point::new(size.width, edge1 + line_midpoint + padding.ceil()),
-    //             ),
-    //             Line::new(
-    //                 Point::new(0.0, edge2 - line_midpoint - padding.floor()),
-    //                 Point::new(size.width, edge2 - line_midpoint - padding.floor()),
-    //             ),
-    //         ),
-    //     };
-    //     let splitter_color = self.bar_color(env);
-    //     ctx.stroke(line1, &splitter_color, line_width);
-    //     ctx.stroke(line2, &splitter_color, line_width);
-    // }
 }
 
 impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
@@ -335,7 +298,6 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
                             Axis::Vertical => mouse.pos.y,
                         } - self.click_offset;
                         self.update_split_point(self.current.unwrap(), effective_pos);
-                        ctx.submit_notification(HEADER_SIZE_CHANGED);
                         ctx.request_layout();
                     } else {
                         // If not active, set cursor when hovering state changes
@@ -383,26 +345,41 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
         let mut my_size = Size::new(0., 0.);
         let mut current_length = 0.;
         let mut paint_rect = Rect::ZERO;
-        // TODO clean up
+        let min_size = match self.split_axis {
+            Axis::Horizontal => bc.min().width,
+            Axis::Vertical => bc.min().height,
+        };
+
+        if N > 0 {
+            let last_index = N-1;
+            let mut total_size = 0.;
+            for (i, w_size) in self.wanted_size[..last_index].iter().enumerate() {
+                let size = w_size.max(self.min_sizes[i]);
+                self.effective_size[i] = size;
+                total_size += size + bar_area;
+            }
+            let last_min_size = (min_size - total_size - bar_area).max(self.min_sizes[last_index]);
+            self.effective_size[last_index] = last_min_size.max(self.wanted_size[last_index]);
+        }
+
         for (idx, child) in self.children.iter_mut().enumerate() {
             let child_bc = match self.split_axis {
                 Axis::Horizontal => {
                     let child_width = self.effective_size[idx];
                     BoxConstraints::new(
-                        Size::new(child_width, bc.min().height),
-                        Size::new(child_width, bc.max().height),
+                        Size::new(child_width, 0.),
+                        Size::new(child_width, f64::INFINITY),
                     )
                 }
                 Axis::Vertical => {
                     let child_height = self.effective_size[idx];
                     BoxConstraints::new(
-                        Size::new(bc.min().width, child_height),
-                        Size::new(bc.max().width, child_height),
+                        Size::new(0., child_height),
+                        Size::new(f64::INFINITY, child_height),
                     )
                 }
             };
             let child_size = child.layout(ctx, &child_bc, data, env);
-
             let child_pos = match self.split_axis {
                 Axis::Horizontal => {
                     my_size.height = my_size.height.max(child_size.height);
@@ -437,25 +414,12 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        // if self.solid {
-        //     self.paint_solid_bar(ctx, env);
-        // } else {
-        //     self.paint_stroked_bar(ctx, env);
-        // }
         self.paint_solid_bar(ctx, env);
         for child in self.children.iter_mut() {
-            child.paint(ctx, data, env)
+            ctx.save().unwrap();
+            ctx.clip(child.layout_rect());
+            child.paint(ctx, data, env);
+            ctx.restore().unwrap();
         }
     }
-
-    // fn debug_state(&self, data: &T) -> DebugState {
-    //     DebugState {
-    //         display_name: self.short_type_name().to_string(),
-    //         children: vec![
-    //             self.child1.widget().debug_state(data),
-    //             self.child2.widget().debug_state(data),
-    //         ],
-    //         ..Default::default()
-    //     }
-    // }
 }

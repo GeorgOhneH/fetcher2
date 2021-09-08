@@ -22,8 +22,8 @@ use crate::{AppData, Result};
 use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
 use std::cmp::max;
-use std::path::{Path, PathBuf};
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {
@@ -114,7 +114,9 @@ fn make_node_menu(idx: &NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData>
     Menu::empty()
         .entry(
             MenuItem::new("Run Recursive").on_activate(move |ctx, data: &mut AppData, _env| {
-                ctx.submit_command(MSG_THREAD.with(SingleUse::new(Msg::StartByIndex(indexes.clone()))))
+                ctx.submit_command(
+                    MSG_THREAD.with(SingleUse::new(Msg::StartByIndex(indexes.clone()))),
+                )
             }),
         )
         .entry(
@@ -138,7 +140,7 @@ fn make_node_menu(idx: &NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData>
                 }),
         )
         .separator()
-        .entry(MenuItem::new("Open Website").on_activate(|_ctx, data: &mut AppData, _env| { todo!() }))
+        .entry(MenuItem::new("Open Website").on_activate(|_ctx, data: &mut AppData, _env| todo!()))
 }
 
 pub struct TemplateUpdate;

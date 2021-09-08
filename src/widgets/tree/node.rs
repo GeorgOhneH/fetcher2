@@ -13,7 +13,7 @@ use druid::{
 };
 
 use crate::template::NodeIndex;
-use crate::widgets::header::{Header, HEADER_SIZE_CHANGED};
+use crate::widgets::header::{Header, HeaderConstrains};
 use crate::widgets::tree::highlight_box::ColourBox;
 use crate::widgets::tree::opener::Opener;
 use druid_widget_nursery::selectors;
@@ -87,7 +87,7 @@ where
     pub opener: WidgetPod<T, Opener<T>>,
     /// The label for this node
     pub widgets: [WidgetPod<T, Box<dyn Widget<T>>>; N],
-    pub sizes: [(f64, f64); N],
+    pub constrains: HeaderConstrains<N>,
     pub depth: usize,
     /// The children of this tree node widget
     pub children: Vec<WidgetPod<T, Self>>,
@@ -107,7 +107,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         make_widget: TreeItemFactory<T, N>,
         make_opener: Arc<Box<OpenerFactory<T>>>,
         index: usize,
-        sizes: [(f64, f64); N],
+        constrains: HeaderConstrains<N>,
         depth: usize,
         expand_lens: L, // expanded: bool,
     ) -> Self {
@@ -119,7 +119,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
             opener: WidgetPod::new(Opener::new(make_opener.clone()())),
             highlight_box: WidgetPod::new(ColourBox::new()),
             widgets,
-            sizes,
+            constrains,
             depth,
             // expanded,
             children: Vec::new(),
@@ -146,7 +146,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
                         self.make_widget.clone(),
                         self.make_opener.clone(),
                         index,
-                        self.sizes.clone(),
+                        self.constrains.clone(),
                         self.depth + 1,
                         self.expand_lens.clone(),
                     ))),
@@ -156,11 +156,11 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         changed
     }
 
-    pub fn update_sizes(&mut self, sizes: [(f64, f64); N]) {
+    pub fn update_constrains(&mut self, constrains: HeaderConstrains<N>) {
         for child in self.children.iter_mut() {
-            child.widget_mut().update_sizes(sizes)
+            child.widget_mut().update_constrains(constrains.clone())
         }
-        self.sizes = sizes
+        self.constrains = constrains
     }
 
     pub fn get_selected(&self, selected: &mut Vec<NodeIndex>, current_idx: NodeIndex) {
@@ -361,7 +361,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
         let basic_size = env.get(theme::BASIC_WIDGET_HEIGHT);
         let indent = env.get(theme::BASIC_WIDGET_HEIGHT);
-        let width = bc.max().width;
+        let max_width = self.constrains.max_width;
 
         let opener_widget_x = indent * self.depth as f64 + basic_size;
         let mut current_height = basic_size;
@@ -369,7 +369,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
 
         // Immediately on the right, the node widget
         for (idx, widget) in self.widgets.iter_mut().enumerate() {
-            let (left_width, right_width) = self.sizes[idx];
+            let (left_width, right_width) = self.constrains.sizes[idx];
             let widget_width = if idx == 0 {
                 (right_width - left_width - opener_widget_x).max(0.)
             } else {
@@ -409,7 +409,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         );
         self.highlight_box.layout(
             ctx,
-            &BoxConstraints::tight(Size::new((width-opener_widget_x).max(0.), current_height)),
+            &BoxConstraints::tight(Size::new((max_width - opener_widget_x).max(0.), current_height)),
             &(),
             env,
         );
@@ -419,8 +419,8 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         if self.expand_lens.get(data) {
             for (idx, child) in self.children.iter_mut().enumerate() {
                 let child_bc = BoxConstraints::new(
-                    Size::new(width, basic_size),
-                    Size::new(width, f64::INFINITY),
+                    Size::new(max_width, basic_size),
+                    Size::new(max_width, f64::INFINITY),
                 );
                 let child_data = data.get_child(idx);
                 let child_size = child.layout(ctx, &child_bc, child_data, env);
@@ -431,7 +431,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
             }
         }
 
-        let my_size = Size::new(width, current_height);
+        let my_size = Size::new(max_width, current_height);
         bc.constrain(my_size)
     }
 
@@ -444,12 +444,14 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         }
         let background_rect = Rect::new(0., 0., width, height);
         let highlight_rect = Rect::new(origin_x, 0., width, height);
-
         self.highlight_box.paint(ctx, &(), env);
 
         self.opener.paint(ctx, data, env);
         for widget in self.widgets.iter_mut() {
+            ctx.render_ctx.save().unwrap();
+            ctx.clip(widget.layout_rect());
             widget.paint(ctx, data, env);
+            ctx.render_ctx.restore().unwrap();
         }
         if data.is_branch() & self.expand_lens.get(data) {
             for (index, child_widget_node) in self.children.iter_mut().enumerate() {

@@ -16,6 +16,7 @@ mod task;
 mod template;
 mod utils;
 pub mod widgets;
+pub mod ui;
 
 pub use error::{Result, TError};
 
@@ -135,12 +136,7 @@ use tokio::time::Duration;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::communication::RawCommunication;
 use crate::widgets::file_watcher::FileWatcher;
-
-#[derive(Clone, Lens, Debug, Data)]
-struct AppData {
-    pub template: TemplateData,
-    pub settings_window: CStructWindow<Settings>,
-}
+use crate::ui::{build_ui, AppData, TemplateInfoSelect};
 
 //
 pub fn main() {
@@ -172,7 +168,7 @@ pub fn main() {
     // test.efsdfs = Some(Test2::Bar);
     // test.update_app(&mut cstruct).unwrap();
 
-    let main_window = WindowDesc::new(ui_builder())
+    let main_window = WindowDesc::new(build_ui())
         .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
     let app_launcher = AppLauncher::with_window(main_window);
 
@@ -180,6 +176,7 @@ pub fn main() {
     let template = Template::new(RawCommunication::new(sink.clone()));
     let data = AppData {
         template: template.widget_data(),
+        template_info_select: TemplateInfoSelect::Nothing,
         settings_window: CStructWindow::new(),
     };
 
@@ -206,106 +203,4 @@ pub fn main() {
         // .log_to_console()
         .launch(data)
         .expect("launch failed");
-}
-
-fn ui_builder() -> impl Widget<AppData> {
-    // let header = Header::columns([
-    //     Label::new("Hello"),
-    //     Label::new("Hello2"),
-    //     Label::new("Hello3"),
-    // ])
-    // .draggable(true);
-    let start = Button::new("Start").on_click(|ctx, _, _| {
-        ctx.submit_command(Command::new(
-            MSG_THREAD,
-            SingleUse::new(Msg::StartAll),
-            Target::Global,
-        ));
-        // ctx.submit_command(Command::new(MSG_THREAD, SingleUse::new(Msg::Cancel), Target::Global))
-    });
-    let stop = Button::new("Stop").on_click(|ctx, _, _| {
-        ctx.submit_command(Command::new(
-            MSG_THREAD,
-            SingleUse::new(Msg::Cancel),
-            Target::Global,
-        ))
-    });
-    let settings = Button::new("Settings")
-        .on_click(|ctx, data: &mut CStructWindow<Settings>, env| {
-            let window = ctx.window();
-            let win_pos = window.get_position();
-            let (win_size_w, win_size_h) = window.get_size().into();
-            let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-            let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-            ctx.new_sub_window(
-                WindowConfig::default()
-                    .show_titlebar(true)
-                    .window_size(Size::new(size_w, size_h))
-                    .set_position(pos)
-                    .set_level(WindowLevel::Modal),
-                CStructWindow::widget(),
-                data.clone(),
-                env.clone(),
-            );
-        })
-        .padding(0.) // So it's enclosed in a WidgetPod, (just a nop)
-        .lens(AppData::settings_window);
-
-    Flex::column()
-        .cross_axis_alignment(CrossAxisAlignment::Start)
-        .with_child(start)
-        .with_child(stop)
-        .with_child(settings)
-        .with_child(TemplateData::build_widget().lens(AppData::template))
-        .with_flex_child(FileWatcher::new().path(PathBuf::from("C:\\ethz")).lens(druid::lens::Unit), 1.)
-        // .debug_paint_layout()
-}
-
-#[derive(Clone, Lens, Debug, Data)]
-struct Hello {
-    vec: Vector<bool>,
-}
-
-fn main8() {
-    let main_window = WindowDesc::new(hello2());
-    AppLauncher::with_window(main_window)
-        .log_to_console()
-        .launch(Hello {
-            vec: vec![true, false].into(),
-        })
-        .expect("launch failed");
-}
-
-fn hello3() -> impl Widget<Vector<bool>> {
-    Flex::column()
-        .with_child(List::new(|| Checkbox::new("Hello").center()))
-        .with_child(
-            Button::new("Add").on_click(|_, c_vec: &mut Vector<bool>, _env| c_vec.push_back(false)),
-        )
-}
-fn hello2() -> impl Widget<Hello> {
-    Flex::column()
-        .with_child(hello3())
-        .with_child(
-            Button::new("Sub Window")
-                .on_click(|ctx, data: &mut Vector<bool>, env| {
-                    let window = ctx.window();
-                    let win_pos = window.get_position();
-                    let (win_size_w, win_size_h) = window.get_size().into();
-                    let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-                    let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-                    ctx.new_sub_window(
-                        WindowConfig::default()
-                            .show_titlebar(true)
-                            .window_size(Size::new(size_w, size_h))
-                            .set_position(pos)
-                            .set_level(WindowLevel::Modal),
-                        hello3(),
-                        data.clone(),
-                        env.clone(),
-                    );
-                })
-                .padding(0.), // So it's enclosed in a WidgetPod, (just a nop),
-        )
-        .lens(Hello::vec)
 }

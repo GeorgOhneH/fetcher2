@@ -125,7 +125,7 @@ impl Polybox {
 
 #[async_trait]
 impl ModuleExt for Polybox {
-    async fn fetch_urls(
+    async fn fetch_urls_impl(
         &self,
         session: Session,
         sender: Sender<Task>,
@@ -188,11 +188,11 @@ impl ModuleExt for Polybox {
         Ok(())
     }
 
-    fn website_url(&self) -> String {
+    fn website_url_impl(&self) -> String {
         "todo!()".to_owned()
     }
 
-    async fn folder_name(
+    async fn folder_name_impl(
         &self,
         session: &Session,
         dsettings: &DownloadSettings,

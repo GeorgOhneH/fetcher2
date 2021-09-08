@@ -79,7 +79,7 @@ impl Site {
     ) {
         comm.send_event(RunEvent::Start);
         comm.send_event(LoginEvent::Start);
-        match self.module.real_login(&session, &dsettings).await {
+        match self.module.login(&session, &dsettings).await {
             Ok(()) => comm.send_event(LoginEvent::Finish),
             Err(err) => {
                 comm.send_event(LoginEvent::Err(err));
@@ -90,7 +90,7 @@ impl Site {
 
         let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 
-        let task_stream = self.module.real_fetch_urls(
+        let task_stream = self.module.fetch_urls(
             session.clone(),
             sender,
             base_path,
