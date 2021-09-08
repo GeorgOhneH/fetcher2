@@ -69,8 +69,11 @@ impl RootNode {
             .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
             .collect();
 
-        try_join_all(futures).await?;
-        Ok(())
+        if join_all(futures).await.iter().any(|r| r.is_err()) {
+            Err(())
+        } else {
+            Ok(())
+        }
     }
 
     pub async fn run(

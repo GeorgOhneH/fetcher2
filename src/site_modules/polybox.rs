@@ -1,4 +1,4 @@
-use crate::error::{TErrorFast, Result, TErrorKind};
+use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
@@ -15,7 +15,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::settings::DownloadSettings;
 use lazy_static::lazy_static;
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 
 use crate::site_modules::utils::save_path;
 use crate::site_modules::ModuleExt;
@@ -77,8 +77,7 @@ pub enum Mode {
 impl Polybox {
     pub async fn html_login(&self, session: &Session, password: &str) -> Result<()> {
         lazy_static! {
-            static ref TOKEN_RE: Regex =
-                Regex::new("<input .*name=\"requesttoken\" .*value=\"(.*)\".*>").unwrap();
+            static ref TOKEN_RE: Regex = Regex::new("<head data-requesttoken=\"(.*)\">").unwrap();
         }
         let url = INDEX_URL
             .join("s/")
@@ -111,12 +110,7 @@ impl Polybox {
         let url = INDEX_URL.join("f/").unwrap().join(&self.id)?;
         let response = session
             .get(url)
-            .basic_auth(
-                dsettings.try_username()?,
-                Some(
-                    dsettings.try_password()?,
-                ),
-            )
+            .basic_auth(dsettings.try_username()?, Some(dsettings.try_password()?))
             .send()
             .await?;
 

@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::Label;
-use druid::{theme, Lens, LensExt, Rect, SingleUse};
+use druid::widget::{Label, Scroll};
+use druid::{theme, Lens, LensExt, Rect, SingleUse, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
@@ -38,7 +38,7 @@ where
 {
     header: WidgetPod<R, Header<R, N>>,
     /// The root node of this tree
-    root_node: WidgetPod<R, TreeNodeRootWidget<R, T, L, N>>,
+    root_node: WidgetPod<R, Scroll<R, TreeNodeRootWidget<R, T, L, N>>>,
     selected: Option<NodeIndex>,
     selection_mode: SelectionMode,
 }
@@ -64,10 +64,17 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 make_opener,
                 sizes,
                 expand_lens,
-            )),
+            ).scroll().vertical()),
             selected: None,
             selection_mode: SelectionMode::Single,
         }
+    }
+
+    pub fn set_sizes(mut self, sizes: [f64; N]) -> Self {
+        self.header.widget_mut().sizes(sizes);
+        let poses = self.header.widget().widget_pos();
+        self.root_node.widget_mut().child_mut().update_sizes(poses);
+        self
     }
 
     // pub fn with_opener<W: Widget<T> + 'static>(
@@ -89,7 +96,8 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         if rect.contains(p) {
             self.root_node
                 .widget()
-                .at(Point::new(p.x - rect.x0, p.y - rect.y0))
+                .child()
+                .at(Point::new(p.x - rect.x0, p.y - rect.y0) + self.root_node.widget().offset())
         } else {
             None
         }
@@ -113,18 +121,18 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
             Event::Notification(notif) if notif.is(HEADER_SIZE_CHANGED) => {
                 ctx.set_handled();
                 let sizes = self.header.widget().widget_pos();
-                self.root_node.widget_mut().update_sizes(sizes);
+                self.root_node.widget_mut().child_mut().update_sizes(sizes);
                 ctx.request_layout();
                 return;
             }
             Event::MouseDown(mouse_event) => {
                 if let Some(idx) = self.node_at(mouse_event.pos) {
                     ctx.set_active(true);
-                    for selected_child_idx in self.root_node.widget().get_selected() {
-                        let node = self.root_node.widget_mut().node_mut(&selected_child_idx);
+                    for selected_child_idx in self.root_node.widget().child().get_selected() {
+                        let node = self.root_node.widget_mut().child_mut().node_mut(&selected_child_idx);
                         node.highlight_box.widget_mut().selected = false;
                     }
-                    let node = self.root_node.widget_mut().node_mut(&idx);
+                    let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
                     node.highlight_box.widget_mut().selected = true;
                     ctx.request_paint();
                 }
@@ -139,12 +147,12 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 if ctx.is_active() {
                     if let Some(idx) = self.node_at(mouse_event.pos) {
                         if matches!(self.selection_mode, SelectionMode::Single) {
-                            for selected_child_idx in self.root_node.widget().get_selected() {
-                                let node = self.root_node.widget_mut().node_mut(&selected_child_idx);
+                            for selected_child_idx in self.root_node.widget().child().get_selected() {
+                                let node = self.root_node.widget_mut().child_mut().node_mut(&selected_child_idx);
                                 node.highlight_box.widget_mut().selected = false;
                             }
                         }
-                        let node = self.root_node.widget_mut().node_mut(&idx);
+                        let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
                         node.highlight_box.widget_mut().selected = true;
                         ctx.request_paint();
                     }
@@ -168,7 +176,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         let header_size = self.header.layout(ctx, bc, data, env);
         let node_bc = BoxConstraints::new(
             Size::new(header_size.width, 0.),
-            Size::new(header_size.width, f64::INFINITY),
+            Size::new(header_size.width, bc.max().height),
         );
         let content_size = self.root_node.layout(ctx, &node_bc, data, env);
         self.header.set_origin(ctx, data, env, Point::ORIGIN);

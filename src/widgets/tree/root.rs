@@ -20,6 +20,7 @@ use crate::widgets::tree::node::{
 };
 use druid_widget_nursery::selectors;
 use std::process::id;
+use std::time::Instant;
 
 pub trait TreeNodeRoot<T: TreeNode>
 where
@@ -154,7 +155,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> 
     for TreeNodeRootWidget<R, T, L, N>
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
-        let event = match event {
+        match event {
             Event::Notification(notif) if notif.is(TREE_OPEN) => {
                 panic!("should not happen")
             }
@@ -172,7 +173,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> 
                 self.update_children(data);
                 ctx.set_handled();
                 ctx.children_changed();
-                None
+                return;
             }
             // TODO?
             // Event::Notification(notif) if notif.is(TREE_NOTIFY_PARENT) => {
@@ -183,14 +184,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> 
             //     }
             //     None
             // }
-            _ => Some(event),
-        };
-
-        // get the unhandled event or return
-        let event = if let Some(evt) = event {
-            evt
-        } else {
-            return;
+            _ => (),
         };
 
         // don't go further with unhandled notifications

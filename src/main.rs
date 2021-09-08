@@ -134,6 +134,7 @@ use tokio::time;
 use tokio::time::Duration;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::communication::RawCommunication;
+use crate::widgets::file_watcher::FileWatcher;
 
 #[derive(Clone, Lens, Debug, Data)]
 struct AppData {
@@ -255,9 +256,9 @@ fn ui_builder() -> impl Widget<AppData> {
         .with_child(start)
         .with_child(stop)
         .with_child(settings)
-        // .with_child(header)
         .with_child(TemplateData::build_widget().lens(AppData::template))
-        .debug_paint_layout()
+        .with_flex_child(FileWatcher::new().path(PathBuf::from("C:\\ethz")).lens(druid::lens::Unit), 1.)
+        // .debug_paint_layout()
 }
 
 #[derive(Clone, Lens, Debug, Data)]

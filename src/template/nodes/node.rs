@@ -126,8 +126,11 @@ impl Node {
             .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), path.clone()))
             .collect();
 
-        try_join_all(futures).await?;
-        Ok(())
+        if join_all(futures).await.iter().any(|r| r.is_err()) {
+            Err(())
+        } else {
+            Ok(())
+        }
     }
     #[async_recursion]
     pub async fn run<'a>(

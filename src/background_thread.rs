@@ -1,5 +1,5 @@
 use crate::delegate::{Msg, TemplateDelegate};
-use crate::template::widget::{TemplateData};
+use crate::template::widget::TemplateData;
 use config::CStruct;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
@@ -33,7 +33,7 @@ use config_derive::Config;
 use futures::future::{AbortHandle, Abortable, Aborted};
 use futures::prelude::stream::FuturesUnordered;
 use futures::stream::FuturesOrdered;
-use futures::{StreamExt, FutureExt};
+use futures::{FutureExt, StreamExt};
 use log::{debug, error, info, log_enabled, Level};
 use serde::Serialize;
 use std::collections::HashSet;
@@ -71,10 +71,12 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
     match template.prepare(dsettings.clone()).await {
         Ok(prep_status) => {}
         Err(err) => {
-            print!("Got error in prepare exit...");
+            dbg!("Got error in prepare exit...");
+            // TODO
             return;
         }
     };
+
 
     let mut futs = FuturesUnordered::new();
     let mut abort_handles = Vec::new();

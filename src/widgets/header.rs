@@ -30,7 +30,7 @@ selectors! {
 pub struct Header<T, const N: usize> {
     split_axis: Axis,
     effective_size: [f64; N],
-    min_size: [f64; N],
+    min_sizes: [f64; N],
     // Integers only
     bar_size: f64,
     // Integers only
@@ -60,7 +60,7 @@ impl<T, const N: usize> Header<T, N> {
         Header {
             split_axis,
             effective_size: [100.0; N],
-            min_size: [0.0; N],
+            min_sizes: [0.0; N],
             bar_size: 6.0,
             min_bar_area: 6.0,
             solid: false,
@@ -88,17 +88,16 @@ impl<T, const N: usize> Header<T, N> {
     ///
     /// The value must be between `0.0` and `1.0`, inclusive.
     /// The default split point is `0.5`.
-    pub fn split_point(mut self, size: [f64; N]) -> Self {
+    pub fn sizes(&mut self, size: [f64; N]) {
         self.effective_size = size;
-        self
     }
 
     /// Builder-style method to set the minimum size for both sides of the split axis.
     ///
     /// The value must be greater than or equal to `0.0`.
     /// The value will be rounded up to the nearest integer.
-    pub fn min_size(mut self, size: [f64; N]) -> Self {
-        self.min_size = size;
+    pub fn min_sizes(mut self, size: [f64; N]) -> Self {
+        self.min_sizes = size;
         self
     }
 
@@ -213,7 +212,7 @@ impl<T, const N: usize> Header<T, N> {
 
     /// Set a new chosen split point.
     fn update_split_point(&mut self, idx: usize, mouse_pos: f64) {
-        let min_limit = self.min_size[idx];
+        let min_limit = self.min_sizes[idx];
         let size = mouse_pos - self.widget_start(idx);
         self.effective_size[idx] = size.max(min_limit);
     }

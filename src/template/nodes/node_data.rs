@@ -201,6 +201,7 @@ impl PathState {
             }
             PathEvent::Err(err) => {
                 self.count -= 1;
+                dbg!(&err);
                 self.errs.push_back(Arc::new(err));
             }
             PathEvent::Cached(new_path) => {
