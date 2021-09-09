@@ -39,9 +39,7 @@ where
     L: Lens<T, bool>,
 {
     header: WidgetPod<R, Header<R, N>>,
-    root_node: WidgetPod<R, TreeNodeRootWidget<R, T, L, N>>,
-    port: Viewport,
-    scroll_component: ScrollComponent,
+    root_node: WidgetPod<R, Scroll<R, TreeNodeRootWidget<R, T, L, N>>>,
     selected: Option<NodeIndex>,
     selection_mode: SelectionMode,
 }
@@ -63,15 +61,11 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
 
         Tree {
             header: WidgetPod::new(header),
-            root_node: WidgetPod::new(TreeNodeRootWidget::new(
-                make_widgets,
-                make_opener,
-                constrains,
-                expand_lens,
-            )),
-            scroll_component: ScrollComponent::new(),
+            root_node: WidgetPod::new(
+                TreeNodeRootWidget::new(make_widgets, make_opener, constrains, expand_lens)
+                    .scroll(),
+            ),
             selected: None,
-            port: Viewport::default(),
             selection_mode: SelectionMode::Single,
         }
     }
@@ -79,7 +73,10 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     pub fn set_sizes(mut self, sizes: [f64; N]) -> Self {
         self.header.widget_mut().sizes(sizes);
         let constrains = self.header.widget().constrains();
-        self.root_node.widget_mut().update_constrains(constrains);
+        self.root_node
+            .widget_mut()
+            .child_mut()
+            .update_constrains(constrains);
         self
     }
 
@@ -102,10 +99,17 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         if rect.contains(p) {
             self.root_node
                 .widget()
-                .at(Point::new(p.x - rect.x0, p.y - rect.y0) + self.port.view_origin.to_vec2())
+                .child()
+                .at(Point::new(p.x - rect.x0, p.y - rect.y0) + self.root_node.widget().offset())
         } else {
             None
         }
+    }
+
+    fn header_offset(&self) -> Vec2 {
+        let mut header_offset = self.root_node.widget().offset();
+        header_offset.y = 0.;
+        header_offset
     }
 }
 // Implement the Widget trait for Tree
@@ -113,47 +117,28 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     for Tree<R, T, L, N>
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
-        let scroll_component = &mut self.scroll_component;
-
-        scroll_component.event(&mut self.port, ctx, event, env);
-        self.root_node
-            .set_viewport_offset(self.port.view_origin.to_vec2());
-        let mut header_offset = self.port.view_origin.to_vec2();
-        header_offset.y = 0.;
-        self.header.set_viewport_offset(header_offset);
+        self.root_node.event(ctx, event, data, env);
+        self.header.set_viewport_offset(self.header_offset());
 
         if !ctx.is_handled() {
-            let viewport = ctx.size().to_rect();
-            let root_force_event = self.root_node.is_hot() || self.root_node.has_active();
-            if let Some(child_event) =
-                event.transform_scroll(self.port.view_origin.to_vec2(), viewport, root_force_event)
-            {
-                self.root_node.event(ctx, &child_event, data, env);
-            }
+            let viewport = self.header.layout_rect();
             let header_force_event = self.header.is_hot() || self.header.has_active();
             if let Some(child_event) =
-                event.transform_scroll(header_offset, viewport, header_force_event)
+                event.transform_scroll(self.header_offset(), viewport, header_force_event)
             {
                 self.header.event(ctx, &child_event, data, env);
             }
         }
 
-        scroll_component.handle_scroll(&mut self.port, ctx, event, env);
-        self.root_node
-            .set_viewport_offset(self.port.view_origin.to_vec2());
-        let mut header_offset = self.port.view_origin.to_vec2();
-        header_offset.y = 0.;
-        self.header.set_viewport_offset(header_offset);
-
         match event {
             Event::MouseDown(mouse_event) => {
                 if let Some(idx) = self.node_at(mouse_event.pos) {
                     ctx.set_active(true);
-                    for selected_child_idx in self.root_node.widget().get_selected() {
-                        let node = self.root_node.widget_mut().node_mut(&selected_child_idx);
+                    for selected_child_idx in self.root_node.widget().child().get_selected() {
+                        let node = self.root_node.widget_mut().child_mut().node_mut(&selected_child_idx);
                         node.highlight_box.widget_mut().selected = false;
                     }
-                    let node = self.root_node.widget_mut().node_mut(&idx);
+                    let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
                     node.highlight_box.widget_mut().selected = true;
                     ctx.request_paint();
                 }
@@ -168,13 +153,13 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 if ctx.is_active() {
                     if let Some(idx) = self.node_at(mouse_event.pos) {
                         if matches!(self.selection_mode, SelectionMode::Single) {
-                            for selected_child_idx in self.root_node.widget().get_selected() {
+                            for selected_child_idx in self.root_node.widget().child().get_selected() {
                                 let node =
-                                    self.root_node.widget_mut().node_mut(&selected_child_idx);
+                                    self.root_node.widget_mut().child_mut().node_mut(&selected_child_idx);
                                 node.highlight_box.widget_mut().selected = false;
                             }
                         }
-                        let node = self.root_node.widget_mut().node_mut(&idx);
+                        let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
                         node.highlight_box.widget_mut().selected = true;
                         ctx.request_paint();
                     }
@@ -185,9 +170,8 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &R, env: &Env) {
-        self.scroll_component.lifecycle(ctx, event, env);
-        self.header.lifecycle(ctx, event, data, env);
         self.root_node.lifecycle(ctx, event, data, env);
+        self.header.lifecycle(ctx, event, data, env);
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &R, data: &R, env: &Env) {
@@ -196,28 +180,18 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &R, env: &Env) -> Size {
-        let old_port_size = self.port.view_size;
-
         let header_bc = BoxConstraints::new(
             Size::new(bc.min().width, 0.),
             Size::new(f64::INFINITY, f64::INFINITY),
         );
         let header_size = self.header.layout(ctx, &header_bc, data, env);
 
-        // self.header.widget_mut().pan_by(Vec2::ZERO);
-        // if old_header_size != header_size {
-        //     self.scroll_component_vertical
-        //         .reset_scrollbar_fade(|d| ctx.request_timer(d), env);
-        // }
-        self.scroll_component
-            .reset_scrollbar_fade(|d| ctx.request_timer(d), env);
-
         let constrains = self.header.widget().constrains();
-        self.root_node.widget_mut().update_constrains(constrains);
+        self.root_node.widget_mut().child_mut().update_constrains(constrains);
 
         let node_bc = BoxConstraints::new(
-            Size::new(header_size.width, 0.),
-            Size::new(header_size.width, f64::INFINITY),
+            Size::new(bc.min().width, (bc.min().height-header_size.height).max(0.)),
+            Size::new(bc.max().width, (bc.max().height-header_size.height).max(0.)),
         );
         let root_size = self.root_node.layout(ctx, &node_bc, data, env);
 
@@ -227,16 +201,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         // TODO: ctx.set_paint_insets...
         let my_size = Size::new(header_size.width, header_size.height + root_size.height);
 
-        self.port.content_size = root_size;
-        self.port.view_size = bc.constrain(root_size);
-        let new_offset = self.port.clamp_view_origin(self.port.view_origin);
-        if self.port.pan_to(new_offset) {
-            self.root_node
-                .set_viewport_offset(self.port.view_origin.to_vec2());
-            let mut header_offset = self.port.view_origin.to_vec2();
-            header_offset.y = 0.;
-            self.header.set_viewport_offset(header_offset);
-        }
+        self.header.set_viewport_offset(self.header_offset());
 
         bc.constrain(my_size)
     }
@@ -245,30 +210,19 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         let rect = ctx.size().to_rect();
         ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
 
-        let offset = self.port.view_origin.to_vec2();
-        ctx.with_save(|ctx| {
+        self.root_node.paint(ctx, data, env);
 
-            let layout_origin = self.root_node.layout_rect().origin().to_vec2();
-            ctx.clip(self.root_node.layout_rect());
-            ctx.transform(Affine::translate(-offset+layout_origin));
-
-            let mut visible = ctx.region().clone();
-            visible += offset - layout_origin;
-            ctx.with_child_ctx(visible, |ctx| self.root_node.paint_raw(ctx, data, env));
-        });
-
-        let mut header_offset = self.port.view_origin.to_vec2();
-        header_offset.y = 0.;
+        let header_offset = self.header_offset();
+        dbg!(header_offset);
         ctx.with_save(|ctx| {
             ctx.clip(self.header.layout_rect());
             ctx.transform(Affine::translate(-header_offset));
 
             let mut visible = ctx.region().clone();
             visible += header_offset;
-            ctx.with_child_ctx(visible, |ctx| self.header.paint_raw(ctx, data, env));
+            dbg!(&visible);
+            ctx.with_child_ctx(visible, |ctx| self.header.paint(ctx, data, env));
         });
 
-
-        self.scroll_component.draw_bars(ctx, &self.port, env);
     }
 }
