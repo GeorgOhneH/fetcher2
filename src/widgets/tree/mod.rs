@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{ClipBox, Label, Scroll, Viewport};
+use druid::widget::{ClipBox, Label, Scroll, Viewport, Axis};
 use druid::{theme, Affine, Lens, LensExt, Rect, SingleUse, Vec2, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -38,7 +38,7 @@ where
     T: TreeNode,
     L: Lens<T, bool>,
 {
-    header: WidgetPod<R, Header<R, N>>,
+    header: WidgetPod<R, ClipBox<R, Header<R, N>>>,
     root_node: WidgetPod<R, Scroll<R, TreeNodeRootWidget<R, T, L, N>>>,
     selected: Option<NodeIndex>,
     selection_mode: SelectionMode,
@@ -60,7 +60,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         let constrains = header.constrains();
 
         Tree {
-            header: WidgetPod::new(header),
+            header: WidgetPod::new(ClipBox::new(header).content_must_fill(true)),
             root_node: WidgetPod::new(
                 TreeNodeRootWidget::new(make_widgets, make_opener, constrains, expand_lens)
                     .scroll(),
@@ -71,8 +71,8 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     }
 
     pub fn set_sizes(mut self, sizes: [f64; N]) -> Self {
-        self.header.widget_mut().sizes(sizes);
-        let constrains = self.header.widget().constrains();
+        self.header.widget_mut().child_mut().sizes(sizes);
+        let constrains = self.header.widget().child().constrains();
         self.root_node
             .widget_mut()
             .child_mut()
@@ -106,10 +106,8 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         }
     }
 
-    fn header_offset(&self) -> Vec2 {
-        let mut header_offset = self.root_node.widget().offset();
-        header_offset.y = 0.;
-        header_offset
+    fn header_offset(&self) -> f64 {
+        self.root_node.widget().offset().x
     }
 }
 // Implement the Widget trait for Tree
@@ -118,24 +116,23 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
         self.root_node.event(ctx, event, data, env);
-        self.header.set_viewport_offset(self.header_offset());
-
-        if !ctx.is_handled() {
-            let viewport = self.header.layout_rect();
-            let header_force_event = self.header.is_hot() || self.header.has_active();
-            if let Some(child_event) =
-                event.transform_scroll(self.header_offset(), viewport, header_force_event)
-            {
-                self.header.event(ctx, &child_event, data, env);
-            }
+        let header_offset = self.header_offset();
+        if self.header.widget_mut().viewport_origin().x != header_offset {
+            ctx.request_layout()
         }
+        self.header.widget_mut().pan_to_on_axis(Axis::Horizontal, header_offset);
+        self.header.event(ctx, event, data, env);
 
         match event {
             Event::MouseDown(mouse_event) => {
                 if let Some(idx) = self.node_at(mouse_event.pos) {
                     ctx.set_active(true);
                     for selected_child_idx in self.root_node.widget().child().get_selected() {
-                        let node = self.root_node.widget_mut().child_mut().node_mut(&selected_child_idx);
+                        let node = self
+                            .root_node
+                            .widget_mut()
+                            .child_mut()
+                            .node_mut(&selected_child_idx);
                         node.highlight_box.widget_mut().selected = false;
                     }
                     let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
@@ -153,9 +150,13 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 if ctx.is_active() {
                     if let Some(idx) = self.node_at(mouse_event.pos) {
                         if matches!(self.selection_mode, SelectionMode::Single) {
-                            for selected_child_idx in self.root_node.widget().child().get_selected() {
-                                let node =
-                                    self.root_node.widget_mut().child_mut().node_mut(&selected_child_idx);
+                            for selected_child_idx in self.root_node.widget().child().get_selected()
+                            {
+                                let node = self
+                                    .root_node
+                                    .widget_mut()
+                                    .child_mut()
+                                    .node_mut(&selected_child_idx);
                                 node.highlight_box.widget_mut().selected = false;
                             }
                         }
@@ -182,16 +183,25 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &R, env: &Env) -> Size {
         let header_bc = BoxConstraints::new(
             Size::new(bc.min().width, 0.),
-            Size::new(f64::INFINITY, f64::INFINITY),
+            bc.max(),
         );
         let header_size = self.header.layout(ctx, &header_bc, data, env);
 
-        let constrains = self.header.widget().constrains();
-        self.root_node.widget_mut().child_mut().update_constrains(constrains);
+        let constrains = self.header.widget().child().constrains();
+        self.root_node
+            .widget_mut()
+            .child_mut()
+            .update_constrains(constrains);
 
         let node_bc = BoxConstraints::new(
-            Size::new(bc.min().width, (bc.min().height-header_size.height).max(0.)),
-            Size::new(bc.max().width, (bc.max().height-header_size.height).max(0.)),
+            Size::new(
+                bc.min().width,
+                (bc.min().height - header_size.height).max(0.),
+            ),
+            Size::new(
+                bc.max().width,
+                (bc.max().height - header_size.height).max(0.),
+            ),
         );
         let root_size = self.root_node.layout(ctx, &node_bc, data, env);
 
@@ -201,8 +211,6 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         // TODO: ctx.set_paint_insets...
         let my_size = Size::new(header_size.width, header_size.height + root_size.height);
 
-        self.header.set_viewport_offset(self.header_offset());
-
         bc.constrain(my_size)
     }
 
@@ -211,18 +219,6 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
 
         self.root_node.paint(ctx, data, env);
-
-        let header_offset = self.header_offset();
-        dbg!(header_offset);
-        ctx.with_save(|ctx| {
-            ctx.clip(self.header.layout_rect());
-            ctx.transform(Affine::translate(-header_offset));
-
-            let mut visible = ctx.region().clone();
-            visible += header_offset;
-            dbg!(&visible);
-            ctx.with_child_ctx(visible, |ctx| self.header.paint(ctx, data, env));
-        });
-
+        self.header.paint(ctx, data, env);
     }
 }
