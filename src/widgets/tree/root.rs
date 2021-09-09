@@ -12,7 +12,6 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::template::NodeIndex;
 use crate::widgets::header::{Header, HeaderConstrains};
 use crate::widgets::tree::node::{
     OpenerFactory, TreeItemFactory, TreeNode, TreeNodeWidget, TREE_CHILD_REMOVE_INTERNAL,
@@ -21,6 +20,7 @@ use crate::widgets::tree::node::{
 use druid_widget_nursery::selectors;
 use std::process::id;
 use std::time::Instant;
+use crate::widgets::tree::NodeIndex;
 
 pub trait TreeNodeRoot<T: TreeNode>
 where

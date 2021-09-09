@@ -18,13 +18,14 @@ use crate::template::node_type::site::{
 };
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
-use crate::template::{MetaData, NodeIndex};
+use crate::template::{MetaData};
 use crate::widgets::tree::node::TreeNode;
 use crate::{AppData, TError};
 use druid::im::{HashSet, Vector};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 use std::path::PathBuf;
+use crate::widgets::tree::NodeIndex;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {

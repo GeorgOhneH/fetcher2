@@ -12,7 +12,6 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::template::NodeIndex;
 use crate::widgets::header::{Header};
 use druid_widget_nursery::selectors;
 use crate::widgets::tree::root::TreeNodeRoot;

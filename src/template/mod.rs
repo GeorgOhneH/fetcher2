@@ -27,14 +27,14 @@ use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::fs;
+use crate::ui::TemplateInfoSelect;
+use crate::widgets::tree::NodeIndex;
 
 #[derive(Debug)]
 pub struct Template {
     root: RootNode,
     raw_comm: RawCommunication,
 }
-
-pub type NodeIndex = Vec<usize>;
 
 impl Template {
     pub fn new(comm: RawCommunication) -> Self {
@@ -154,7 +154,6 @@ impl Template {
     pub fn widget_data(&self) -> TemplateData {
         TemplateData {
             root: self.root.widget_data(),
-            selected: None,
         }
     }
 }

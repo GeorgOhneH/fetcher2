@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
 
-use crate::cstruct_window::CStructWindow;
+use crate::cstruct_window::{c_struct_window, CStructBuffer};
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
@@ -37,12 +37,14 @@ use druid::{
     MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx,
     Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowLevel,
 };
+use druid_widget_nursery::WidgetExt as _;
 use flume;
 use futures::future::BoxFuture;
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
 use std::future::Future;
+use std::option::Option::Some;
 use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::time;
@@ -59,35 +61,53 @@ pub enum TemplateInfoSelect {
 #[derive(Clone, Lens, Debug, Data)]
 pub struct AppData {
     pub template: TemplateData,
+    pub settings: Option<Settings>,
     pub template_info_select: TemplateInfoSelect,
-    pub settings_window: CStructWindow<Settings>,
 }
 
 pub fn build_ui() -> impl Widget<AppData> {
     Flex::column()
         .cross_axis_alignment(CrossAxisAlignment::Start)
         .with_child(tool_bar())
-        .with_flex_child(
-            Split::rows(
-                TemplateData::build_widget()
-                    .lens(AppData::template)
-                    .border(Color::WHITE, 1.),
-                info_view_ui(),
-            ).draggable(true).expand_width(),
-            1.,
-        )
-        .with_child(info_view_selector_ui().lens(AppData::template_info_select))
+        .with_flex_child(template_ui(), 1.)
         .padding(10.)
     // .debug_paint_layout()
 }
 
+fn template_ui() -> impl Widget<AppData> {
+    Flex::column()
+        .with_flex_child(
+            Split::rows(
+                TemplateData::build_widget()
+                    .border(Color::WHITE, 1.)
+                    .lens(AppData::template),
+                info_view_ui(),
+            )
+            .draggable(true)
+            .expand_width(),
+            1.,
+        )
+        .with_child(info_view_selector_ui().lens(AppData::template_info_select))
+}
 
 fn info_view_ui() -> impl Widget<AppData> {
     ViewSwitcher::new(
         |data: &AppData, _env| data.template_info_select,
         |selector, _data, _env| match selector {
             TemplateInfoSelect::General => Label::new("General").boxed(),
-            TemplateInfoSelect::Folder => FileWatcher::new().path(PathBuf::from("C:\\ethz")).lens(lens::Unit).boxed(),
+            TemplateInfoSelect::Folder => FileWatcher::new(|data: &AppData| match &data.settings {
+                Some(settings) if data.template.root.selected.len() > 0 => {
+                    let idx = &data.template.root.selected[0];
+                    let node = data
+                        .template
+                        .node(&idx.clone().into_iter().collect::<Vec<_>>());
+                    node.path
+                        .as_ref()
+                        .map(|path| settings.downs.save_path.join(path))
+                }
+                _ => None,
+            })
+            .boxed(),
             TemplateInfoSelect::History => Label::new("History").boxed(),
             TemplateInfoSelect::Nothing => SizedBox::empty().boxed(),
         },
@@ -130,7 +150,7 @@ fn tool_bar() -> impl Widget<AppData> {
         ))
     });
     let settings = Button::new("Settings")
-        .on_click(|ctx, data: &mut CStructWindow<Settings>, env| {
+        .on_click(|ctx, data: &mut Option<Settings>, env| {
             let window = ctx.window();
             let win_pos = window.get_position();
             let (win_size_w, win_size_h) = window.get_size().into();
@@ -142,13 +162,22 @@ fn tool_bar() -> impl Widget<AppData> {
                     .window_size(Size::new(size_w, size_h))
                     .set_position(pos)
                     .set_level(WindowLevel::Modal),
-                CStructWindow::widget(),
+                c_struct_window(),
                 data.clone(),
                 env.clone(),
             );
         })
         .padding(0.) // So it's enclosed in a WidgetPod, (just a nop)
-        .lens(AppData::settings_window);
+        .on_change(
+            |ctx, old_data: &Option<Settings>, data: &mut Option<Settings>, _env| {
+                if let Some(settings) = data {
+                    ctx.submit_command(
+                        MSG_THREAD.with(SingleUse::new(Msg::NewSettings(settings.downs.clone()))),
+                    )
+                }
+            },
+        )
+        .lens(AppData::settings);
 
     Flex::row()
         .cross_axis_alignment(CrossAxisAlignment::Start)

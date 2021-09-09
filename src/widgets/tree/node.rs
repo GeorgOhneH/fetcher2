@@ -12,11 +12,11 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::template::NodeIndex;
 use crate::widgets::header::{Header, HeaderConstrains};
 use crate::widgets::tree::opener::Opener;
 use druid_widget_nursery::selectors;
 use std::process::id;
+use crate::widgets::tree::NodeIndex;
 
 selectors! {
     /// Notification to send from the widget that requires removal
@@ -30,10 +30,6 @@ selectors! {
     TREE_CHILD_SHOW,
     /// Command sent to children on close
     TREE_CHILD_HIDE,
-    /// Submitted as a notification, from the user's widget, the Selector payload is submitted as
-    /// a command to its parent. It's a workaround to simulate notifications between user's tree
-    /// widgets.
-    TREE_NOTIFY_PARENT: Selector,
     /// Notify an opener's widget on click.
     TREE_ACTIVATE_NODE,
 }

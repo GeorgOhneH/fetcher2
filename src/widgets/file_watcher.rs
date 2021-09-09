@@ -1,6 +1,6 @@
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;
-use crate::widgets::tree::Tree;
+use crate::widgets::tree::{Tree, DataNodeIndex};
 use crate::Result;
 use crossbeam_channel::{Receiver, Select, Sender};
 use druid::im::Vector;
@@ -85,12 +85,14 @@ impl TreeNode for Entry {
 #[derive(Data, Clone, Debug, Lens)]
 pub struct EntryRoot {
     children: Vector<Entry>,
+    selected: Vector<DataNodeIndex>,
 }
 
 impl EntryRoot {
     pub fn empty() -> Self {
         Self {
             children: Vector::new(),
+            selected: Vector::new(),
         }
     }
 
@@ -98,7 +100,7 @@ impl EntryRoot {
         let children = fs::read_dir(path)?
             .map(|entry| Entry::new(entry?))
             .collect::<io::Result<Vector<_>>>()?;
-        Ok(Self { children })
+        Ok(Self { children, selected: Vector::new() })
     }
 }
 
@@ -125,21 +127,23 @@ enum Msg {
     NewPath(PathBuf),
 }
 
-pub struct FileWatcher {
+pub struct FileWatcher<T> {
     path: Option<PathBuf>,
-    tree: WidgetPod<EntryRoot, Tree<EntryRoot, Entry, entry_derived_lenses::expanded, 1>>,
+    tree: WidgetPod<EntryRoot, Tree<EntryRoot, Entry, entry_derived_lenses::expanded, entry_root_derived_lenses::selected, 1>>,
     root: EntryRoot,
     tx: Option<Sender<Msg>>,
+    update_closure: Box<dyn Fn(&T) -> Option<PathBuf>>
 }
 
-impl FileWatcher {
-    pub fn new() -> Self {
+impl<T> FileWatcher<T> {
+    pub fn new(update_closure: impl Fn(&T) -> Option<PathBuf> + 'static) -> Self {
         let tree = Tree::new(
             [Label::new("Hello3")],
             [Arc::new(|| {
                 Label::dynamic(|data: &Entry, _env| data.name.clone()).boxed()
             })],
             Entry::expanded,
+            EntryRoot::selected,
         )
         .set_sizes([400.]);
         Self {
@@ -147,20 +151,32 @@ impl FileWatcher {
             tree: WidgetPod::new(tree),
             tx: None,
             root: EntryRoot::empty(),
+            update_closure: Box::new(update_closure)
         }
     }
 
-    pub fn path(mut self, path: PathBuf) -> Self {
-        self.path = Some(path.clone());
-        if let Some(tx) = &self.tx {
-            tx.send(Msg::NewPath(path)).unwrap()
-        };
-        self
+    pub fn set_path(&mut self, path: Option<PathBuf>) {
+        dbg!(&path);
+        if self.path == path {
+            return;
+        }
+
+        self.path = path;
+        match &self.path {
+            Some(path) => {
+                if let Some(tx) = &self.tx {
+                    tx.send(Msg::NewPath(path.clone())).unwrap()
+                };
+            }
+            None => {
+                // TODO reset
+            }
+        }
     }
 }
 
-impl Widget<()> for FileWatcher {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, _: &mut (), env: &Env) {
+impl<T: Data> Widget<T> for FileWatcher<T> {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, _: &mut T, env: &Env) {
         match event {
             Event::Command(command) if command.is(NEW_ROOT) => {
                 ctx.set_handled();
@@ -180,7 +196,7 @@ impl Widget<()> for FileWatcher {
         self.tree.event(ctx, event, &mut self.root, env)
     }
 
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, _: &(), env: &Env) {
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
         if let LifeCycle::WidgetAdded = event {
             let (tx, rx) = crossbeam_channel::unbounded();
             let id = ctx.widget_id();
@@ -188,25 +204,28 @@ impl Widget<()> for FileWatcher {
             thread::spawn(move || {
                 msg_thread(rx, id, sink);
             });
-            if let Some(path) = &self.path {
-                tx.send(Msg::NewPath(path.clone())).unwrap()
-            };
             self.tx = Some(tx);
+            let new_path = (self.update_closure)(data);
+            self.set_path(new_path);
         };
         self.tree.lifecycle(ctx, event, &self.root, env)
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _: &(), _: &(), env: &Env) {
-        self.tree.update(ctx, &self.root, env)
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
+        self.tree.update(ctx, &self.root, env);
+        if !old_data.same(data) {
+            let new_path = (self.update_closure)(data);
+            self.set_path(new_path);
+        }
     }
 
-    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, _: &(), env: &Env) -> Size {
+    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, _: &T, env: &Env) -> Size {
         let size = self.tree.layout(ctx, bc, &self.root, env);
         self.tree.set_origin(ctx, &self.root, env, Point::ORIGIN);
         size
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, _: &(), env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, _: &T, env: &Env) {
         self.tree.paint(ctx, &self.root, env)
     }
 }

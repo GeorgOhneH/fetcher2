@@ -16,41 +16,55 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::template::NodeIndex;
 use crate::widgets::header::Header;
 use crate::widgets::tree::node::{OpenerFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;
 use crate::widgets::tree::root::{TreeNodeRoot, TreeNodeRootWidget};
+use druid::im::Vector;
 use druid::scroll_component::{ScrollComponent, ScrollbarsEnabled};
 use druid_widget_nursery::selectors;
 use std::ops::Mul;
 
 pub enum SelectionMode {
-    Nothing,
     Single,
     Multiple,
 }
 
-pub struct Tree<R, T, L, const N: usize>
+enum SelectUpdateMode {
+    Single,
+    Add,
+    Sub,
+}
+
+pub type NodeIndex = Vec<usize>;
+pub type DataNodeIndex = Vector<usize>;
+
+pub struct Tree<R, T, L, S, const N: usize>
 where
     R: TreeNodeRoot<T>,
     T: TreeNode,
     L: Lens<T, bool>,
+    S: Lens<R, Vector<DataNodeIndex>>,
 {
     header: WidgetPod<R, ClipBox<R, Header<R, N>>>,
     root_node: WidgetPod<R, Scroll<R, TreeNodeRootWidget<R, T, L, N>>>,
-    selected: Option<NodeIndex>,
+    selected_lens: S,
     selection_mode: SelectionMode,
 }
 
 /// Tree Implementation
-impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize>
-    Tree<R, T, L, N>
+impl<R, T, L, S, const N: usize> Tree<R, T, L, S, N>
+where
+    R: TreeNodeRoot<T>,
+    T: TreeNode,
+    L: Lens<T, bool> + Clone + 'static,
+    S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
 {
     pub fn new(
         header_widgets: [impl Widget<R> + 'static; N],
         make_widgets: [Arc<dyn Fn() -> Box<dyn Widget<T>>>; N],
         expand_lens: L,
+        selected_lens: S,
     ) -> Self {
         let el = expand_lens.clone();
         let make_opener: Arc<Box<OpenerFactory<T>>> =
@@ -64,7 +78,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 TreeNodeRootWidget::new(make_widgets, make_opener, constrains, expand_lens)
                     .scroll(),
             ),
-            selected: None,
+            selected_lens,
             selection_mode: SelectionMode::Single,
         }
     }
@@ -79,20 +93,6 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         self
     }
 
-    // pub fn with_opener<W: Widget<T> + 'static>(
-    //     mut self,
-    //     closure: impl Fn() -> W + 'static,
-    // ) -> Self {
-    //     self.root_node.widget_mut().make_opener = Arc::new(Box::new(move || Box::new(closure())));
-    //     self.root_node.widget_mut().opener = WidgetPod::new(Opener {
-    //         widget: WidgetPod::new(self.root_node.widget_mut().make_opener.clone()()),
-    //     });
-    //     self
-    // }
-}
-impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize>
-    Tree<R, T, L, N>
-{
     pub fn node_at(&self, p: Point) -> Option<NodeIndex> {
         let rect = self.root_node.layout_rect();
         if rect.contains(p) {
@@ -104,6 +104,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
             None
         }
     }
+
     pub fn update_highlights(&mut self, p: Point) -> bool {
         let rect = self.root_node.layout_rect();
         let offset = self.root_node.widget().offset();
@@ -117,13 +118,65 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         }
     }
 
+    fn update_selection(&mut self, new_node: &NodeIndex, mode: SelectUpdateMode, data: &mut R) -> bool {
+        let current_selected = self.root_node.widget().child().get_selected();
+        match mode {
+            SelectUpdateMode::Single => {
+                if current_selected.len() == 1 && &current_selected[0] == new_node {
+                    return false;
+                }
+                for selected_child_idx in &current_selected {
+                    let node = self
+                        .root_node
+                        .widget_mut()
+                        .child_mut()
+                        .node_mut(selected_child_idx);
+                    node.selected = false;
+                }
+                let node = self.root_node.widget_mut().child_mut().node_mut(&new_node);
+                node.selected = true;
+                self.selected_lens.with_mut(data, |selected| {
+                    selected.clear();
+                    selected.push_back(new_node.into())
+                });
+                true
+            }
+            SelectUpdateMode::Add => {
+                if current_selected.contains(new_node) {
+                    return false
+                }
+                let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
+                node.selected = true;
+                self.selected_lens.with_mut(data, |selected| {
+                    selected.push_back(new_node.into())
+                });
+                true
+            }
+            SelectUpdateMode::Sub => {
+                if !current_selected.contains(new_node) {
+                    return false;
+                }
+                let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
+                node.selected = false;
+                self.selected_lens.with_mut(data, |selected| {
+                    selected.retain(|idx| idx != &Vector::from(new_node))
+                });
+                true
+            }
+        }
+    }
+
     fn header_offset(&self) -> f64 {
         self.root_node.widget().offset().x
     }
 }
 // Implement the Widget trait for Tree
-impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const N: usize> Widget<R>
-    for Tree<R, T, L, N>
+impl<R, T, L, S, const N: usize> Widget<R> for Tree<R, T, L, S, N>
+where
+    R: TreeNodeRoot<T>,
+    T: TreeNode,
+    L: Lens<T, bool> + Clone + 'static,
+    S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
         self.root_node.event(ctx, event, data, env);
@@ -150,18 +203,10 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
         match event {
             Event::MouseDown(mouse_event) => {
                 if let Some(idx) = self.node_at(mouse_event.pos) {
-                    ctx.set_active(true);
-                    for selected_child_idx in self.root_node.widget().child().get_selected() {
-                        let node = self
-                            .root_node
-                            .widget_mut()
-                            .child_mut()
-                            .node_mut(&selected_child_idx);
-                        node.selected = false;
+                    if self.update_selection(&idx, SelectUpdateMode::Single, data) {
+                        ctx.request_paint();
                     }
-                    let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
-                    node.selected = true;
-                    ctx.request_paint();
+                    ctx.set_active(true);
                 }
                 return;
             }
@@ -176,20 +221,13 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 }
                 if ctx.is_active() {
                     if let Some(idx) = self.node_at(mouse_event.pos) {
-                        if matches!(self.selection_mode, SelectionMode::Single) {
-                            for selected_child_idx in self.root_node.widget().child().get_selected()
-                            {
-                                let node = self
-                                    .root_node
-                                    .widget_mut()
-                                    .child_mut()
-                                    .node_mut(&selected_child_idx);
-                                node.selected = false;
-                            }
+                        let mode = match self.selection_mode {
+                            SelectionMode::Single => SelectUpdateMode::Single,
+                            SelectionMode::Multiple => SelectUpdateMode::Add,
+                        };
+                        if self.update_selection(&idx, mode, data) {
+                            ctx.request_paint();
                         }
-                        let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
-                        node.selected = true;
-                        ctx.request_paint();
                     }
                 }
             }
@@ -206,6 +244,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &R, data: &R, env: &Env) {
+        //TODO lens update select
         self.header.update(ctx, data, env);
         self.root_node.update(ctx, data, env);
     }

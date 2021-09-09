@@ -53,9 +53,9 @@ pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: T
 }
 
 async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Template) {
-    let dsettings = Arc::new(DownloadSettings {
+    let mut dsettings = Arc::new(DownloadSettings {
         username: Some(std::env::var("USERNAME").unwrap()),
-        password: Some(std::env::var("PASSWORD").unwrap()),
+        password: Some("wrong".to_string()),
         save_path: PathBuf::from("C:\\programming\\rust\\fetcher2\\test"),
         download_args: DownloadArgs {
             extensions: Extensions {
@@ -76,7 +76,6 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
             return;
         }
     };
-
 
     let mut futs = FuturesUnordered::new();
     let mut abort_handles = Vec::new();
@@ -108,12 +107,18 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                         }
                         abort_handles.clear();
                     },
+                    Msg::NewSettings(new_settings) => {
+                        *Arc::make_mut(&mut dsettings) = new_settings;
+                    }
                 }
             }
             Some(result) = futs.next() => {
                 println!("finished future {:?}, time: {:?}", result, time.elapsed());
             },
-            else => {println!("BREAK LOOP");break},
+            else => {
+                println!("BREAK LOOP");
+                break
+            },
         }
     }
 }

@@ -19,10 +19,10 @@ use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::site::{SiteEvent, SiteState};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node_data::{NodeData, NodeState};
-use crate::template::NodeIndex;
 use crate::utils::spawn_drop;
 use crate::TError;
 use std::collections::HashSet;
+use crate::widgets::tree::{NodeIndex};
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}

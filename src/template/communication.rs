@@ -14,10 +14,11 @@ use druid::{
 use crate::template::node_type::site::{Msg, SiteEvent};
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::{NodeIndex, Template};
+use crate::template::{Template};
 use crate::{Result, TError};
 use druid_widget_nursery::{selectors, Wedge};
 use std::path::{Path, PathBuf};
+use crate::widgets::tree::{NodeIndex};
 
 pub const NODE_EVENT: Selector<SingleUse<(NodeEvent, NodeIndex)>> =
     Selector::new("fetcher2.communucation.node_event");
@@ -52,7 +53,7 @@ pub struct Communication {
 
 impl Communication {
     pub fn new(sink: ExtEventSink, idx: NodeIndex) -> Self {
-        Self { sink, idx }
+        Self { sink, idx, }
     }
 
     pub fn send_event<T: Into<NodeEvent>>(&self, event: T) {

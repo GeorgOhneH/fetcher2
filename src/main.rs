@@ -102,7 +102,7 @@ struct Test3 {
     path: PathBuf,
 }
 
-use crate::cstruct_window::CStructWindow;
+use crate::cstruct_window::CStructBuffer;
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::template::nodes::node_data::{NodeData};
 use crate::template::widget::{TemplateData};
@@ -176,8 +176,8 @@ pub fn main() {
     let template = Template::new(RawCommunication::new(sink.clone()));
     let data = AppData {
         template: template.widget_data(),
+        settings: None,
         template_info_select: TemplateInfoSelect::Nothing,
-        settings_window: CStructWindow::new(),
     };
 
     let delegate = TemplateDelegate::new(sink, template);

@@ -8,7 +8,7 @@ use druid::{theme, WidgetExt, WidgetId};
 use druid::widget::{Label, Controller};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod,
+    Point, UpdateCtx, Widget, WidgetPod, Lens,
 };
 
 use druid_widget_nursery::{selectors, Wedge};
@@ -17,13 +17,14 @@ use std::path::PathBuf;
 use druid::im::Vector;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
-use crate::template::NodeIndex;
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::DataNodeIndex;
 
 
-#[derive(Data, Clone, Debug)]
+#[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeData {
     pub children: Vector<NodeData>,
+    pub selected: Vector<DataNodeIndex>
 }
 
 impl RootNodeData {

@@ -19,8 +19,8 @@ use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node::{Node, RawNode};
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::NodeIndex;
 use std::collections::HashSet;
+use crate::widgets::tree::NodeIndex;
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawRootNode {
@@ -98,6 +98,6 @@ impl RootNode {
             .map(|node| node.widget_data())
             .collect();
 
-        RootNodeData { children }
+        RootNodeData { children, selected: Vector::new() }
     }
 }
