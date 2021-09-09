@@ -41,7 +41,7 @@ pub struct Header<T, const N: usize> {
     /// bar was clicked. This is used to ensure a click without mouse move is a no-op,
     /// instead of re-centering the bar on the mouse.
     click_offset: f64,
-    current: Option<usize>,
+    active_bar: Option<usize>,
     children: [WidgetPod<T, Box<dyn Widget<T>>>; N],
 }
 
@@ -62,7 +62,7 @@ impl<T, const N: usize> Header<T, N> {
             draggable: false,
             is_bar_hover: false,
             click_offset: 0.0,
-            current: None,
+            active_bar: None,
             children: children.map(|child| WidgetPod::new(child).boxed()),
         }
     }
@@ -248,9 +248,10 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
         for child in self.children.iter_mut() {
             child.event(ctx, event, data, env);
-            if ctx.is_handled() {
-                return;
-            }
+        }
+
+        if ctx.is_handled() {
+            return;
         }
 
         if self.draggable {
@@ -265,7 +266,7 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
                                 Axis::Horizontal => mouse.pos.x,
                                 Axis::Vertical => mouse.pos.y,
                             } - self.widget_end(idx);
-                            self.current = Some(idx);
+                            self.active_bar = Some(idx);
                             // If not already hovering, force and change cursor appropriately
                             if !self.is_bar_hover {
                                 self.is_bar_hover = true;
@@ -292,12 +293,13 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
                 }
                 Event::MouseMove(mouse) => {
                     if ctx.is_active() {
+                        ctx.set_handled();
                         // If active, assume always hover/hot
                         let effective_pos = match self.split_axis {
                             Axis::Horizontal => mouse.pos.x,
                             Axis::Vertical => mouse.pos.y,
                         } - self.click_offset;
-                        self.update_split_point(self.current.unwrap(), effective_pos);
+                        self.update_split_point(self.active_bar.unwrap(), effective_pos);
                         ctx.request_layout();
                     } else {
                         // If not active, set cursor when hovering state changes

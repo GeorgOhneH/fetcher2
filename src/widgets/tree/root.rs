@@ -112,11 +112,34 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
         self.constrains = constrains
     }
 
+    pub fn update_highlights(&mut self, p: Point) -> bool {
+        let mut changed = false;
+        for child in self.children.iter_mut() {
+            let rect = child.layout_rect();
+            changed |= if rect.contains(p) {
+                child
+                    .widget_mut()
+                    .update_highlights(Point::new(p.x - rect.x0, p.y - rect.y0))
+            } else {
+                child.widget_mut().remove_highlights()
+            }
+        }
+        changed
+    }
+
+    pub fn remove_highlights(&mut self) -> bool {
+        let mut changed = false;
+        for child in self.children.iter_mut() {
+            changed |= child.widget_mut().remove_highlights()
+        }
+        changed
+    }
+
     pub fn get_selected(&self) -> Vec<NodeIndex> {
         let mut r = Vec::new();
         for (i, child) in self.children.iter().enumerate() {
             child.widget().get_selected(&mut r, vec![i]);
-        };
+        }
         r
     }
 

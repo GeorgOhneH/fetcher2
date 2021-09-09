@@ -1,4 +1,3 @@
-pub mod highlight_box;
 pub mod node;
 pub mod opener;
 pub mod root;
@@ -10,7 +9,7 @@ use std::sync::Arc;
 
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{ClipBox, Label, Scroll, Viewport, Axis};
+use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
 use druid::{theme, Affine, Lens, LensExt, Rect, SingleUse, Vec2, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -105,6 +104,18 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
             None
         }
     }
+    pub fn update_highlights(&mut self, p: Point) -> bool {
+        let rect = self.root_node.layout_rect();
+        let offset = self.root_node.widget().offset();
+        if rect.contains(p) {
+            self.root_node
+                .widget_mut()
+                .child_mut()
+                .update_highlights(Point::new(p.x - rect.x0, p.y - rect.y0) + offset)
+        } else {
+            self.root_node.widget_mut().child_mut().remove_highlights()
+        }
+    }
 
     fn header_offset(&self) -> f64 {
         self.root_node.widget().offset().x
@@ -116,12 +127,25 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
         self.root_node.event(ctx, event, data, env);
+
         let header_offset = self.header_offset();
         if self.header.widget_mut().viewport_origin().x != header_offset {
             ctx.request_layout()
         }
-        self.header.widget_mut().pan_to_on_axis(Axis::Horizontal, header_offset);
+        self.header
+            .widget_mut()
+            .pan_to_on_axis(Axis::Horizontal, header_offset);
         self.header.event(ctx, event, data, env);
+
+        if let Event::Wheel(mouse) = event {
+            if self.update_highlights(mouse.pos) {
+                ctx.request_paint()
+            }
+        }
+
+        if ctx.is_handled() {
+            return;
+        }
 
         match event {
             Event::MouseDown(mouse_event) => {
@@ -133,10 +157,10 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                             .widget_mut()
                             .child_mut()
                             .node_mut(&selected_child_idx);
-                        node.highlight_box.widget_mut().selected = false;
+                        node.selected = false;
                     }
                     let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
-                    node.highlight_box.widget_mut().selected = true;
+                    node.selected = true;
                     ctx.request_paint();
                 }
                 return;
@@ -147,6 +171,9 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                 }
             }
             Event::MouseMove(mouse_event) => {
+                if self.update_highlights(mouse_event.pos) {
+                    ctx.request_paint();
+                }
                 if ctx.is_active() {
                     if let Some(idx) = self.node_at(mouse_event.pos) {
                         if matches!(self.selection_mode, SelectionMode::Single) {
@@ -157,11 +184,11 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
                                     .widget_mut()
                                     .child_mut()
                                     .node_mut(&selected_child_idx);
-                                node.highlight_box.widget_mut().selected = false;
+                                node.selected = false;
                             }
                         }
                         let node = self.root_node.widget_mut().child_mut().node_mut(&idx);
-                        node.highlight_box.widget_mut().selected = true;
+                        node.selected = true;
                         ctx.request_paint();
                     }
                 }
@@ -171,6 +198,9 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &R, env: &Env) {
+        if let LifeCycle::HotChanged(false) = event {
+            self.root_node.widget_mut().child_mut().remove_highlights();
+        }
         self.root_node.lifecycle(ctx, event, data, env);
         self.header.lifecycle(ctx, event, data, env);
     }
@@ -181,10 +211,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone + 'static, const 
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &R, env: &Env) -> Size {
-        let header_bc = BoxConstraints::new(
-            Size::new(bc.min().width, 0.),
-            bc.max(),
-        );
+        let header_bc = BoxConstraints::new(Size::new(bc.min().width, 0.), bc.max());
         let header_size = self.header.layout(ctx, &header_bc, data, env);
 
         let constrains = self.header.widget().child().constrains();

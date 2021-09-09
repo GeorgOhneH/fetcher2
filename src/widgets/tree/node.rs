@@ -14,7 +14,6 @@ use druid::{
 
 use crate::template::NodeIndex;
 use crate::widgets::header::{Header, HeaderConstrains};
-use crate::widgets::tree::highlight_box::ColourBox;
 use crate::widgets::tree::opener::Opener;
 use druid_widget_nursery::selectors;
 use std::process::id;
@@ -98,7 +97,9 @@ where
     /// The user must provide a Lens<T, bool> that tells if
     /// the node is expanded or not.
     pub expand_lens: L,
-    pub highlight_box: WidgetPod<(), ColourBox>,
+
+    pub is_content_hover: bool,
+    pub selected: bool,
 }
 
 impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L, N> {
@@ -117,7 +118,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         Self {
             index,
             opener: WidgetPod::new(Opener::new(make_opener.clone()())),
-            highlight_box: WidgetPod::new(ColourBox::new()),
             widgets,
             constrains,
             depth,
@@ -126,6 +126,8 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
             make_widget,
             make_opener,
             expand_lens,
+            is_content_hover: false,
+            selected: false,
         }
     }
 
@@ -163,13 +165,41 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         self.constrains = constrains
     }
 
+    pub fn update_highlights(&mut self, p: Point) -> bool {
+        let mut changed = false;
+        for child in self.children.iter_mut() {
+            let rect = child.layout_rect();
+            changed |= if rect.contains(p) {
+                child
+                    .widget_mut()
+                    .update_highlights(Point::new(p.x - rect.x0, p.y - rect.y0))
+            } else {
+                child.widget_mut().remove_highlights()
+            }
+        }
+        let new = self.hit_content_area(p);
+        changed |= self.is_content_hover != new;
+        self.is_content_hover = self.hit_content_area(p);
+        changed
+    }
+
+    pub fn remove_highlights(&mut self) -> bool {
+        let mut changed = false;
+        for child in self.children.iter_mut() {
+            changed |= child.widget_mut().remove_highlights()
+        }
+        changed |= self.is_content_hover != false;
+        self.is_content_hover = false;
+        changed
+    }
+
     pub fn get_selected(&self, selected: &mut Vec<NodeIndex>, current_idx: NodeIndex) {
         for (i, child) in self.children.iter().enumerate() {
             let mut idx = current_idx.clone();
             idx.push(i);
             child.widget().get_selected(selected, idx)
         }
-        if self.highlight_box.widget().selected {
+        if self.selected {
             selected.push(current_idx)
         }
     }
@@ -201,6 +231,16 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         } else {
             self.children[idx[0]].widget_mut().node_mut(&idx[1..])
         }
+    }
+
+    fn hit_content_area(&self, p: Point) -> bool {
+        let width = self.constrains.max_width;
+        let mut height = self.opener.layout_rect().height();
+        let origin_x = self.opener.layout_rect().x1;
+        for widget in &self.widgets {
+            height = height.max(widget.layout_rect().height());
+        }
+        Rect::new(origin_x, 0., width, height).contains(p)
     }
 }
 
@@ -241,15 +281,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
                 ctx.children_changed();
                 return;
             }
-            // TODO?
-            // Event::Notification(notif) if notif.is(TREE_NOTIFY_PARENT) => {
-            //     if self.widget.id() != notif.source() {
-            //         let notif = notif.get(TREE_NOTIFY_PARENT).unwrap();
-            //         ctx.submit_command(TREE_NOTIFY_PARENT.with(*notif).to(self.widget.id()));
-            //         ctx.set_handled();
-            //     }
-            //     None
-            // }
             _ => (),
         };
 
@@ -262,8 +293,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         self.widgets
             .iter_mut()
             .for_each(|widget| widget.event(ctx, event, data, env));
-
-        self.highlight_box.event(ctx, event, &mut (), env);
 
         if data.is_branch() {
             // send the event to the opener if the widget is visible or the event also targets
@@ -323,7 +352,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         self.widgets
             .iter_mut()
             .for_each(|widget| widget.lifecycle(ctx, event, data, env));
-        self.highlight_box.lifecycle(ctx, event, &mut (), env);
         if data.is_branch() & (event.should_propagate_to_hidden() | self.expand_lens.get(data)) {
             for (index, child_widget_node) in self.children.iter_mut().enumerate() {
                 let child_tree_node = data.get_child(index);
@@ -337,7 +365,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
             .iter_mut()
             .for_each(|widget| widget.update(ctx, data, env));
         self.opener.update(ctx, data, env);
-        self.highlight_box.update(ctx, &mut (), env);
 
         if self.update_children(data) {
             if self.expand_lens.get(data) {
@@ -407,14 +434,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
                 (current_height - basic_size).max(0.) / 2.,
             ),
         );
-        self.highlight_box.layout(
-            ctx,
-            &BoxConstraints::tight(Size::new((max_width - opener_widget_x).max(0.), current_height)),
-            &(),
-            env,
-        );
-        self.highlight_box
-            .set_origin(ctx, &(), env, Point::new(opener_widget_x, 0.));
 
         if self.expand_lens.get(data) {
             for (idx, child) in self.children.iter_mut().enumerate() {
@@ -436,7 +455,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        let width = ctx.size().width;
+        let width = self.constrains.max_width;
         let mut height = self.opener.layout_rect().height();
         let origin_x = self.opener.layout_rect().x1;
         for widget in &self.widgets {
@@ -444,7 +463,11 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         }
         let background_rect = Rect::new(0., 0., width, height);
         let highlight_rect = Rect::new(origin_x, 0., width, height);
-        self.highlight_box.paint(ctx, &(), env);
+        if self.selected {
+            ctx.fill(highlight_rect, &env.get(theme::PRIMARY_DARK))
+        } else if self.is_content_hover {
+            ctx.fill(highlight_rect, &env.get(theme::PRIMARY_LIGHT))
+        }
 
         self.opener.paint(ctx, data, env);
         for widget in self.widgets.iter_mut() {
