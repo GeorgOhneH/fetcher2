@@ -30,7 +30,11 @@ use std::sync::{Mutex, RwLock};
 use tokio::join;
 
 use crate::template::communication::Communication;
+use crate::template::node_type::site_data::{
+    DownloadEvent, LoginEvent, RunEvent, SiteData, SiteState, UrlFetchEvent,
+};
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
+use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
 use dashmap::mapref::entry::Entry;
@@ -46,19 +50,32 @@ use std::task::Context;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
-use url::Url;
 use tokio::task::JoinError;
+use url::Url;
+use crate::template::node_type::site_edit_data::SiteEditData;
+use dashmap::DashMap;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {
     #[config(ty = "Enum")]
     pub module: Module,
 
-    #[config(ty = "Struct")]
-    pub storage: SiteStorage,
+    #[config(ty = "_<Struct>")]
+    pub storage: Arc<SiteStorage>,
 
     #[config(ty = "_<Struct>")]
     pub download_args: Option<DownloadArgs>,
+}
+
+
+impl From<SiteEditData> for Site {
+    fn from(data: SiteEditData) -> Self {
+        Self {
+            module: data.module,
+            storage: data.storage.unwrap_or(Arc::new(SiteStorage::new())),
+            download_args: data.download_args,
+        }
+    }
 }
 
 impl Site {
@@ -77,32 +94,35 @@ impl Site {
         base_path: PathBuf,
         comm: Communication,
     ) {
-        comm.send_event(RunEvent::Start);
-        comm.send_event(LoginEvent::Start);
-        match self.module.login(&session, &dsettings).await {
-            Ok(()) => comm.send_event(LoginEvent::Finish),
-            Err(err) => {
-                comm.send_event(LoginEvent::Err(err));
-                comm.send_event(RunEvent::Finish);
-                return;
-            }
-        };
+        RunEvent::wrapper(
+            async {
+                if LoginEvent::wrapper(self.module.login(&session, &dsettings), &comm)
+                    .await
+                    .is_none()
+                {
+                    return;
+                }
 
-        let (sender, receiver) = tokio::sync::mpsc::channel(1024);
+                let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 
-        let task_stream = self.module.fetch_urls(
-            session.clone(),
-            sender,
-            base_path,
-            Arc::clone(&dsettings),
-            comm.clone(),
-        );
+                let task_stream = UrlFetchEvent::wrapper(
+                    self.module.fetch_urls(
+                        session.clone(),
+                        sender,
+                        base_path,
+                        Arc::clone(&dsettings),
+                    ),
+                    &comm,
+                );
 
-        let consumers =
-            Arc::clone(&self).handle_receiver(session, receiver, dsettings, comm.clone());
+                let consumers =
+                    Arc::clone(&self).handle_receiver(session, receiver, dsettings, comm.clone());
 
-        join!(task_stream, consumers);
-        comm.send_event(RunEvent::Finish);
+                join!(task_stream, consumers);
+            },
+            &comm,
+        )
+        .await
     }
 
     async fn handle_receiver(
@@ -117,33 +137,26 @@ impl Site {
             tokio::select! {
                 biased;
 
-                Some(msg) = futs.next() => {
-                    self.handle_msg(msg, &comm).await;
+                Some(handle) = futs.next() => {
+                    let handel: std::result::Result<_, JoinError> = handle;
+                    handel.unwrap();
                 },
                 Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
-                    let handle = spawn_drop(self_clone.consume_task(
-                        session.clone(),
-                        task,
-                        Arc::clone(&dsettings),
-                    ));
+                    let handle = spawn_drop(
+                        DownloadEvent::wrapper(
+                            self_clone.consume_task(
+                                session.clone(),
+                                task,
+                                Arc::clone(&dsettings),
+                            ),
+                            comm.clone(),
+                            Arc::clone(&self),
+                        )
+                    );
                     futs.push(handle);
-                    comm.send_event(DownloadEvent::Start);
                 },
                 else => break,
-            }
-        }
-    }
-
-    async fn handle_msg(&self, msg: std::result::Result<Result<Msg>, JoinError>, comm: &Communication) {
-        match msg.unwrap() {
-            Ok(msg) => {
-                println!("{:?}", msg);
-                self.storage.history.lock().unwrap().push(msg.clone());
-                comm.send_event(DownloadEvent::Finish(msg));
-            }
-            Err(err) => {
-                comm.send_event(DownloadEvent::Err(err));
             }
         }
     }
@@ -349,6 +362,14 @@ impl Site {
             state: SiteState::new(),
         }
     }
+
+    pub fn widget_edit_data(&self) -> SiteEditData {
+        SiteEditData {
+            module: self.module.clone(),
+            download_args: self.download_args.clone(),
+            storage: Some(Arc::clone(&self.storage)),
+        }
+    }
 }
 
 fn format_etag(etag: &HeaderValue) -> Result<String> {
@@ -362,65 +383,6 @@ fn format_etag(etag: &HeaderValue) -> Result<String> {
 pub enum Action {
     AddNew,
     Replace,
-}
-
-#[derive(Debug)]
-pub enum SiteEvent {
-    Run(RunEvent),
-    Login(LoginEvent),
-    UrlFetch(UrlFetchEvent),
-    Download(DownloadEvent),
-}
-
-impl From<RunEvent> for SiteEvent {
-    fn from(run_event: RunEvent) -> Self {
-        SiteEvent::Run(run_event)
-    }
-}
-
-impl From<LoginEvent> for SiteEvent {
-    fn from(login_status: LoginEvent) -> Self {
-        SiteEvent::Login(login_status)
-    }
-}
-
-impl From<UrlFetchEvent> for SiteEvent {
-    fn from(fetch_status: UrlFetchEvent) -> Self {
-        SiteEvent::UrlFetch(fetch_status)
-    }
-}
-
-impl From<DownloadEvent> for SiteEvent {
-    fn from(download_status: DownloadEvent) -> Self {
-        SiteEvent::Download(download_status)
-    }
-}
-
-#[derive(Debug)]
-pub enum RunEvent {
-    Start,
-    Finish,
-}
-
-#[derive(Debug)]
-pub enum LoginEvent {
-    Start,
-    Finish,
-    Err(TError),
-}
-
-#[derive(Debug)]
-pub enum UrlFetchEvent {
-    Start,
-    Finish,
-    Err(TError),
-}
-
-#[derive(Debug)]
-pub enum DownloadEvent {
-    Start,
-    Finish(Msg),
-    Err(TError),
 }
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
@@ -492,6 +454,15 @@ pub struct SiteStorage {
     pub history: Mutex<Vec<Msg>>,
 }
 
+impl SiteStorage {
+    pub fn new() -> Self {
+        Self {
+            files: DashMap::new(),
+            history: Mutex::new(Vec::new())
+        }
+    }
+}
+
 #[derive(Config, Serialize, Debug)]
 pub struct FileData {
     pub task_checksum: Option<String>,
@@ -505,195 +476,6 @@ impl FileData {
             task_checksum: None,
             file_checksum,
             etag: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Data)]
-pub struct SiteData {
-    pub module: Module,
-
-    pub download_args: Option<DownloadArgs>,
-
-    pub history: Vector<Msg>,
-
-    pub state: SiteState,
-}
-
-impl SiteData {
-    pub fn name(&self) -> String {
-        self.module.name()
-    }
-
-    pub fn added_replaced(&self) -> (usize, usize) {
-        (
-            self.state.download.new_added,
-            self.state.download.new_replaced,
-        )
-    }
-}
-
-#[derive(Debug, Clone, Data)]
-pub struct SiteState {
-    pub run: usize,
-    pub login: LoginState,
-    pub fetch: FetchState,
-    pub download: DownloadState,
-}
-
-impl SiteState {
-    pub fn new() -> Self {
-        Self {
-            run: 0,
-            login: LoginState::new(),
-            fetch: FetchState::new(),
-            download: DownloadState::new(),
-        }
-    }
-
-    pub fn update(&mut self, event: SiteEvent, history: &mut Vector<Msg>) {
-        match event {
-            SiteEvent::Run(run_event) => match run_event {
-                RunEvent::Start => self.run += 1,
-                RunEvent::Finish => self.run -= 1,
-            },
-            SiteEvent::Login(login_event) => self.login.update(login_event),
-            SiteEvent::UrlFetch(fetch_event) => self.fetch.update(fetch_event),
-            SiteEvent::Download(down_event) => self.download.update(down_event, history),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Data)]
-pub struct LoginState {
-    pub count: usize,
-    pub errs: Vector<Arc<TError>>,
-}
-
-impl LoginState {
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            errs: Vector::new(),
-        }
-    }
-
-    pub fn update(&mut self, event: LoginEvent) {
-        match event {
-            LoginEvent::Start => self.count += 1,
-            LoginEvent::Finish => self.count -= 1,
-            LoginEvent::Err(err) => {
-                self.errs.push_back(Arc::new(err));
-                self.count -= 1
-            }
-        }
-    }
-
-    pub fn current_state(&self) -> CurrentState {
-        if self.count != 0 {
-            CurrentState::Active
-        } else if self.errs.len() != 0 {
-            CurrentState::Error
-        } else {
-            CurrentState::Idle
-        }
-    }
-}
-
-#[derive(Debug, Clone, Data)]
-pub struct FetchState {
-    pub count: usize,
-    pub errs: Vector<Arc<TError>>,
-}
-
-impl FetchState {
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            errs: Vector::new(),
-        }
-    }
-
-    pub fn update(&mut self, event: UrlFetchEvent) {
-        match event {
-            UrlFetchEvent::Start => self.count += 1,
-            UrlFetchEvent::Finish => self.count -= 1,
-            UrlFetchEvent::Err(err) => {
-                self.errs.push_back(Arc::new(err));
-                self.count -= 1
-            }
-        }
-    }
-
-    pub fn current_state(&self) -> CurrentState {
-        if self.count != 0 {
-            CurrentState::Active
-        } else if self.errs.len() != 0 {
-            CurrentState::Error
-        } else {
-            CurrentState::Idle
-        }
-    }
-}
-
-#[derive(Debug, Clone, Data)]
-pub struct DownloadState {
-    pub count: usize,
-    pub total: usize,
-    pub new_added: usize,
-    pub new_replaced: usize,
-    pub errs: Vector<Arc<TError>>,
-}
-
-impl DownloadState {
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            total: 0,
-            new_added: 0,
-            new_replaced: 0,
-            errs: Vector::new(),
-        }
-    }
-
-    pub fn update(&mut self, event: DownloadEvent, history: &mut Vector<Msg>) {
-        match event {
-            DownloadEvent::Start => {
-                self.count += 1;
-                self.total += 1
-            }
-            DownloadEvent::Finish(msg) => {
-                match &msg {
-                    Msg {
-                        kind: MsgKind::AddedFile,
-                        ..
-                    } => self.new_added += 1,
-                    Msg {
-                        kind: MsgKind::ReplacedFile(_),
-                        ..
-                    } => self.new_replaced += 1,
-                    _ => {}
-                }
-                history.push_back(msg);
-                self.count -= 1;
-            }
-            DownloadEvent::Err(err) => {
-                self.errs.push_back(Arc::new(err));
-                self.count -= 1
-            }
-        }
-        if self.count == 0 {
-            self.total = 0;
-        }
-    }
-
-    pub fn state_string(&self) -> String {
-        if self.count != 0 {
-            format!("Processing {}/{}", self.total - self.count, self.total)
-        } else if self.errs.len() != 0 {
-            "Error while downloading files".to_string()
-        } else {
-            "Idle".to_string()
         }
     }
 }

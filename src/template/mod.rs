@@ -1,34 +1,37 @@
-pub mod communication;
-pub mod node_type;
-pub mod nodes;
-pub mod widget;
-
-use crate::error::{Result, TError};
-use crate::session::Session;
-use crate::site_modules::Mode as PolyboxMode;
-use crate::site_modules::Module;
-use crate::site_modules::{Minimal, Polybox};
-use crate::task::Task;
-pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
-use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
-use tokio::io::AsyncWriteExt;
-
-use crate::settings::DownloadSettings;
-use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::{NodeType, Site, SiteStorage};
-use crate::template::nodes::node::{MetaData, Node, RawNode};
-use crate::template::nodes::root::{RootNode, RawRootNode};
-use crate::template::widget::{TemplateData};
-use config::{Config, ConfigEnum};
-use druid::widget::prelude::*;
-use druid::widget::Label;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
+
+use config::{Config, ConfigEnum};
+use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
+use druid::widget::Label;
+use druid::widget::prelude::*;
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
+
+use crate::error::{Result, TError};
+use crate::session::Session;
+use crate::settings::DownloadSettings;
+use crate::site_modules::{Minimal, Polybox};
+use crate::site_modules::Mode as PolyboxMode;
+use crate::site_modules::Module;
+use crate::task::Task;
+use crate::template::communication::{Communication, RawCommunication};
+pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
+use crate::template::node_type::{NodeType, Site, SiteStorage};
+use crate::template::nodes::node::{MetaData, Node, RawNode, Status};
+use crate::template::nodes::root::{RawRootNode, RootNode};
+use crate::template::widget_data::TemplateData;
 use crate::ui::TemplateInfoSelect;
 use crate::widgets::tree::NodeIndex;
+use crate::template::widget_edit_data::TemplateEditData;
+
+pub mod communication;
+pub mod node_type;
+pub mod nodes;
+pub mod widget_data;
+pub mod widget_edit_data;
 
 #[derive(Debug)]
 pub struct Template {
@@ -49,20 +52,20 @@ impl Template {
                             id: "TnFKtU4xoe5gIZy".to_owned(),
                             mode: PolyboxMode::Shared(Some("123".to_owned())),
                         }),
-                        storage: SiteStorage {
+                        storage: Arc::new(SiteStorage {
                             files: dashmap::DashMap::new(),
                             history: Mutex::new(Vec::new()),
-                        },
+                        }),
                         download_args: None,
                     })),
                     children: vec![RawNode {
                         cached_path_segment: None,
                         ty: NodeType::Site(Arc::new(Site {
                             module: Module::Minimal(Minimal { parameters: None }),
-                            storage: SiteStorage {
+                            storage: Arc::new(SiteStorage {
                                 files: dashmap::DashMap::new(),
                                 history: Mutex::new(Vec::new()),
-                            },
+                            }),
                             download_args: None,
                         })),
                         children: vec![].into(),
@@ -78,10 +81,10 @@ impl Template {
                             id: "1929777502".to_owned(),
                             mode: PolyboxMode::Private,
                         }),
-                        storage: SiteStorage {
+                        storage: Arc::new(SiteStorage {
                             files: dashmap::DashMap::new(),
                             history: Mutex::new(Vec::new()),
-                        },
+                        }),
                         download_args: None,
                     })),
                     children: vec![].into(),
@@ -114,7 +117,7 @@ impl Template {
         }
     }
 
-    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> std::result::Result<(), ()> {
+    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Status {
         let session = Session::new();
         self.root.prepare(&session, dsettings).await
     }
@@ -154,6 +157,12 @@ impl Template {
     pub fn widget_data(&self) -> TemplateData {
         TemplateData {
             root: self.root.widget_data(),
+        }
+    }
+
+    pub fn widget_edit_data(&self) -> TemplateEditData {
+        TemplateEditData {
+            root: self.root.widget_edit_data(),
         }
     }
 }

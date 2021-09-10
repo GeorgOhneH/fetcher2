@@ -12,20 +12,16 @@ use druid::{
 };
 
 use crate::template::communication::NODE_EVENT;
-use crate::template::node_type::site::SiteState;
-use crate::template::node_type::site::{
-    DownloadEvent, LoginEvent, RunEvent, SiteEvent, UrlFetchEvent,
-};
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
-use crate::template::{MetaData};
+use crate::template::MetaData;
 use crate::widgets::tree::node::TreeNode;
+use crate::widgets::tree::NodeIndex;
 use crate::{AppData, TError};
 use druid::im::{HashSet, Vector};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 use std::path::PathBuf;
-use crate::widgets::tree::NodeIndex;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {
@@ -113,15 +109,15 @@ impl NodeData {
             NodeTypeData::Site(site) => match self.state.current_state() {
                 CurrentState::Active => "Calculation Path".to_string(),
                 CurrentState::Error => "Error while calculation Path".to_string(),
-                CurrentState::Idle => match site.state.run {
-                    0 => "Idle".to_string(),
-                    _ => match site.state.login.current_state() {
-                        CurrentState::Active => "Logging in".to_string(),
-                        CurrentState::Error => "Login while logging in".to_string(),
-                        CurrentState::Idle => match site.state.fetch.current_state() {
-                            CurrentState::Active => "Fetching Urls".to_string(),
-                            CurrentState::Error => "Error while fetching Urls".to_string(),
-                            CurrentState::Idle => site.state.download.state_string(),
+                CurrentState::Idle => match site.state.login.current_state() {
+                    CurrentState::Active => "Logging in".to_string(),
+                    CurrentState::Error => "Error while logging in".to_string(),
+                    CurrentState::Idle => match site.state.fetch.current_state() {
+                        CurrentState::Active => "Fetching Urls".to_string(),
+                        CurrentState::Error => "Error while fetching Urls".to_string(),
+                        CurrentState::Idle => match site.state.run {
+                            0 => site.state.download.state_string(),
+                            _ => "Cleaning Up".to_string(),
                         },
                     },
                 },

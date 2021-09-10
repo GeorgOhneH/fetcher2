@@ -1,5 +1,5 @@
 use crate::delegate::{Msg, TemplateDelegate};
-use crate::template::widget::TemplateData;
+use crate::template::widget_data::TemplateData;
 use config::CStruct;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
@@ -43,6 +43,15 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
+use crate::template::nodes::node::Status;
+use druid_widget_nursery::selectors;
+
+use crate::template::widget_edit_data::TemplateEditData;
+
+
+selectors! {
+    EDIT_DATA: SingleUse<TemplateEditData>,
+}
 
 pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: Template) {
     tokio::runtime::Builder::new_multi_thread()
@@ -55,7 +64,7 @@ pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: T
 async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Template) {
     let mut dsettings = Arc::new(DownloadSettings {
         username: Some(std::env::var("USERNAME").unwrap()),
-        password: Some("wrong".to_string()),
+        password: Some(std::env::var("PASSWORD").unwrap()),
         save_path: PathBuf::from("C:\\programming\\rust\\fetcher2\\test"),
         download_args: DownloadArgs {
             extensions: Extensions {
@@ -69,8 +78,8 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
     });
 
     match template.prepare(dsettings.clone()).await {
-        Ok(prep_status) => {}
-        Err(err) => {
+        Status::Success => {}
+        Status::Failure => {
             dbg!("Got error in prepare exit...");
             // TODO
             return;
@@ -109,7 +118,11 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                     },
                     Msg::NewSettings(new_settings) => {
                         *Arc::make_mut(&mut dsettings) = new_settings;
-                    }
+                    },
+                    Msg::RequestEditData(widget_id) => {
+                        let edit_data = template.widget_edit_data();
+                        sink.submit_command(EDIT_DATA, SingleUse::new(edit_data), Target::Widget(widget_id)).unwrap();
+                    },
                 }
             }
             Some(result) = futs.next() => {

@@ -1,4 +1,4 @@
-use crate::template::widget::{TemplateData};
+use crate::template::widget_data::{TemplateData};
 use crate::template::{Template};
 use config::CStruct;
 use druid::im::{vector, Vector};
@@ -24,16 +24,18 @@ use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
 use std::thread;
-use crate::background_thread::background_main;
+use crate::background_thread::{background_main, EDIT_DATA};
 use crate::widgets::tree::NodeIndex;
 use crate::settings::DownloadSettings;
+use druid_widget_nursery::selectors;
 
 #[derive(Debug)]
 pub enum Msg {
     StartAll,
     StartByIndex(HashSet<NodeIndex>),
     Cancel,
-    NewSettings(DownloadSettings)
+    NewSettings(DownloadSettings),
+    RequestEditData(WidgetId),
 }
 
 #[derive(Debug)]
@@ -44,7 +46,9 @@ pub enum TemplateMsg {
     NewSettings(DownloadSettings)
 }
 
-pub const MSG_THREAD: Selector<SingleUse<Msg>> = Selector::new("druid-async.spawn-async");
+selectors! {
+    MSG_THREAD: SingleUse<Msg>
+}
 
 pub struct TemplateDelegate {
     tx: flume::Sender<Msg>,
@@ -69,8 +73,8 @@ impl<T: Data> AppDelegate<T> for TemplateDelegate {
         _data: &mut T,
         _env: &Env,
     ) -> Handled {
-        if let Some(msg) = cmd.get(MSG_THREAD) {
-            let msg = msg.take().unwrap();
+        if cmd.is(MSG_THREAD) {
+            let msg = cmd.get_unchecked(MSG_THREAD).take().unwrap();
             self.tx.send(msg).unwrap();
             Handled::Yes
         } else {

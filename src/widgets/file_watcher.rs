@@ -1,6 +1,6 @@
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;
-use crate::widgets::tree::{Tree, DataNodeIndex};
+use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::Result;
 use crossbeam_channel::{Receiver, Select, Sender};
 use druid::im::Vector;
@@ -100,7 +100,10 @@ impl EntryRoot {
         let children = fs::read_dir(path)?
             .map(|entry| Entry::new(entry?))
             .collect::<io::Result<Vector<_>>>()?;
-        Ok(Self { children, selected: Vector::new() })
+        Ok(Self {
+            children,
+            selected: Vector::new(),
+        })
     }
 }
 
@@ -129,10 +132,19 @@ enum Msg {
 
 pub struct FileWatcher<T> {
     path: Option<PathBuf>,
-    tree: WidgetPod<EntryRoot, Tree<EntryRoot, Entry, entry_derived_lenses::expanded, entry_root_derived_lenses::selected, 1>>,
+    tree: WidgetPod<
+        EntryRoot,
+        Tree<
+            EntryRoot,
+            Entry,
+            entry_derived_lenses::expanded,
+            entry_root_derived_lenses::selected,
+            1,
+        >,
+    >,
     root: EntryRoot,
     tx: Option<Sender<Msg>>,
-    update_closure: Box<dyn Fn(&T) -> Option<PathBuf>>
+    update_closure: Box<dyn Fn(&T) -> Option<PathBuf>>,
 }
 
 impl<T> FileWatcher<T> {
@@ -151,17 +163,16 @@ impl<T> FileWatcher<T> {
             tree: WidgetPod::new(tree),
             tx: None,
             root: EntryRoot::empty(),
-            update_closure: Box::new(update_closure)
+            update_closure: Box::new(update_closure),
         }
     }
 
     pub fn set_path(&mut self, path: Option<PathBuf>) {
-        dbg!(&path);
+        // We seend the path to the thread
         if self.path == path {
             return;
         }
 
-        self.path = path;
         match &self.path {
             Some(path) => {
                 if let Some(tx) = &self.tx {

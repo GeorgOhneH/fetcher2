@@ -16,16 +16,23 @@ use serde::Serialize;
 use std::sync::Arc;
 
 use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::site::{SiteEvent, SiteState};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node_data::{NodeData, NodeState};
 use crate::utils::spawn_drop;
+use crate::widgets::tree::NodeIndex;
 use crate::TError;
 use std::collections::HashSet;
-use crate::widgets::tree::{NodeIndex};
+use crate::template::node_type::site_data::SiteEvent;
+use crate::template::nodes::node_edit_data::NodeEditData;
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}
+
+#[derive(Debug, PartialEq)]
+pub enum Status {
+    Success,
+    Failure,
+}
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawNode {
@@ -37,6 +44,19 @@ pub struct RawNode {
     pub meta_data: MetaData,
 
     pub cached_path_segment: Option<PathBuf>,
+}
+
+
+impl From<NodeEditData> for RawNode {
+    fn from(data: NodeEditData) -> Self {
+        let children = data.children.into_iter().map(|child| child.into()).collect();
+        Self {
+            ty: data.ty.into(),
+            children,
+            meta_data: data.meta_data,
+            cached_path_segment: None,
+        }
+    }
 }
 
 impl RawNode {
@@ -77,11 +97,7 @@ impl Node {
     pub fn raw(self) -> RawNode {
         RawNode {
             ty: self.ty,
-            children: self
-                .children
-                .into_iter()
-                .map(|node| node.raw())
-                .collect(),
+            children: self.children.into_iter().map(|node| node.raw()).collect(),
             meta_data: self.meta_data,
             cached_path_segment: self.cached_path_segment,
         }
@@ -93,31 +109,37 @@ impl Node {
         session: &'a Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
-    ) -> std::result::Result<(), ()> {
-        let segment = if let Some(segment) = &self.cached_path_segment {
-            segment.clone()
+    ) -> Status {
+        let path = if let Some(segment) = &self.cached_path_segment {
+            if segment.is_absolute() {
+                panic!("segment is not allowed to be absolute")
+            }
+            let path = base_path.join(segment);
+            self.comm.send_event(PathEvent::Cached(path.clone()));
+            path
         } else {
-            self.comm.send_event(PathEvent::Start);
-            match self.ty.path_segment(&session, &dsettings).await {
-                Ok(segment) => segment,
-                Err(err) => {
-                    self.comm.send_event(PathEvent::Err(err));
-                    return Err(());
-                }
+            match PathEvent::wrapper(
+                async {
+                    self.ty
+                        .path_segment(&session, &dsettings)
+                        .await
+                        .map(|segment| {
+                            if segment.is_absolute() {
+                                panic!("segment is not allowed to be absolute")
+                            }
+                            base_path.join(segment)
+                        })
+                },
+                &self.comm,
+            )
+            .await
+            {
+                Some(path) => path,
+                None => return Status::Failure,
             }
         };
 
-        if segment.is_absolute() {
-            panic!("segment is not allowed to be absolute")
-        }
-
-        let path = base_path.join(segment);
         self.path = Some(path.clone());
-        if let Some(_) = &self.cached_path_segment {
-            self.comm.send_event(PathEvent::Cached(path.clone()));
-        } else {
-            self.comm.send_event(PathEvent::Finish(path.clone()));
-        }
 
         let futures: Vec<_> = self
             .children
@@ -126,10 +148,14 @@ impl Node {
             .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), path.clone()))
             .collect();
 
-        if join_all(futures).await.iter().any(|r| r.is_err()) {
-            Err(())
+        if join_all(futures)
+            .await
+            .iter()
+            .any(|r| r == &Status::Failure)
+        {
+            Status::Failure
         } else {
-            Ok(())
+            Status::Success
         }
     }
     #[async_recursion]
@@ -179,7 +205,21 @@ impl Node {
             cached_path_segment: self.cached_path_segment.clone(),
             ty: self.ty.widget_data(),
             state: NodeState::new(),
-            path: None
+            path: None,
+        }
+    }
+
+    pub fn widget_edit_data(&self) -> NodeEditData {
+        let children: Vector<_> = self
+            .children
+            .iter()
+            .map(|node| node.widget_edit_data())
+            .collect();
+        NodeEditData {
+            expanded: true,
+            children,
+            meta_data: self.meta_data.clone(),
+            ty: self.ty.widget_edit_data(),
         }
     }
 }
@@ -211,4 +251,23 @@ pub enum PathEvent {
     Cached(PathBuf),
     Finish(PathBuf),
     Err(TError),
+}
+
+impl PathEvent {
+    pub async fn wrapper(
+        inner_fn: impl Future<Output = Result<PathBuf>>,
+        comm: &Communication,
+    ) -> Option<PathBuf> {
+        comm.send_event(Self::Start);
+        match inner_fn.await {
+            Ok(data) => {
+                comm.send_event(Self::Finish(data.clone()));
+                Some(data)
+            }
+            Err(err) => {
+                comm.send_event(Self::Err(err));
+                None
+            }
+        }
+    }
 }

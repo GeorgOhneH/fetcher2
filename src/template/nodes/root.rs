@@ -17,15 +17,25 @@ use std::sync::Arc;
 
 use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::{NodeType, NodeTypeData};
-use crate::template::nodes::node::{Node, RawNode};
+use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root_data::RootNodeData;
 use std::collections::HashSet;
 use crate::widgets::tree::NodeIndex;
+use crate::template::nodes::root_edit_data::RootNodeEditData;
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawRootNode {
     #[config(ty = "Vec<Struct>")]
     pub children: Vec<RawNode>,
+}
+
+impl From<RootNodeEditData> for RawRootNode {
+    fn from(data: RootNodeEditData) -> Self {
+        let children = data.children.into_iter().map(|child| child.into()).collect();
+        Self {
+            children,
+        }
+    }
 }
 
 impl RawRootNode {
@@ -61,7 +71,7 @@ impl RootNode {
         &mut self,
         session: &Session,
         dsettings: Arc<DownloadSettings>,
-    ) -> std::result::Result<(), ()> {
+    ) -> Status {
         let futures: Vec<_> = self
             .children
             .iter_mut()
@@ -69,10 +79,10 @@ impl RootNode {
             .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
             .collect();
 
-        if join_all(futures).await.iter().any(|r| r.is_err()) {
-            Err(())
+        if join_all(futures).await.iter().any(|r| r == &Status::Failure) {
+            Status::Failure
         } else {
-            Ok(())
+            Status::Success
         }
     }
 
@@ -99,5 +109,15 @@ impl RootNode {
             .collect();
 
         RootNodeData { children, selected: Vector::new() }
+    }
+
+    pub fn widget_edit_data(&self) -> RootNodeEditData {
+        let children: Vector<_> = self
+            .children
+            .iter()
+            .map(|node| node.widget_edit_data())
+            .collect();
+
+        RootNodeEditData { children, selected: Vector::new() }
     }
 }

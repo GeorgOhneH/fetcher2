@@ -14,7 +14,6 @@ use tokio::sync::{Mutex, MutexGuard};
 use crate::settings::DownloadSettings;
 use crate::site_modules::polybox::Polybox;
 use crate::template::communication::Communication;
-use crate::template::node_type::site::UrlFetchEvent;
 use druid::Data;
 use std::string::ToString;
 use std::sync::Arc;
@@ -56,16 +55,9 @@ impl Module {
         sender: Sender<Task>,
         base_path: PathBuf,
         dsettings: Arc<DownloadSettings>,
-        comm: Communication,
-    ) {
-        comm.send_event(UrlFetchEvent::Start);
-        match self
-            .fetch_urls_impl(session, sender, base_path, dsettings)
+    ) -> Result<()> {
+        self.fetch_urls_impl(session, sender, base_path, dsettings)
             .await
-        {
-            Ok(()) => comm.send_event(UrlFetchEvent::Finish),
-            Err(err) => comm.send_event(UrlFetchEvent::Err(err)),
-        }
     }
 
     pub async fn folder_name(

@@ -17,6 +17,7 @@ mod template;
 mod utils;
 pub mod widgets;
 pub mod ui;
+pub mod edit_window;
 
 pub use error::{Result, TError};
 
@@ -105,7 +106,7 @@ struct Test3 {
 use crate::cstruct_window::CStructBuffer;
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::template::nodes::node_data::{NodeData};
-use crate::template::widget::{TemplateData};
+use crate::template::widget_data::{TemplateData};
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 use config::CStruct;

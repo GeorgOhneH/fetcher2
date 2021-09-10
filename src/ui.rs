@@ -13,15 +13,18 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
 
+use crate::background_thread::EDIT_DATA;
 use crate::cstruct_window::{c_struct_window, CStructBuffer};
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
+use crate::edit_window::edit_window;
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::widget::TemplateData;
+use crate::template::widget_data::TemplateData;
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
+use crate::widgets::widget_ext::WidgetExt as _;
 use config::CStruct;
 use config::State;
 use druid::im::{vector, Vector};
@@ -149,6 +152,34 @@ fn tool_bar() -> impl Widget<AppData> {
             Target::Global,
         ))
     });
+    let edit = Button::new("Edit")
+        .on_click(|ctx, _: &mut (), _| {
+            ctx.submit_command(Command::new(
+                MSG_THREAD,
+                SingleUse::new(Msg::RequestEditData(ctx.widget_id())),
+                Target::Global,
+            ))
+        })
+        .on_command2(EDIT_DATA, |ctx, command_data, data: &mut (), env| {
+            let edit_data = command_data.take().unwrap();
+            let window = ctx.window();
+            let win_pos = window.get_position();
+            let (win_size_w, win_size_h) = window.get_size().into();
+            let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
+            let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+            ctx.new_sub_window(
+                WindowConfig::default()
+                    .show_titlebar(true)
+                    .window_size(Size::new(size_w, size_h))
+                    .set_position(pos)
+                    .set_level(WindowLevel::Modal),
+                edit_window(edit_data),
+                (),
+                env.clone(),
+            );
+        })
+        .padding(0.)
+        .lens(lens::Unit);
     let settings = Button::new("Settings")
         .on_click(|ctx, data: &mut Option<Settings>, env| {
             let window = ctx.window();
@@ -184,6 +215,8 @@ fn tool_bar() -> impl Widget<AppData> {
         .with_child(start)
         .with_default_spacer()
         .with_child(stop)
+        .with_default_spacer()
+        .with_child(edit)
         .with_default_spacer()
         .with_child(settings)
 }

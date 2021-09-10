@@ -7,6 +7,8 @@ use serde::Serialize;
 pub mod folder;
 pub mod site;
 mod utils;
+pub mod site_data;
+pub mod site_edit_data;
 
 use crate::settings::DownloadSettings;
 pub use crate::template::node_type::folder::Folder;
@@ -17,8 +19,9 @@ pub use crate::template::node_type::site::{DownloadArgs, Extensions};
 use std::sync::Arc;
 use druid::Data;
 use std::path::PathBuf;
-use crate::template::node_type::site::SiteData;
-use crate::template::node_type::folder::FolderData;
+use crate::template::node_type::folder::{FolderData, FolderEditData};
+use crate::template::node_type::site_data::SiteData;
+use crate::template::node_type::site_edit_data::SiteEditData;
 
 #[derive(Config, Serialize, Debug, Clone)]
 pub enum NodeType {
@@ -26,6 +29,16 @@ pub enum NodeType {
     Folder(Folder),
     #[config(ty = "_<Struct>")]
     Site(Arc<Site>),
+}
+
+
+impl From<NodeTypeEditData> for NodeType {
+    fn from(data: NodeTypeEditData) -> Self {
+        match data {
+            NodeTypeEditData::Folder(folder) => Self::Folder(folder.into()),
+            NodeTypeEditData::Site(site) => Self::Site(Arc::new(site.into())),
+        }
+    }
 }
 
 impl NodeType {
@@ -44,6 +57,13 @@ impl NodeType {
         match self {
             NodeType::Site(site) => NodeTypeData::Site(site.widget_data()),
             NodeType::Folder(folder) => NodeTypeData::Folder(folder.widget_data()),
+        }
+    }
+
+    pub fn widget_edit_data(&self) -> NodeTypeEditData {
+        match self {
+            NodeType::Site(site) => NodeTypeEditData::Site(site.widget_edit_data()),
+            NodeType::Folder(folder) => NodeTypeEditData::Folder(folder.widget_edit_data()),
         }
     }
 }
@@ -80,6 +100,22 @@ impl NodeTypeData {
         }
     }
 
+    pub fn name(&self) -> String {
+        match self {
+            Self::Folder(folder) => folder.name(),
+            Self::Site(site) => site.name(),
+        }
+    }
+}
+
+
+#[derive(Debug, Clone, Data)]
+pub enum NodeTypeEditData {
+    Folder(FolderEditData),
+    Site(SiteEditData),
+}
+
+impl NodeTypeEditData {
     pub fn name(&self) -> String {
         match self {
             Self::Folder(folder) => folder.name(),
