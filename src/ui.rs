@@ -34,13 +34,7 @@ use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
     Maybe, Padding, Scroll, SizedBox, Spinner, Split, Switch, TextBox, ViewSwitcher,
 };
-use druid::{
-    commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx,
-    Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
-    LocalizedString, Menu, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
-    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
-    WindowId, WindowLevel,
-};
+use druid::{commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, Menu, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel, MenuItem, SysMods};
 use druid_widget_nursery::WidgetExt as _;
 use flume;
 use futures::future::BoxFuture;
@@ -87,10 +81,12 @@ pub fn make_menu(_: Option<WindowId>, state: &AppData, _: &Env) -> Menu<AppData>
             Menu::new(LocalizedString::new("common-menu-file-menu"))
                 .entry(menu::sys::mac::file::new_file())
                 .entry(menu::sys::mac::file::open_file())
-                // open recent?
                 .separator()
-                .entry(menu::sys::mac::file::save())
-                .entry(menu::sys::mac::file::save_as()),
+                .entry(
+                    MenuItem::new("Open Edit")
+                        .command(OPEN_EDIT)
+                        .hotkey(SysMods::Cmd, "e"),
+                ),
         );
     // }
     #[cfg(any(target_os = "windows", target_os = "linux"))]
@@ -99,8 +95,18 @@ pub fn make_menu(_: Option<WindowId>, state: &AppData, _: &Env) -> Menu<AppData>
             Menu::new("Hello")
                 .entry(menu::sys::win::file::new())
                 .entry(menu::sys::win::file::open())
-                .entry(menu::sys::win::file::save())
-                .entry(menu::sys::win::file::save_as())
+                .separator()
+                .entry(
+                    MenuItem::new("Open Edit")
+                        .command(OPEN_EDIT)
+                        .hotkey(SysMods::Cmd, "e"),
+                )
+                .separator()
+                .entry(
+                    MenuItem::new("Settings")
+                        .command(commands::SHOW_PREFERENCES)
+                        .hotkey(SysMods::Cmd, "d"),
+                )
                 .separator()
                 .entry(menu::sys::win::file::exit()),
         );

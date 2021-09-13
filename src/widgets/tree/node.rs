@@ -131,24 +131,22 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
     /// Returns whether new children were created.
     pub fn update_children(&mut self, data: &T) -> bool {
         let mut changed = false;
-        if self.expand_lens.get(data) {
-            if self.children.len() > data.children_count() {
-                self.children.truncate(data.children_count());
-                changed = true;
-            }
-            for index in 0..data.children_count() {
-                changed |= index >= self.children.len();
-                match self.children.get_mut(index) {
-                    Some(c) => c.widget_mut().index = index,
-                    None => self.children.push(WidgetPod::new(TreeNodeWidget::new(
-                        self.make_widget.clone(),
-                        self.make_opener.clone(),
-                        index,
-                        self.constrains.clone(),
-                        self.depth + 1,
-                        self.expand_lens.clone(),
-                    ))),
-                }
+        if self.children.len() > data.children_count() {
+            self.children.truncate(data.children_count());
+            changed = true;
+        }
+        for index in 0..data.children_count() {
+            changed |= index >= self.children.len();
+            match self.children.get_mut(index) {
+                Some(c) => c.widget_mut().index = index,
+                None => self.children.push(WidgetPod::new(TreeNodeWidget::new(
+                    self.make_widget.clone(),
+                    self.make_opener.clone(),
+                    index,
+                    self.constrains.clone(),
+                    self.depth + 1,
+                    self.expand_lens.clone(),
+                ))),
             }
         }
         changed

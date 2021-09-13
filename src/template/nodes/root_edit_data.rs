@@ -21,6 +21,7 @@ use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
 use std::path::PathBuf;
 use crate::template::nodes::root::RawRootNode;
+use crate::edit_window::NodePosition;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeEditData {
@@ -35,6 +36,8 @@ impl RootNodeEditData {
             selected: Vector::new(),
         }
     }
+
+
     pub fn raw(self) -> RawRootNode {
         let children = self.children.into_iter().filter_map(|child| child.raw()).collect();
         RawRootNode {
@@ -55,6 +58,37 @@ impl RootNodeEditData {
             panic!("Can't access root node")
         } else {
             self.children[idx[0]].node_mut(&idx[1..])
+        }
+    }
+
+    pub fn remove(&mut self, idx: &[usize]) -> NodeEditData {
+        match idx.len() {
+            0 => panic!("Can't remove the root node"),
+            1 => self.children.remove(idx[0]),
+            _ => self.children[idx[0]].remove(&idx[1..])
+        }
+    }
+
+    pub fn insert_node(&mut self, idx: &[usize], pos: NodePosition) {
+        match pos {
+            NodePosition::Child => self.insert_child(idx),
+            NodePosition::Above => self.insert_sibling(idx, 0),
+            NodePosition::Below => self.insert_sibling(idx, 1),
+        }
+    }
+
+    pub fn insert_sibling(&mut self, idx: &[usize], offset: usize) {
+        match idx.len() {
+            0 => panic!("Can't do this"),
+            1 => self.children.insert(idx[0] + offset, NodeEditData::new(true)),
+            _ => self.children[idx[0]].insert_sibling(&idx[1..], offset)
+        }
+    }
+
+    pub fn insert_child(&mut self, idx: &[usize]) {
+        match idx.len() {
+            0 => self.children.push_back(NodeEditData::new(true)),
+            _ => self.children[idx[0]].insert_child(&idx[1..])
         }
     }
 }

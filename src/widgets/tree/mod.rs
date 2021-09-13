@@ -258,9 +258,9 @@ where
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &R, data: &R, env: &Env) {
-        //TODO lens update select
         self.header.update(ctx, data, env);
         self.root_node.update(ctx, data, env);
+        //TODO lens update select after root update!
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &R, env: &Env) -> Size {

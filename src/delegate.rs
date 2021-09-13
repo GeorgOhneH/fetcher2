@@ -31,8 +31,7 @@ pub enum Msg {
     StartByIndex(HashSet<NodeIndex>),
     Cancel,
     NewSettings(DownloadSettings),
-
-    UpdateEditData(TemplateEditData),
+    NewTemplate(Template),
 }
 
 

@@ -30,12 +30,16 @@ use crate::template::nodes::root_edit_data::RootNodeEditData;
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateEditData {
     pub root: RootNodeEditData,
+    #[data(eq)]
+    pub save_path: Option<PathBuf>
 }
 
 impl TemplateEditData {
     pub fn new() -> Self {
         Self {
-            root: RootNodeEditData::new()
+            root: RootNodeEditData::new(),
+            save_path: None,
         }
     }
+
 }

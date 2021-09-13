@@ -12,8 +12,9 @@ use druid::{
 };
 
 use crate::template::communication::NODE_EVENT;
-use crate::template::node_type::{NodeTypeData, NodeTypeEditKindData, NodeTypeEditData};
+use crate::template::node_type::{NodeTypeData, NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node::{NodeEvent, PathEvent, RawNode};
+use crate::template::nodes::node_data::NodeData;
 use crate::template::MetaData;
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::NodeIndex;
@@ -22,17 +23,23 @@ use druid::im::{HashSet, Vector};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 use std::path::PathBuf;
-use crate::template::nodes::node_data::NodeData;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeEditData {
     pub expanded: bool,
     pub ty: Option<NodeTypeEditData>,
     pub children: Vector<NodeEditData>,
-
 }
 
 impl NodeEditData {
+    pub fn new(expanded: bool) -> Self {
+        Self {
+            expanded,
+            ty: None,
+            children: Vector::new(),
+        }
+    }
+
     pub fn raw(self) -> Option<RawNode> {
         if let Some(ty) = self.ty {
             let children = self
@@ -70,6 +77,29 @@ impl NodeEditData {
             self
         } else {
             self.children[idx[0]].node_mut(&idx[1..])
+        }
+    }
+
+    pub fn remove(&mut self, idx: &[usize]) -> NodeEditData {
+        match idx.len() {
+            0 => unreachable!(),
+            1 => self.children.remove(idx[0]),
+            _ => self.children[idx[0]].remove(&idx[1..])
+        }
+    }
+
+    pub fn insert_sibling(&mut self, idx: &[usize], offset: usize) {
+        match idx.len() {
+            0 => unreachable!(),
+            1 => self.children.insert(idx[0] + offset, NodeEditData::new(true)),
+            _ => self.children[idx[0]].insert_sibling(&idx[1..], offset)
+        }
+    }
+
+    pub fn insert_child(&mut self, idx: &[usize]) {
+        match idx.len() {
+            0 => self.children.push_front(NodeEditData::new(true)),
+            _ => self.children[idx[0]].insert_child(&idx[1..])
         }
     }
 }

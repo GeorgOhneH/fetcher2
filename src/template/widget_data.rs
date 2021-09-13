@@ -11,21 +11,21 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
+use crate::background_thread::NEW_TEMPLATE;
 use crate::delegate::{Msg, MSG_THREAD};
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::{Template};
-use crate::widgets::tree::{DataNodeIndex, Tree, NodeIndex,};
+use crate::template::Template;
+use crate::ui::TemplateInfoSelect;
+use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{AppData, Result};
 use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use crate::ui::TemplateInfoSelect;
-use crate::background_thread::NEW_TEMPLATE;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {
@@ -81,11 +81,11 @@ impl TemplateData {
 
 pub struct ContextMenuController;
 
-impl<
-        L: Lens<NodeData, bool> + Clone + 'static,
-        S: Lens<RootNodeData, Vector<DataNodeIndex>> + Clone + 'static,
-        const N: usize,
-    > Controller<RootNodeData, Tree<RootNodeData, NodeData, L, S, N>> for ContextMenuController
+impl<L, S, const N: usize> Controller<RootNodeData, Tree<RootNodeData, NodeData, L, S, N>>
+    for ContextMenuController
+where
+    L: Lens<NodeData, bool> + Clone + 'static,
+    S: Lens<RootNodeData, Vector<DataNodeIndex>> + Clone + 'static,
 {
     fn event(
         &mut self,
@@ -146,4 +146,3 @@ fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> 
         .separator()
         .entry(MenuItem::new("Open Website").on_activate(|_ctx, data: &mut AppData, _env| todo!()))
 }
-

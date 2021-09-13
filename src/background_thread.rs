@@ -125,10 +125,8 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
                     Msg::NewSettings(new_settings) => {
                         dsettings = Arc::new(new_settings);
                     },
-                    Msg::UpdateEditData(edit_data) => {
+                    Msg::NewTemplate(new_template) => {
                         cancel_all(&mut abort_handles);
-                        let comm = RawCommunication::new(sink.clone());
-                        let new_template = Template::from_raw(edit_data, comm);
                         sink.submit_command(NEW_TEMPLATE, SingleUse::new(new_template.widget_data()), Target::Global).unwrap();
                         sink.submit_command(NEW_EDIT_TEMPLATE, SingleUse::new(new_template.widget_edit_data()), Target::Global).unwrap();
 
@@ -172,6 +170,7 @@ async fn replace_template(
     dsettings: Arc<DownloadSettings>,
 ) {
     let mut wl = old_template.write().await;
+    wl.save().await.unwrap(); // TODO not panic
     *wl = new_template;
     wl.prepare(dsettings).await;
 }

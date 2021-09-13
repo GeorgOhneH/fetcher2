@@ -37,6 +37,7 @@ pub mod widget_edit_data;
 #[derive(Debug)]
 pub struct Template {
     root: RootNode,
+    save_path: Option<PathBuf>,
     is_prepared: bool,
 }
 
@@ -45,6 +46,7 @@ impl Template {
         Self {
             root: RootNode::new(),
             is_prepared: false,
+            save_path: None,
         }
     }
     
@@ -122,14 +124,16 @@ impl Template {
         Self {
             root: raw_root.transform(comm),
             is_prepared: false,
+            save_path: None,
         }
     }
 
-    pub fn from_raw(edit_data: TemplateEditData, comm: RawCommunication) -> Self {
-        let raw_root = edit_data.root.raw();
+    pub fn from_raw(edit_data: RootNodeEditData, comm: RawCommunication, save_path: PathBuf) -> Self {
+        let raw_root = edit_data.raw();
         Self {
             root: raw_root.transform(comm),
             is_prepared: false,
+            save_path: Some(save_path)
         }
     }
 
@@ -139,6 +143,7 @@ impl Template {
         Ok(Self {
             root: raw_root.transform(comm),
             is_prepared: false,
+            save_path: Some(path.to_owned())
         })
     }
 
@@ -170,18 +175,20 @@ impl Template {
         self.root.run(&session, dsettings, Some(indexes)).await
     }
 
-    pub async fn save(&self, path: &Path) -> Result<()> {
-        let template_str = serde_yaml::to_string(&self.root.clone().raw())?;
+    pub async fn save(&self) -> Result<()> {
+        if let Some(save_path) = &self.save_path {
+            let template_str = serde_yaml::to_string(&self.root.clone().raw())?;
 
-        let mut f = fs::OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(path)
-            .await?;
-        f.write_all(&template_str.as_bytes()).await?;
+            let mut f = fs::OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .create(true)
+                .open(save_path)
+                .await?;
+            f.write_all(&template_str.as_bytes()).await?;
 
-        f.shutdown().await?;
+            f.shutdown().await?;
+        }
         Ok(())
     }
 
@@ -194,6 +201,7 @@ impl Template {
     pub fn widget_edit_data(&self) -> TemplateEditData {
         TemplateEditData {
             root: self.root.widget_edit_data(),
+            save_path: self.save_path.clone(),
         }
     }
 }
