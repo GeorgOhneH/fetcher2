@@ -29,6 +29,12 @@ pub struct RootNodeEditData {
 }
 
 impl RootNodeEditData {
+    pub fn new() -> Self {
+        Self {
+            children: Vector::new(),
+            selected: Vector::new(),
+        }
+    }
     pub fn raw(self) -> RawRootNode {
         let children = self.children.into_iter().filter_map(|child| child.raw()).collect();
         RawRootNode {

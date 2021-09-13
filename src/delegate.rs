@@ -19,7 +19,7 @@ use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
 use std::thread;
-use crate::background_thread::{background_main, EDIT_DATA};
+use crate::background_thread::{background_main};
 use crate::widgets::tree::NodeIndex;
 use crate::settings::DownloadSettings;
 use druid_widget_nursery::selectors;
@@ -32,17 +32,9 @@ pub enum Msg {
     Cancel,
     NewSettings(DownloadSettings),
 
-    RequestEditData,
     UpdateEditData(TemplateEditData),
 }
 
-#[derive(Debug)]
-pub enum TemplateMsg {
-    StartAll,
-    StartByIndex(HashSet<NodeIndex>),
-    Cancel,
-    NewSettings(DownloadSettings)
-}
 
 selectors! {
     MSG_THREAD: SingleUse<Msg>
@@ -77,11 +69,6 @@ impl<T: Data> AppDelegate<T> for TemplateDelegate {
                 self.tx.send(msg).unwrap();
                 Handled::Yes
             }
-            // _ if cmd.is(commands::NEW_FILE) => {
-            //     let msg = Msg::RequestEditData
-            //     self.tx.send(msg).unwrap();
-            //     Handled::Yes
-            // }
             _ => Handled::No,
         }
     }

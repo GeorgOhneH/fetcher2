@@ -14,7 +14,7 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::background_thread::{NEW_TEMPLATE, EDIT_DATA};
+use crate::background_thread::{NEW_TEMPLATE, NEW_EDIT_TEMPLATE};
 use crate::cstruct_window::c_option_window;
 use crate::delegate::{Msg, MSG_THREAD};
 use crate::settings::Settings;
@@ -33,6 +33,12 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use crate::edit_window::edit_window;
+use crate::template::widget_edit_data::TemplateEditData;
+
+selectors! {
+    OPEN_EDIT
+}
+
 
 pub struct TemplateController;
 
@@ -114,30 +120,53 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
 }
 
 
-pub struct EditController;
+pub struct EditController {
+    current_data: TemplateEditData
+}
+
+impl EditController {
+    pub fn new() -> Self {
+        Self {
+            current_data: TemplateEditData::new()
+        }
+    }
+    fn make_sub_window(ctx: &mut EventCtx, env: &Env, edit_data: TemplateEditData) {
+        let window = ctx.window();
+        let win_pos = window.get_position();
+        let (win_size_w, win_size_h) = window.get_size().into();
+        let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
+        let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+        ctx.new_sub_window(
+            WindowConfig::default()
+                .show_titlebar(true)
+                .window_size(Size::new(size_w, size_h))
+                .set_position(pos)
+                .set_level(WindowLevel::Modal),
+            edit_window(edit_data),
+            (),
+            env.clone(),
+        );
+    }
+}
 
 impl<W: Widget<()>> Controller<(), W> for EditController {
     fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut (), env: &Env) {
         match event {
-            Event::Command(cmd) if cmd.is(EDIT_DATA) => {
+            Event::Command(cmd) if cmd.is(NEW_EDIT_TEMPLATE) => {
                 ctx.set_handled();
-                let edit_data = cmd.get_unchecked(EDIT_DATA).take().unwrap();
-                let window = ctx.window();
-                let win_pos = window.get_position();
-                let (win_size_w, win_size_h) = window.get_size().into();
-                let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-                let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-                ctx.new_sub_window(
-                    WindowConfig::default()
-                        .show_titlebar(true)
-                        .window_size(Size::new(size_w, size_h))
-                        .set_position(pos)
-                        .set_level(WindowLevel::Modal),
-                    edit_window(edit_data),
-                    (),
-                    env.clone(),
-                );
-
+                let edit_data = cmd.get_unchecked(NEW_EDIT_TEMPLATE).take().unwrap();
+                self.current_data = edit_data;
+                return;
+            }
+            Event::Command(cmd) if cmd.is(OPEN_EDIT) => {
+                ctx.set_handled();
+                Self::make_sub_window(ctx, env, self.current_data.clone());
+                return;
+            }
+            Event::Command(cmd) if cmd.is(commands::NEW_FILE) => {
+                ctx.set_handled();
+                let edit_data = TemplateEditData::new();
+                Self::make_sub_window(ctx, env, edit_data);
                 return;
             }
             _ => (),

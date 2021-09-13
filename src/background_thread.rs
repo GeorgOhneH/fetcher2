@@ -51,8 +51,8 @@ use crate::template::widget_edit_data::TemplateEditData;
 use crate::widgets::tree::NodeIndex;
 
 selectors! {
-    EDIT_DATA: SingleUse<TemplateEditData>,
     NEW_TEMPLATE: SingleUse<TemplateData>,
+    NEW_EDIT_TEMPLATE: SingleUse<TemplateEditData>,
 }
 
 enum RunType {
@@ -84,6 +84,19 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
         force: false,
     });
 
+    sink.submit_command(
+        NEW_TEMPLATE,
+        SingleUse::new(init_template.widget_data()),
+        Target::Global,
+    )
+    .unwrap();
+    sink.submit_command(
+        NEW_EDIT_TEMPLATE,
+        SingleUse::new(init_template.widget_edit_data()),
+        Target::Global,
+    )
+    .unwrap();
+
     let template = tokio::sync::RwLock::new(init_template);
 
     let mut futs = FuturesUnordered::new();
@@ -112,15 +125,12 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
                     Msg::NewSettings(new_settings) => {
                         dsettings = Arc::new(new_settings);
                     },
-                    Msg::RequestEditData => {
-                        let edit_data = template.read().await.widget_edit_data();
-                        sink.submit_command(EDIT_DATA, SingleUse::new(edit_data), Target::Global).unwrap();
-                    },
                     Msg::UpdateEditData(edit_data) => {
                         cancel_all(&mut abort_handles);
                         let comm = RawCommunication::new(sink.clone());
                         let new_template = Template::from_raw(edit_data, comm);
                         sink.submit_command(NEW_TEMPLATE, SingleUse::new(new_template.widget_data()), Target::Global).unwrap();
+                        sink.submit_command(NEW_EDIT_TEMPLATE, SingleUse::new(new_template.widget_edit_data()), Target::Global).unwrap();
 
                         let fut = replace_template(&template, new_template, dsettings.clone());
                         add_new_future(fut, &mut futs, &mut abort_handles);
@@ -195,5 +205,6 @@ async fn prepare_template(
     template: &tokio::sync::RwLock<Template>,
     dsettings: Arc<DownloadSettings>,
 ) {
-    template.write().await.prepare(dsettings.clone()).await;
+    let mut wl = template.write().await;
+    wl.prepare(dsettings.clone()).await;
 }

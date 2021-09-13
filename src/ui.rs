@@ -13,8 +13,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
 
-use crate::background_thread::EDIT_DATA;
-use crate::controller::{EditController, SettingController, TemplateController};
+use crate::controller::{EditController, SettingController, TemplateController, OPEN_EDIT};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::edit_window::edit_window;
@@ -126,7 +125,7 @@ pub fn build_ui() -> impl Widget<AppData> {
         )
         .with_child(
             SizedBox::empty()
-                .controller(EditController)
+                .controller(EditController::new())
                 .padding(0.)
                 .lens(lens::Unit),
         )
@@ -211,13 +210,7 @@ fn tool_bar() -> impl Widget<AppData> {
             Target::Window(ctx.window_id()),
         ))
     });
-    let edit = Button::new("Edit").on_click(|ctx, _, _| {
-        ctx.submit_command(Command::new(
-            MSG_THREAD,
-            SingleUse::new(Msg::RequestEditData),
-            Target::Window(ctx.window_id()),
-        ))
-    });
+    let edit = Button::new("Edit").on_click(|ctx, _, _| ctx.submit_command(OPEN_EDIT));
     let settings = Button::new("Settings")
         .on_click(|ctx, _, env| ctx.submit_command(commands::SHOW_PREFERENCES));
 
