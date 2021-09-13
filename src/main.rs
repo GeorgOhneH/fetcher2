@@ -21,7 +21,7 @@ pub mod edit_window;
 
 pub use error::{Result, TError};
 
-use crate::settings::{DownloadSettings, Settings};
+use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use config_derive::Config;
@@ -69,21 +69,6 @@ fn main2() {
 }
 
 use config::ConfigEnum;
-#[derive(Config, Serialize, Clone, Debug)]
-struct Test {
-    // #[config(default = true, gui_name = "Hello")]
-    // hello: bool,
-    // #[config()]
-    // hello2: String,
-    // #[config(default = 0, min = 0)]
-    // int: isize,
-    // path: PathBuf,
-    #[config(ty = "Enum")]
-    efsdfs: Test2,
-
-    #[config(ty = "Struct")]
-    efsd3rfs: Test3,
-}
 
 #[derive(Config, Serialize, Clone, Debug)]
 enum Test2 {
@@ -91,6 +76,8 @@ enum Test2 {
     Foo(String),
     Bar,
 }
+
+
 
 #[derive(Config, Serialize, Clone, Debug)]
 struct Test3 {
@@ -179,6 +166,7 @@ pub fn main() {
         template: template.widget_data(),
         settings: None,
         template_info_select: TemplateInfoSelect::Nothing,
+        test: Some(Test { force: true})
     };
 
     let delegate = TemplateDelegate::new(sink, template);

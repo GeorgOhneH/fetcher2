@@ -1,8 +1,7 @@
-
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
-use crate::template::widget_data::{TemplateData};
-use config::{CStruct, Config};
+use crate::template::widget_data::TemplateData;
 use config::State;
+use config::{CStruct, Config, ConfigEnum};
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
@@ -10,7 +9,13 @@ use druid::widget::{
     Button, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List, Maybe, Scroll,
     Spinner, Switch, TextBox,
 };
-use druid::{im, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowLevel, BoxConstraints};
+use druid::{
+    im, AppDelegate, AppLauncher, Application, BoxConstraints, Color, Command, Data, DelegateCtx,
+    Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    LocalizedString, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
+};
 use druid_widget_nursery::Tree;
 use flume;
 use futures::future::BoxFuture;
@@ -18,14 +23,13 @@ use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
 use std::future::Future;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
-use std::marker::PhantomData;
 
 use druid_widget_nursery::selectors;
-
 
 selectors! {
     APPLY
@@ -49,24 +53,37 @@ impl<T: Config + Data> CStructBuffer<T> {
 
 impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Option<T>, env: &Env) {
-        self.child.event(ctx, event, &mut self.c_struct_data, env);
         match event {
             Event::Command(command) if command.is(APPLY) => {
-                if let Ok(settings) =
-                T::parse_from_app(&self.c_struct_data)
-                {
+                ctx.set_handled();
+                if let Ok(settings) = T::parse_from_app(&self.c_struct_data) {
                     *data = Some(settings);
                     ctx.window().close();
                 }
             }
             _ => (),
         }
+
+        let old_data = self.c_struct_data.clone();
+        self.child.event(ctx, event, &mut self.c_struct_data, env);
+        if !old_data.same(&self.c_struct_data) {
+            dbg!("DATA CHANGED");
+            ctx.request_update()
+        }
     }
 
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &Option<T>, env: &Env) {
+    fn lifecycle(
+        &mut self,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &Option<T>,
+        env: &Env,
+    ) {
         if let LifeCycle::WidgetAdded = event {
             if let Some(init) = data {
                 init.clone().update_app(&mut self.c_struct_data).unwrap();
+                ctx.request_layout();
+                ctx.request_paint();
             }
         }
         self.child.lifecycle(ctx, event, &self.c_struct_data, env)
@@ -76,9 +93,16 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
         self.child.update(ctx, &self.c_struct_data, env)
     }
 
-    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &Option<T>, env: &Env) -> Size {
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &Option<T>,
+        env: &Env,
+    ) -> Size {
         let size = self.child.layout(ctx, bc, &self.c_struct_data, env);
-        self.child.set_origin(ctx, &self.c_struct_data, env, Point::ORIGIN);
+        self.child
+            .set_origin(ctx, &self.c_struct_data, env, Point::ORIGIN);
         size
     }
 
@@ -88,22 +112,19 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
 }
 
 
-pub fn c_struct_window<T: Config + Data>() -> impl Widget<Option<T>> {
+pub fn c_option_window<T: Config + Data>() -> impl Widget<Option<T>> {
     Flex::column()
-        .with_flex_child(
-            CStructBuffer::new().scroll(),
-            1.0,
-        )
+        .with_flex_child(CStructBuffer::new().scroll(), 1.0)
         .with_child(
             Flex::row().with_child(
                 Button::new("Save")
                     .on_click(|ctx, data: &mut Option<T>, env| {
                         ctx.submit_command(APPLY.to(Target::Window(ctx.window_id())));
                     })
-                    // .disabled_if(|data: &Option<T>, env| match &data.c_struct {
-                    //     Some(c_struct) => !matches!(c_struct.state(), State::Valid),
-                    //     None => true,
-                    // }),
+                // .disabled_if(|data: &Option<T>, env| match &data.c_struct {
+                //     Some(c_struct) => !matches!(c_struct.state(), State::Valid),
+                //     None => true,
+                // }),
             ).with_child(
                 Button::new("Cancel")
                     .on_click(|ctx, data: &mut Option<T>, env| {
@@ -111,5 +132,3 @@ pub fn c_struct_window<T: Config + Data>() -> impl Widget<Option<T>> {
                     })),
         )
 }
-
-

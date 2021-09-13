@@ -1,4 +1,4 @@
-use crate::settings::{DownloadSettings, Settings};
+use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use config_derive::Config;
@@ -14,7 +14,7 @@ use std::time::Instant;
 use std::{io, thread};
 
 use crate::background_thread::EDIT_DATA;
-use crate::cstruct_window::{c_struct_window, CStructBuffer};
+use crate::cstruct_window::{CStructBuffer, c_option_window};
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::edit_window::edit_window;
 use crate::template::communication::RawCommunication;
@@ -66,6 +66,7 @@ pub struct AppData {
     pub template: TemplateData,
     pub settings: Option<Settings>,
     pub template_info_select: TemplateInfoSelect,
+    pub test: Option<Test>,
 }
 
 pub fn build_ui() -> impl Widget<AppData> {
@@ -193,7 +194,7 @@ fn tool_bar() -> impl Widget<AppData> {
                     .window_size(Size::new(size_w, size_h))
                     .set_position(pos)
                     .set_level(WindowLevel::Modal),
-                c_struct_window(),
+                c_option_window(),
                 data.clone(),
                 env.clone(),
             );
@@ -209,6 +210,26 @@ fn tool_bar() -> impl Widget<AppData> {
             },
         )
         .lens(AppData::settings);
+    let test = Button::new("Test")
+        .on_click(|ctx, data: &mut Option<Test>, env| {
+            let window = ctx.window();
+            let win_pos = window.get_position();
+            let (win_size_w, win_size_h) = window.get_size().into();
+            let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
+            let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+            ctx.new_sub_window(
+                WindowConfig::default()
+                    .show_titlebar(true)
+                    .window_size(Size::new(size_w, size_h))
+                    .set_position(pos)
+                    .set_level(WindowLevel::Modal),
+                c_option_window(),
+                data.clone(),
+                env.clone(),
+            );
+        })
+        .padding(0.) // So it's enclosed in a WidgetPod, (just a nop)
+        .lens(AppData::test);
 
     Flex::row()
         .cross_axis_alignment(CrossAxisAlignment::Start)
@@ -219,4 +240,6 @@ fn tool_bar() -> impl Widget<AppData> {
         .with_child(edit)
         .with_default_spacer()
         .with_child(settings)
+        .with_default_spacer()
+        .with_child(test)
 }

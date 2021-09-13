@@ -16,14 +16,14 @@ use serde::Serialize;
 use std::sync::Arc;
 
 use crate::template::communication::{Communication, RawCommunication};
+use crate::template::node_type::site_data::SiteEvent;
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node_data::{NodeData, NodeState};
+use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::utils::spawn_drop;
 use crate::widgets::tree::NodeIndex;
 use crate::TError;
 use std::collections::HashSet;
-use crate::template::node_type::site_data::SiteEvent;
-use crate::template::nodes::node_edit_data::NodeEditData;
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}
@@ -46,20 +46,25 @@ pub struct RawNode {
     pub cached_path_segment: Option<PathBuf>,
 }
 
-
-impl From<NodeEditData> for RawNode {
-    fn from(data: NodeEditData) -> Self {
-        let children = data.children.into_iter().map(|child| child.into()).collect();
-        Self {
-            ty: data.ty.into(),
-            children,
-            meta_data: data.meta_data,
-            cached_path_segment: None,
+impl RawNode {
+    pub fn from_data(data: NodeEditData) -> Option<Self> {
+        let children = data
+            .children
+            .into_iter()
+            .filter_map(|child| RawNode::from_data(child))
+            .collect();
+        if let Some(ty) = data.ty {
+            Some(Self {
+                ty: ty.kind.into(),
+                children,
+                meta_data: ty.meta_data,
+                cached_path_segment: None,
+            })
+        } else {
+            None
         }
     }
-}
 
-impl RawNode {
     pub fn transform(self, index: NodeIndex, comm: RawCommunication) -> Node {
         Node {
             ty: self.ty,
@@ -218,8 +223,7 @@ impl Node {
         NodeEditData {
             expanded: true,
             children,
-            meta_data: self.meta_data.clone(),
-            ty: self.ty.widget_edit_data(),
+            ty: Some(self.ty.widget_edit_data(self.meta_data.clone())),
         }
     }
 }

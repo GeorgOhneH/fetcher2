@@ -50,6 +50,8 @@ where
     root_node: WidgetPod<R, Scroll<R, TreeNodeRootWidget<R, T, L, N>>>,
     selected_lens: S,
     selection_mode: SelectionMode,
+
+    on_activate_fn: Option<Box<dyn Fn(&mut EventCtx, &mut R, &Env, &NodeIndex)>>
 }
 
 /// Tree Implementation
@@ -80,7 +82,13 @@ where
             ),
             selected_lens,
             selection_mode: SelectionMode::Single,
+            on_activate_fn: None,
         }
+    }
+
+    pub fn on_activate(mut self, on_activate_fn: impl Fn(&mut EventCtx, &mut R, &Env, &NodeIndex) + 'static) -> Self {
+        self.on_activate_fn = Some(Box::new(on_activate_fn));
+        self
     }
 
     pub fn set_sizes(mut self, sizes: [f64; N]) -> Self {
@@ -203,10 +211,16 @@ where
         match event {
             Event::MouseDown(mouse_event) => {
                 if let Some(idx) = self.node_at(mouse_event.pos) {
+                    ctx.set_active(true);
+                    ctx.set_handled();
                     if self.update_selection(&idx, SelectUpdateMode::Single, data) {
                         ctx.request_paint();
                     }
-                    ctx.set_active(true);
+                    if mouse_event.count == 2 {
+                        if let Some(activate_fn) = &self.on_activate_fn {
+                            (activate_fn)(ctx, data, env, &idx)
+                        }
+                    }
                 }
                 return;
             }

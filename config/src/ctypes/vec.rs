@@ -6,7 +6,6 @@ use druid::{im, Env, Event, EventCtx, Selector, Widget, SingleUse, LifeCycleCtx,
 use druid::{lens, Data, Lens, LensExt, WidgetExt};
 use serde_yaml::Sequence;
 use std::ops::Deref;
-use crate::widgets::List;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CVec {
@@ -15,6 +14,28 @@ pub struct CVec {
     template_fn: fn() -> CType,
     #[data(ignore)]
     name: Option<String>,
+}
+
+impl ListIter<CItem> for CVec {
+    fn for_each(&self, mut cb: impl FnMut(&CItem, usize)) {
+        for (i, item) in self.inner.iter().enumerate() {
+            cb(item, i);
+        }
+    }
+
+    fn for_each_mut(&mut self, mut cb: impl FnMut(&mut CItem, usize)) {
+        for (index, element) in self.inner.clone().iter().enumerate() {
+            let mut new_element = element.to_owned();
+            cb(&mut new_element, index);
+            if !new_element.same(element) {
+                self.inner[index] = new_element;
+            }
+        }
+    }
+
+    fn data_len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 impl CVec {
@@ -72,7 +93,7 @@ impl CVec {
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
             .with_child(
-                List::new(|| {
+                druid::widget::List::new(|| {
                     Flex::row()
                         .with_child(CType::widget().lens(CItem::ty))
                         .with_child(Button::new("Delete").on_click(
@@ -83,8 +104,9 @@ impl CVec {
                 })
                 .controller(DeleteController::new()),
             )
-            .with_child(Button::new("Add").on_click(|_, c_vec: &mut Self, _env| {
-                c_vec.push(c_vec.get_template())
+            .with_child(Button::new("Add").on_click(|ctx, c_vec: &mut Self, _env| {
+                c_vec.push(c_vec.get_template());
+                ctx.request_update();
             }))
     }
 }
@@ -111,7 +133,7 @@ impl<W: Widget<CVec>> Controller<CVec, W> for DeleteController {
         if let Event::Notification(notfi) = event {
             if let Some(idx) = notfi.get(DELETE) {
                 data.remove(*idx);
-                ctx.children_changed();
+                ctx.request_update();
                 ctx.set_handled()
             }
         };

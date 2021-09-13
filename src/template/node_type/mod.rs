@@ -22,6 +22,8 @@ use std::path::PathBuf;
 use crate::template::node_type::folder::{FolderData, FolderEditData};
 use crate::template::node_type::site_data::SiteData;
 use crate::template::node_type::site_edit_data::SiteEditData;
+use crate::template::nodes::node::MetaData;
+
 
 #[derive(Config, Serialize, Debug, Clone)]
 pub enum NodeType {
@@ -32,11 +34,11 @@ pub enum NodeType {
 }
 
 
-impl From<NodeTypeEditData> for NodeType {
-    fn from(data: NodeTypeEditData) -> Self {
+impl From<NodeTypeEditKindData> for NodeType {
+    fn from(data: NodeTypeEditKindData) -> Self {
         match data {
-            NodeTypeEditData::Folder(folder) => Self::Folder(folder.into()),
-            NodeTypeEditData::Site(site) => Self::Site(Arc::new(site.into())),
+            NodeTypeEditKindData::Folder(folder) => Self::Folder(folder.into()),
+            NodeTypeEditKindData::Site(site) => Self::Site(Arc::new(site.into())),
         }
     }
 }
@@ -60,10 +62,14 @@ impl NodeType {
         }
     }
 
-    pub fn widget_edit_data(&self) -> NodeTypeEditData {
-        match self {
-            NodeType::Site(site) => NodeTypeEditData::Site(site.widget_edit_data()),
-            NodeType::Folder(folder) => NodeTypeEditData::Folder(folder.widget_edit_data()),
+    pub fn widget_edit_data(&self, meta_data: MetaData) -> NodeTypeEditData {
+        let kind = match self {
+            NodeType::Site(site) => NodeTypeEditKindData::Site(site.widget_edit_data()),
+            NodeType::Folder(folder) => NodeTypeEditKindData::Folder(folder.widget_edit_data()),
+        };
+        NodeTypeEditData {
+            kind,
+            meta_data,
         }
     }
 }
@@ -109,17 +115,42 @@ impl NodeTypeData {
 }
 
 
-#[derive(Debug, Clone, Data)]
-pub enum NodeTypeEditData {
-    Folder(FolderEditData),
-    Site(SiteEditData),
+#[derive(Debug, Clone, Data, Config)]
+pub struct NodeTypeEditData {
+    #[config(ty = "Enum")]
+    pub kind: NodeTypeEditKindData,
+
+    #[config(ty = "Struct")]
+    pub meta_data: MetaData,
 }
 
 impl NodeTypeEditData {
+    pub fn invalidate_cache(&mut self) {
+        self.kind.invalidate_cache()
+    }
+}
+
+
+#[derive(Debug, Clone, Data, Config)]
+pub enum NodeTypeEditKindData {
+    #[config(ty = "Struct")]
+    Folder(FolderEditData),
+    #[config(ty = "Struct")]
+    Site(SiteEditData),
+}
+
+impl NodeTypeEditKindData {
     pub fn name(&self) -> String {
         match self {
             Self::Folder(folder) => folder.name(),
             Self::Site(site) => site.name(),
+        }
+    }
+
+    pub fn invalidate_cache(&mut self) {
+        match self {
+            Self::Site(site_data) => site_data.invalidate_cache(),
+            Self::Folder(_) => (),
         }
     }
 }

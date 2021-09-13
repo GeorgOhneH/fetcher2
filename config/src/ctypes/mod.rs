@@ -172,7 +172,7 @@ impl CType {
             CType::Wrapper(cwrapper) => cwrapper.consume_value(value),
             CType::CEnum(cenum) => match value {
                 Value::Mapping(map) => cenum.consume_map(map),
-                Value::String(str) => match cenum.set_selected(str) {
+                Value::String(str) => match cenum.set_selected(&str) {
                     Ok(carg) => {
                         if carg.is_unit() {
                             Ok(())

@@ -31,7 +31,7 @@ pub struct RawRootNode {
 
 impl From<RootNodeEditData> for RawRootNode {
     fn from(data: RootNodeEditData) -> Self {
-        let children = data.children.into_iter().map(|child| child.into()).collect();
+        let children = data.children.into_iter().filter_map(|child| RawNode::from_data(child)).collect();
         Self {
             children,
         }

@@ -60,10 +60,7 @@ impl CInteger {
         Flex::row()
             .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":")).lens(Self::name))
             .with_child(
-                TextBox::new()
-                    .with_text_alignment(TextAlignment::End)
-                    .with_formatter(IntFormatter::new())
-                    .update_data_while_editing(true)
+                IntStepper::new()
                     .lens(Self::value),
             )
     }
@@ -105,42 +102,5 @@ impl CIntegerBuilder {
     }
     pub fn build(self) -> CInteger {
         self.inner
-    }
-}
-
-struct IntFormatter;
-
-impl IntFormatter {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Formatter<Option<isize>> for IntFormatter {
-    fn format(&self, value: &Option<isize>) -> String {
-        match value {
-            Some(v) => v.to_string(),
-            None => "".to_owned(),
-        }
-    }
-    fn format_for_editing(&self, value: &Option<isize>) -> String {
-        self.format(value)
-    }
-
-    fn validate_partial_input(&self, input: &str, _sel: &Selection) -> Validation {
-        match self.value(input) {
-            Ok(_) => Validation::success(),
-            Err(err) => Validation::failure(err),
-        }
-    }
-    fn value(&self, input: &str) -> std::result::Result<Option<isize>, ValidationError> {
-        if input.is_empty() {
-            Ok(None)
-        } else {
-            input
-                .parse()
-                .map_err(ValidationError::new)
-                .map(Option::Some)
-        }
     }
 }

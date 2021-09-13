@@ -12,7 +12,7 @@ use druid::{
 };
 
 use crate::template::communication::NODE_EVENT;
-use crate::template::node_type::{NodeTypeData, NodeTypeEditData};
+use crate::template::node_type::{NodeTypeData, NodeTypeEditKindData, NodeTypeEditData};
 use crate::template::nodes::node::{NodeEvent, PathEvent};
 use crate::template::MetaData;
 use crate::widgets::tree::node::TreeNode;
@@ -27,13 +27,19 @@ use crate::template::nodes::node_data::NodeData;
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeEditData {
     pub expanded: bool,
-    pub ty: NodeTypeEditData,
-    pub meta_data: MetaData,
+    pub ty: Option<NodeTypeEditData>,
     pub children: Vector<NodeEditData>,
 
 }
 
 impl NodeEditData {
+    pub fn name(&self) -> String {
+        if let Some(ty) = &self.ty {
+            ty.kind.name()
+        } else {
+            "Add new Node".to_string()
+        }
+    }
     pub fn node(&self, idx: &[usize]) -> &Self {
         if idx.len() == 0 {
             self
@@ -61,7 +67,11 @@ impl TreeNode for NodeEditData {
     }
 
     fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Self, usize)) {
-        cb(&mut self.children[index], index);
+        let mut new_child = self.children[index].to_owned();
+        cb(&mut new_child, index);
+        if !new_child.same(&self.children[index]) {
+            self.children[index] = new_child;
+        }
     }
 
     fn rm_child(&mut self, index: usize) {

@@ -7,6 +7,14 @@ use serde::Serialize;
 use std::path::PathBuf;
 use druid::im::Vector;
 
+
+#[derive(Config, Serialize, Debug, Data, Clone)]
+pub struct Test {
+    #[config(default = false)]
+    #[config(name = "Force Download")]
+    pub force: bool,
+}
+
 #[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct Settings {
     #[config(ty = "Struct", name = "Download")]

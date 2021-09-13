@@ -420,11 +420,11 @@ pub struct DownloadArgs {
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Extensions {
-    #[config(ty = "Vec", name = "Extension")]
-    pub inner: im::HashSet<String>,
-
     #[config(ty = "Enum", default = "Forbidden", name = "Mode")]
     pub mode: Mode,
+
+    #[config(ty = "Vec", name = "Extension")]
+    pub inner: im::HashSet<String>,
 }
 
 impl Extensions {

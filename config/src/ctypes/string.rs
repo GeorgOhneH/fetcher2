@@ -2,7 +2,7 @@ use crate::*;
 use druid::widget::{Flex, Label, Maybe, TextBox};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LensExt, LifeCycle, LifeCycleCtx,
-    PaintCtx, Size, UpdateCtx, Widget, WidgetExt,
+    PaintCtx, Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
 
 #[derive(Debug, Clone, Data, Lens)]
@@ -43,24 +43,18 @@ impl CString {
                 Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":"))
                     .lens(Self::name),
             )
-            .with_child(
-                Label::dynamic(|data: &Option<String>, _env| format!("{:?}", data))
-                    .lens(Self::value),
-            )
             .with_child(CStringWidget::new().lens(Self::value))
     }
 }
 
 pub struct CStringWidget {
-    text_box: TextBox<String>,
-    current_data: Option<String>,
+    text_box: WidgetPod<String, TextBox<String>>,
 }
 
 impl CStringWidget {
     pub fn new() -> Self {
         Self {
-            text_box: TextBox::new(),
-            current_data: None,
+            text_box: WidgetPod::new(TextBox::new()),
         }
     }
 }
@@ -82,8 +76,6 @@ impl Widget<Option<String>> for CStringWidget {
                 }
             }
         };
-        self.current_data = data.clone();
-        // dbg!(data);
     }
 
     fn lifecycle(
@@ -104,12 +96,8 @@ impl Widget<Option<String>> for CStringWidget {
         data: &Option<String>,
         env: &Env,
     ) {
-        self.text_box.update(
-            ctx,
-            old_data.as_ref().unwrap_or(&"".to_owned()),
-            data.as_ref().unwrap_or(&"".to_owned()),
-            env,
-        );
+        self.text_box
+            .update(ctx, data.as_ref().unwrap_or(&"".to_owned()), env);
     }
 
     fn layout(
@@ -119,8 +107,16 @@ impl Widget<Option<String>> for CStringWidget {
         data: &Option<String>,
         env: &Env,
     ) -> Size {
-        self.text_box
-            .layout(ctx, bc, data.as_ref().unwrap_or(&"".to_owned()), env)
+        let size = self
+            .text_box
+            .layout(ctx, bc, data.as_ref().unwrap_or(&"".to_owned()), env);
+        self.text_box.set_origin(
+            ctx,
+            data.as_ref().unwrap_or(&"".to_owned()),
+            env,
+            Point::ORIGIN,
+        );
+        size
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Option<String>, env: &Env) {

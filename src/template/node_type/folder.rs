@@ -49,7 +49,7 @@ impl FolderData {
 }
 
 
-#[derive(Clone, Data, Debug)]
+#[derive(Clone, Data, Debug, Config)]
 pub struct FolderEditData {
     name: String,
 }

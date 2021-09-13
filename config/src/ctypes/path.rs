@@ -1,13 +1,16 @@
 use crate::*;
-use druid::im;
-use druid::widget::{Flex, Label, TextBox, Maybe};
+use druid::commands::OPEN_FILE;
+use druid::im::Vector;
+use druid::widget::{Button, Flex, Label, Maybe, TextBox};
+use druid::{im, FileDialogOptions, FileSpec};
 use druid::{Data, Lens, LensExt, Widget, WidgetExt};
+use druid_widget_nursery::WidgetExt as _;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Data)]
+#[derive(Debug, Clone)]
 pub enum CPathTypes {
     Folder,
-    File(Option<im::Vector<String>>),
+    File(Vector<FileSpec>),
     Any,
 }
 
@@ -15,6 +18,7 @@ pub enum CPathTypes {
 pub struct CPath {
     #[data(same_fn = "PartialEq::eq")]
     value: Option<PathBuf>,
+    #[data(ignore)]
     ty: CPathTypes,
     #[data(ignore)]
     name: Option<String>,
@@ -49,12 +53,16 @@ impl CPath {
                 if !path.is_file() {
                     return Err(InvalidError::new("Path must be a file"));
                 }
-                if let Some(extens) = extensions {
+
+                if !extensions.is_empty() {
                     if let Some(file_extension) = path.extension() {
                         let ex = file_extension
                             .to_str()
                             .ok_or(InvalidError::new("Path must have a extension"))?;
-                        if extens.iter().any(|ext| ext == ex) {
+                        if extensions
+                            .iter()
+                            .any(|file_spec| file_spec.extensions.contains(&ex))
+                        {
                             Ok(())
                         } else {
                             Err(InvalidError::new("Path must have a extension"))
@@ -96,7 +104,10 @@ impl CPath {
 
     pub fn widget() -> impl Widget<Self> {
         Flex::row()
-            .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":")).lens(Self::name))
+            .with_child(
+                Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":"))
+                    .lens(Self::name),
+            )
             .with_child(TextBox::new().lens(Self::value.map(
                 |value| {
                     match value {
@@ -116,6 +127,34 @@ impl CPath {
                     }
                 },
             )))
+            .with_child(
+                Button::new("+")
+                    .on_click(|ctx, data: &mut Self, env| {
+                        let open_dialog_options = FileDialogOptions::new()
+                            .select_directories()
+                            .name_label("Target")
+                            .title("Choose a target for this lovely file")
+                            .button_text("Export")
+                            .default_name("MySavedFile.txt");
+                        let open_dialog_options = match &data.ty {
+                            CPathTypes::Any => open_dialog_options,
+                            CPathTypes::Folder => open_dialog_options.select_directories(),
+                            CPathTypes::File(allowed) => open_dialog_options
+                                .allowed_types(allowed.clone().into_iter().collect()),
+                        };
+                        ctx.submit_command(
+                            druid::commands::SHOW_OPEN_PANEL.with(open_dialog_options.clone()),
+                        )
+                    })
+                    .on_command(
+                        druid::commands::OPEN_FILE,
+                        |ctx, file_info, data: &mut Self| {
+                            // TODO doesn't work for multiple
+                            data.value = Some(file_info.path.clone());
+                            ctx.request_update();
+                        },
+                    ),
+            )
     }
 }
 

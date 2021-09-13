@@ -1,8 +1,5 @@
 use crate::*;
-use druid::widget::{
-    Container, CrossAxisAlignment, Flex, FlexParams, Label, List, ListIter, MainAxisAlignment,
-    Maybe,
-};
+use druid::widget::{Container, CrossAxisAlignment, Flex, FlexParams, Label, MainAxisAlignment, Maybe, List, ListIter};
 use druid::{im, Color};
 use druid::{Data, Lens, Widget, WidgetExt};
 use serde_yaml::{Mapping, Value};
@@ -10,8 +7,10 @@ use std::collections::hash_map::Iter;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {
-    inner: Vector<CKwarg>,
+    pub inner: Vector<CKwarg>,
+    #[data(ignore)]
     index_map: im::OrdMap<String, usize>,
+    #[data(ignore)]
     name: Option<String>,
 }
 
@@ -106,8 +105,14 @@ impl ListIter<CKwarg> for CStruct {
         self.inner.for_each(cb)
     }
 
-    fn for_each_mut(&mut self, cb: impl FnMut(&mut CKwarg, usize)) {
-        self.inner.for_each_mut(cb)
+    fn for_each_mut(&mut self, mut cb: impl FnMut(&mut CKwarg, usize)) {
+        for (index, element) in self.inner.clone().iter().enumerate() {
+            let mut new_element = element.to_owned();
+            cb(&mut new_element, index);
+            if !new_element.same(element) {
+                self.inner[index] = new_element;
+            }
+        }
     }
 
     fn data_len(&self) -> usize {
@@ -278,6 +283,7 @@ use druid::{
 
 use druid::im::Vector;
 use druid::widget::SizedBox;
+use druid_widget_nursery::WidgetExt as _;
 
 pub struct WarningLabel {
     label: Label<()>,
@@ -307,17 +313,21 @@ impl Widget<CKwarg> for WarningLabel {
                     self.label.set_text(msg)
                 }
             }
+            ctx.request_layout();
         }
         self.label.lifecycle(ctx, event, &(), env)
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CKwarg, data: &CKwarg, env: &Env) {
-        match data.error_msg() {
-            None => self.active = false,
-            Some(msg) => {
-                self.active = true;
-                self.label.set_text(msg);
+        if !old_data.same(data) {
+            match data.error_msg() {
+                None => self.active = false,
+                Some(msg) => {
+                    self.active = true;
+                    self.label.set_text(msg);
+                }
             }
+            ctx.request_layout();
         }
         self.label.update(ctx, &(), &(), env);
     }
@@ -332,7 +342,7 @@ impl Widget<CKwarg> for WarningLabel {
         if self.active {
             self.label.layout(ctx, bc, &(), env)
         } else {
-            bc.constrain((0.0, 0.0))
+            bc.min()
         }
     }
 

@@ -56,7 +56,11 @@ impl TreeNodeRoot<NodeData> for RootNodeData {
     }
 
     fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut NodeData, usize)) {
-        cb(&mut self.children[index], index);
+        let mut new_child = self.children[index].to_owned();
+        cb(&mut new_child, index);
+        if !new_child.same(&self.children[index]) {
+            self.children[index] = new_child;
+        }
     }
 
     fn rm_child(&mut self, index: usize) {

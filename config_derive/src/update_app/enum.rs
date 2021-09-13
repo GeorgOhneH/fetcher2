@@ -34,7 +34,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
                 );
                 quote! {
                     Self::#name(ctype) => {
-                        let carg = cenum.set_selected_mut(#name_lit.to_string()).unwrap();
+                        let carg = cenum.set_selected_mut(#name_lit).unwrap();
                         #config
                     }
                 }
@@ -42,7 +42,7 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
             Fields::Unit => {
                 quote! {
                     Self::#name => {
-                        cenum.set_selected(#name_lit.to_string()).unwrap();
+                        cenum.set_selected(#name_lit).unwrap();
                         Ok(())
                     }
                 }

@@ -12,7 +12,7 @@ mod widgets;
 pub use crate::ctypes::*;
 pub use crate::errors::*;
 
-pub trait Config: Sized + Send + Serialize + Debug {
+pub trait Config: Sized + Send + Debug {
     fn parse_from_app(app: &CStruct) -> Result<Self, RequiredError>;
     fn builder() -> CStructBuilder;
     fn update_app(self, app: &mut CStruct) -> Result<(), InvalidError>;
@@ -29,7 +29,7 @@ pub trait Config: Sized + Send + Serialize + Debug {
     }
 }
 
-pub trait ConfigEnum: Sized + Send + Serialize + Debug {
+pub trait ConfigEnum: Sized + Send + Debug {
     fn parse_from_app(app: &CEnum) -> Result<Option<Self>, RequiredError>;
     fn builder() -> CEnumBuilder;
     fn update_app(self, app: &mut CEnum) -> Result<(), InvalidError>;
