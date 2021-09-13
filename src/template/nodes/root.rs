@@ -49,6 +49,11 @@ pub struct RootNode {
 }
 
 impl RootNode {
+    pub fn new() -> Self {
+        Self {
+            children: Vec::new()
+        }
+    }
     pub fn raw(self) -> RawRootNode {
         RawRootNode {
             children: self

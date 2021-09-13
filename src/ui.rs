@@ -14,6 +14,7 @@ use std::time::Instant;
 use std::{io, thread};
 
 use crate::background_thread::EDIT_DATA;
+use crate::controller::{EditController, SettingController, TemplateController};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::edit_window::edit_window;
@@ -32,13 +33,14 @@ use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
 use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
-    Maybe, Scroll, SizedBox, Spinner, Split, Switch, TextBox, ViewSwitcher,
+    Maybe, Padding, Scroll, SizedBox, Spinner, Split, Switch, TextBox, ViewSwitcher,
 };
 use druid::{
-    im, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event,
-    EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
-    MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx,
-    Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowLevel,
+    commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx,
+    Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    LocalizedString, Menu, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowId, WindowLevel,
 };
 use druid_widget_nursery::WidgetExt as _;
 use flume;
@@ -66,12 +68,68 @@ pub struct AppData {
     pub template: TemplateData,
     pub settings: Option<Settings>,
     pub template_info_select: TemplateInfoSelect,
-    pub test: Option<Test>,
 }
 
+pub fn make_menu(_: Option<WindowId>, state: &AppData, _: &Env) -> Menu<AppData> {
+    let mut base = Menu::empty();
+    // #[cfg(target_os = "macos")]
+    // {
+    base = Menu::new(LocalizedString::new(""))
+        .entry(
+            Menu::new(LocalizedString::new("macos-menu-application-menu"))
+                .entry(menu::sys::mac::application::preferences())
+                .separator()
+                .entry(menu::sys::mac::application::hide())
+                .entry(menu::sys::mac::application::hide_others())
+                .separator()
+                .entry(menu::sys::mac::application::quit()),
+        )
+        .entry(
+            Menu::new(LocalizedString::new("common-menu-file-menu"))
+                .entry(menu::sys::mac::file::new_file())
+                .entry(menu::sys::mac::file::open_file())
+                // open recent?
+                .separator()
+                .entry(menu::sys::mac::file::save())
+                .entry(menu::sys::mac::file::save_as()),
+        );
+    // }
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    {
+        base = base.entry(
+            Menu::new("Hello")
+                .entry(menu::sys::win::file::new())
+                .entry(menu::sys::win::file::open())
+                .entry(menu::sys::win::file::save())
+                .entry(menu::sys::win::file::save_as())
+                .separator()
+                .entry(menu::sys::win::file::exit()),
+        );
+    }
+
+    base
+}
 pub fn build_ui() -> impl Widget<AppData> {
     Flex::column()
         .cross_axis_alignment(CrossAxisAlignment::Start)
+        .with_child(
+            SizedBox::empty()
+                .controller(TemplateController)
+                .padding(0.)
+                .lens(AppData::template),
+        )
+        .with_child(
+            SizedBox::empty()
+                .controller(SettingController)
+                .padding(0.)
+                .lens(AppData::settings),
+        )
+        .with_child(
+            SizedBox::empty()
+                .controller(EditController)
+                .padding(0.)
+                .lens(lens::Unit),
+        )
         .with_child(tool_bar())
         .with_flex_child(template_ui(), 1.)
         .padding(10.)
@@ -142,7 +200,7 @@ fn tool_bar() -> impl Widget<AppData> {
         ctx.submit_command(Command::new(
             MSG_THREAD,
             SingleUse::new(Msg::StartAll),
-            Target::Global,
+            Target::Window(ctx.window_id()),
         ));
         // ctx.submit_command(Command::new(MSG_THREAD, SingleUse::new(Msg::Cancel), Target::Global))
     });
@@ -150,69 +208,18 @@ fn tool_bar() -> impl Widget<AppData> {
         ctx.submit_command(Command::new(
             MSG_THREAD,
             SingleUse::new(Msg::Cancel),
-            Target::Global,
+            Target::Window(ctx.window_id()),
         ))
     });
-    let edit = Button::new("Edit")
-        .on_click(|ctx, _: &mut (), _| {
-            ctx.submit_command(Command::new(
-                MSG_THREAD,
-                SingleUse::new(Msg::RequestEditData(ctx.widget_id())),
-                Target::Global,
-            ))
-        })
-        .on_command2(EDIT_DATA, |ctx, command_data, data: &mut (), env| {
-            ctx.set_handled();
-
-            let edit_data = command_data.take().unwrap();
-            let window = ctx.window();
-            let win_pos = window.get_position();
-            let (win_size_w, win_size_h) = window.get_size().into();
-            let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-            let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-            ctx.new_sub_window(
-                WindowConfig::default()
-                    .show_titlebar(true)
-                    .window_size(Size::new(size_w, size_h))
-                    .set_position(pos)
-                    .set_level(WindowLevel::Modal),
-                edit_window(edit_data),
-                (),
-                env.clone(),
-            );
-        })
-        .padding(0.)
-        .lens(lens::Unit);
+    let edit = Button::new("Edit").on_click(|ctx, _, _| {
+        ctx.submit_command(Command::new(
+            MSG_THREAD,
+            SingleUse::new(Msg::RequestEditData),
+            Target::Window(ctx.window_id()),
+        ))
+    });
     let settings = Button::new("Settings")
-        .on_click(|ctx, data: &mut Option<Settings>, env| {
-            let window = ctx.window();
-            let win_pos = window.get_position();
-            let (win_size_w, win_size_h) = window.get_size().into();
-            let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-            let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-            let main_win_id = ctx.window_id();
-            let c_window = c_option_window(Some(Box::new(
-                move |inner_ctx: &mut EventCtx, old_data, data: &mut Settings| {
-                    inner_ctx.submit_command(
-                        MSG_THREAD
-                            .with(SingleUse::new(Msg::NewSettings(data.downs.clone())))
-                            .to(main_win_id.clone()),
-                    )
-                },
-            )));
-            ctx.new_sub_window(
-                WindowConfig::default()
-                    .show_titlebar(true)
-                    .window_size(Size::new(size_w, size_h))
-                    .set_position(pos)
-                    .set_level(WindowLevel::Modal),
-                c_window,
-                data.clone(),
-                env.clone(),
-            );
-        })
-        .padding(0.) // So it's enclosed in a WidgetPod, (just a nop)
-        .lens(AppData::settings);
+        .on_click(|ctx, _, env| ctx.submit_command(commands::SHOW_PREFERENCES));
 
     Flex::row()
         .cross_axis_alignment(CrossAxisAlignment::Start)

@@ -112,9 +112,9 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
                     Msg::NewSettings(new_settings) => {
                         dsettings = Arc::new(new_settings);
                     },
-                    Msg::RequestEditData(widget_id) => {
+                    Msg::RequestEditData => {
                         let edit_data = template.read().await.widget_edit_data();
-                        sink.submit_command(EDIT_DATA, SingleUse::new(edit_data), Target::Widget(widget_id)).unwrap();
+                        sink.submit_command(EDIT_DATA, SingleUse::new(edit_data), Target::Global).unwrap();
                     },
                     Msg::UpdateEditData(edit_data) => {
                         cancel_all(&mut abort_handles);

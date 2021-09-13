@@ -57,7 +57,6 @@ impl TemplateData {
         )
         .controller(ContextMenuController {})
         .lens(TemplateData::root)
-        .controller(TemplateUpdate {})
     }
 
     pub fn node(&self, idx: &NodeIndex) -> &NodeData {
@@ -68,7 +67,7 @@ impl TemplateData {
         self.root.node_mut(idx)
     }
 
-    fn update_node(&mut self, event: NodeEvent, idx: &NodeIndex) {
+    pub fn update_node(&mut self, event: NodeEvent, idx: &NodeIndex) {
         let node = self.node_mut(idx);
         match event {
             NodeEvent::Path(path_event) => node.state.path.update(path_event, &mut node.path),
@@ -148,33 +147,3 @@ fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> 
         .entry(MenuItem::new("Open Website").on_activate(|_ctx, data: &mut AppData, _env| todo!()))
 }
 
-pub struct TemplateUpdate;
-
-impl<W: Widget<TemplateData>> Controller<TemplateData, W> for TemplateUpdate {
-    fn event(
-        &mut self,
-        child: &mut W,
-        ctx: &mut EventCtx,
-        event: &Event,
-        data: &mut TemplateData,
-        env: &Env,
-    ) {
-        match event {
-            Event::Command(cmd) if cmd.is(NODE_EVENT) => {
-                ctx.set_handled();
-                let (node_event, idx) = cmd.get_unchecked(NODE_EVENT).take().unwrap();
-                data.update_node(node_event, &idx);
-                return;
-            }
-            Event::Command(cmd) if cmd.is(NEW_TEMPLATE) => {
-                ctx.set_handled();
-                let template_data = cmd.get_unchecked(NEW_TEMPLATE).take().unwrap();
-                *data = template_data;
-                ctx.request_update();
-                return;
-            }
-            _ => (),
-        }
-        child.event(ctx, event, data, env)
-    }
-}

@@ -18,6 +18,7 @@ mod utils;
 pub mod widgets;
 pub mod ui;
 pub mod edit_window;
+pub mod controller;
 
 pub use error::{Result, TError};
 
@@ -124,7 +125,7 @@ use tokio::time::Duration;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::communication::RawCommunication;
 use crate::widgets::file_watcher::FileWatcher;
-use crate::ui::{build_ui, AppData, TemplateInfoSelect};
+use crate::ui::{build_ui, AppData, TemplateInfoSelect, make_menu};
 
 //
 pub fn main() {
@@ -156,17 +157,16 @@ pub fn main() {
     // test.efsdfs = Some(Test2::Bar);
     // test.update_app(&mut cstruct).unwrap();
 
-    let main_window = WindowDesc::new(build_ui())
+    let main_window = WindowDesc::new(build_ui()).menu(make_menu)
         .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
     let app_launcher = AppLauncher::with_window(main_window);
 
     let sink = app_launcher.get_external_handle();
-    let template = Template::new(RawCommunication::new(sink.clone()));
+    let template = Template::test(RawCommunication::new(sink.clone()));
     let data = AppData {
         template: template.widget_data(),
         settings: None,
         template_info_select: TemplateInfoSelect::Nothing,
-        test: Some(Test { force: true})
     };
 
     let delegate = TemplateDelegate::new(sink, template);

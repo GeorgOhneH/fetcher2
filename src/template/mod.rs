@@ -41,7 +41,14 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn new(comm: RawCommunication) -> Self {
+    pub fn new() -> Self {
+        Self {
+            root: RootNode::new(),
+            is_prepared: false,
+        }
+    }
+    
+    pub fn test(comm: RawCommunication) -> Self {
         let mut raw_app = RawNode::builder().build();
 
         let file_root = RawRootNode {

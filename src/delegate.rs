@@ -7,12 +7,7 @@ use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationEr
 use druid::widget::{
     Button, CrossAxisAlignment, Flex, Label, LineBreaking, List, Scroll, Spinner, Switch, TextBox,
 };
-use druid::{
-    im, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
-    ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx,
-    Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod,
-    WindowDesc,
-};
+use druid::{im, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx, Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod, WindowDesc, commands};
 use druid_widget_nursery::Tree;
 use flume;
 use futures::future::BoxFuture;
@@ -37,7 +32,7 @@ pub enum Msg {
     Cancel,
     NewSettings(DownloadSettings),
 
-    RequestEditData(WidgetId),
+    RequestEditData,
     UpdateEditData(TemplateEditData),
 }
 
@@ -76,12 +71,18 @@ impl<T: Data> AppDelegate<T> for TemplateDelegate {
         _data: &mut T,
         _env: &Env,
     ) -> Handled {
-        if cmd.is(MSG_THREAD) {
-            let msg = cmd.get_unchecked(MSG_THREAD).take().unwrap();
-            self.tx.send(msg).unwrap();
-            Handled::Yes
-        } else {
-            Handled::No
+        match cmd {
+            _ if cmd.is(MSG_THREAD) => {
+                let msg = cmd.get_unchecked(MSG_THREAD).take().unwrap();
+                self.tx.send(msg).unwrap();
+                Handled::Yes
+            }
+            // _ if cmd.is(commands::NEW_FILE) => {
+            //     let msg = Msg::RequestEditData
+            //     self.tx.send(msg).unwrap();
+            //     Handled::Yes
+            // }
+            _ => Handled::No,
         }
     }
 }
