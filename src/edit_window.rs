@@ -136,7 +136,16 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
 }
 
 fn node_window(idx: &NodeIndex) -> impl Widget<RootNodeEditData> {
-    c_option_window().lens(NodeLens::new(idx.clone()).then(NodeEditData::ty))
+    c_option_window(Some(Box::new(
+        |ctx, old_data, data: &mut NodeTypeEditData| {
+            if let Some(old) = old_data {
+                if !old.same(data) {
+                    data.invalidate_cache();
+                }
+            }
+        },
+    )))
+    .lens(NodeLens::new(idx.clone()).then(NodeEditData::ty))
 }
 
 struct NodeLens {

@@ -135,6 +135,10 @@ impl Template {
         })
     }
 
+    pub fn is_prepared(&self) -> bool {
+        self.is_prepared
+    }
+
     pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Status {
         // since only one mutable reference is allowed this cant run in parallel
         let session = Session::new();
@@ -153,10 +157,10 @@ impl Template {
     pub async fn run(
         &self,
         dsettings: Arc<DownloadSettings>,
-        indexes: Option<HashSet<NodeIndex>>,
+        indexes: &HashSet<NodeIndex>,
     ) {
         let session = Session::new();
-        self.root.run(&session, dsettings, indexes.as_ref()).await
+        self.root.run(&session, dsettings, Some(indexes)).await
     }
 
     pub async fn save(&self, path: &Path) -> Result<()> {

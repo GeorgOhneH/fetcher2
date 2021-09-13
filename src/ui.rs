@@ -14,7 +14,7 @@ use std::time::Instant;
 use std::{io, thread};
 
 use crate::background_thread::EDIT_DATA;
-use crate::cstruct_window::{CStructBuffer, c_option_window};
+use crate::cstruct_window::{c_option_window, CStructBuffer};
 use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
 use crate::edit_window::edit_window;
 use crate::template::communication::RawCommunication;
@@ -84,8 +84,7 @@ fn template_ui() -> impl Widget<AppData> {
             Split::rows(
                 TemplateData::build_widget()
                     .border(Color::WHITE, 1.)
-                    .lens(AppData::template)
-                ,
+                    .lens(AppData::template),
                 info_view_ui(),
             )
             .draggable(true)
@@ -191,48 +190,29 @@ fn tool_bar() -> impl Widget<AppData> {
             let (win_size_w, win_size_h) = window.get_size().into();
             let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
             let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-            ctx.new_sub_window(
-                WindowConfig::default()
-                    .show_titlebar(true)
-                    .window_size(Size::new(size_w, size_h))
-                    .set_position(pos)
-                    .set_level(WindowLevel::Modal),
-                c_option_window(),
-                data.clone(),
-                env.clone(),
-            );
-        })
-        .padding(0.) // So it's enclosed in a WidgetPod, (just a nop)
-        .on_change(
-            |ctx, old_data: &Option<Settings>, data: &mut Option<Settings>, _env| {
-                if let Some(settings) = data {
-                    ctx.submit_command(
-                        MSG_THREAD.with(SingleUse::new(Msg::NewSettings(settings.downs.clone()))),
+            let main_win_id = ctx.window_id();
+            let c_window = c_option_window(Some(Box::new(
+                move |inner_ctx: &mut EventCtx, old_data, data: &mut Settings| {
+                    inner_ctx.submit_command(
+                        MSG_THREAD
+                            .with(SingleUse::new(Msg::NewSettings(data.downs.clone())))
+                            .to(main_win_id.clone()),
                     )
-                }
-            },
-        )
-        .lens(AppData::settings);
-    let test = Button::new("Test")
-        .on_click(|ctx, data: &mut Option<Test>, env| {
-            let window = ctx.window();
-            let win_pos = window.get_position();
-            let (win_size_w, win_size_h) = window.get_size().into();
-            let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-            let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+                },
+            )));
             ctx.new_sub_window(
                 WindowConfig::default()
                     .show_titlebar(true)
                     .window_size(Size::new(size_w, size_h))
                     .set_position(pos)
                     .set_level(WindowLevel::Modal),
-                c_option_window(),
+                c_window,
                 data.clone(),
                 env.clone(),
             );
         })
         .padding(0.) // So it's enclosed in a WidgetPod, (just a nop)
-        .lens(AppData::test);
+        .lens(AppData::settings);
 
     Flex::row()
         .cross_axis_alignment(CrossAxisAlignment::Start)
@@ -243,6 +223,4 @@ fn tool_bar() -> impl Widget<AppData> {
         .with_child(edit)
         .with_default_spacer()
         .with_child(settings)
-        .with_default_spacer()
-        .with_child(test)
 }

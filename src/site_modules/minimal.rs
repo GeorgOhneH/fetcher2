@@ -15,6 +15,7 @@ use futures::stream::StreamExt;
 use std::sync::Arc;
 use url::Url;
 use druid::Data;
+use std::time::Duration;
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Minimal {
@@ -42,7 +43,7 @@ impl ModuleExt for Minimal {
         println!("1{}", resp.status());
         let resp = session.get("https://www.google.com/").send().await?;
         println!("2{}", resp.status());
-        //tokio::time::sleep(Duration::from_secs(3)).await;
+        tokio::time::sleep(Duration::from_secs(3)).await;
         let resp = session.get("https://www.google.com/").send().await?;
         println!("3{}", resp.status());
         let task = TaskBuilder::new(
@@ -79,13 +80,14 @@ impl ModuleExt for Minimal {
         Ok(())
     }
 
-    async fn login_impl(&self, _session: &Session, dsettings: &DownloadSettings) -> Result<()> {
+    async fn login_impl(&self, session: &Session, dsettings: &DownloadSettings) -> Result<()> {
         println!("LOGIN MINIMAL");
         let url =
             url::Url::parse("https://moodle-app2.let.ethz.ch/auth/shibboleth/login.php").unwrap();
 
+        tokio::time::sleep(Duration::from_secs(3)).await;
         let form = [("idp", "https://aai-logon.ethz.ch/idp/shibboleth")];
-        crate::site_modules::aai_login::aai_login(_session, dsettings, url, &form).await?;
+        crate::site_modules::aai_login::aai_login(session, dsettings, url, &form).await?;
         Ok(())
     }
 
@@ -99,6 +101,7 @@ impl ModuleExt for Minimal {
         _dsettings: &DownloadSettings,
     ) -> Result<PathBuf> {
         println!("Folder Name");
+        tokio::time::sleep(Duration::from_secs(5)).await;
         Ok(PathBuf::from("efgeuif"))
     }
 }
