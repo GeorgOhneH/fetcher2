@@ -1,11 +1,11 @@
 use crate::site_modules::Module;
+use crate::template::node_type::{Site, SiteStorage};
 use crate::template::DownloadArgs;
-use druid::Data;
-use crate::template::node_type::SiteStorage;
-use std::sync::Arc;
 use config::Config;
-use config_derive::Config;
 use config::ConfigEnum;
+use config_derive::Config;
+use druid::Data;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct SiteEditData {
@@ -20,8 +20,14 @@ pub struct SiteEditData {
     pub storage: Option<Arc<SiteStorage>>,
 }
 
-
 impl SiteEditData {
+    pub fn raw(self) -> Site {
+        Site {
+            module: self.module,
+            storage: self.storage.unwrap_or(Arc::new(SiteStorage::new())),
+            download_args: self.download_args,
+        }
+    }
     pub fn name(&self) -> String {
         self.module.name()
     }

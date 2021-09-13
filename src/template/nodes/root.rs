@@ -29,14 +29,6 @@ pub struct RawRootNode {
     pub children: Vec<RawNode>,
 }
 
-impl From<RootNodeEditData> for RawRootNode {
-    fn from(data: RootNodeEditData) -> Self {
-        let children = data.children.into_iter().filter_map(|child| RawNode::from_data(child)).collect();
-        Self {
-            children,
-        }
-    }
-}
 
 impl RawRootNode {
     pub fn transform(self, comm: RawCommunication) -> RootNode {

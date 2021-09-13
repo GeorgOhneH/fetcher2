@@ -27,9 +27,11 @@ use tokio::time::Duration;
 use crate::error::{Result, TError};
 
 use crate::settings::DownloadSettings;
+use crate::template::nodes::node::Status;
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use config_derive::Config;
+use druid_widget_nursery::selectors;
 use futures::future::{AbortHandle, Abortable, Aborted};
 use futures::prelude::stream::FuturesUnordered;
 use futures::stream::FuturesOrdered;
@@ -43,14 +45,13 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
-use crate::template::nodes::node::Status;
-use druid_widget_nursery::selectors;
 
+use crate::template::communication::RawCommunication;
 use crate::template::widget_edit_data::TemplateEditData;
-
 
 selectors! {
     EDIT_DATA: SingleUse<TemplateEditData>,
+    NEW_TEMPLATE: SingleUse<TemplateData>,
 }
 
 pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: Template) {
@@ -61,7 +62,7 @@ pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: T
         .block_on(manager(sink, rx, template));
 }
 
-async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Template) {
+async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Template) {
     let mut dsettings = Arc::new(DownloadSettings {
         username: Some(std::env::var("USERNAME").unwrap()),
         password: Some(std::env::var("PASSWORD").unwrap()),
@@ -77,7 +78,9 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
         force: false,
     });
 
-    match template.prepare(dsettings.clone()).await {
+    let template = tokio::sync::RwLock::new(init_template);
+
+    match template.write().await.prepare(dsettings.clone()).await {
         Status::Success => {}
         Status::Failure => {
             dbg!("Got error in prepare exit...");
@@ -96,7 +99,11 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                 match msg {
                     Msg::StartAll => {
                         let (abort_handle, abort_registration) = AbortHandle::new_pair();
-                        let future = Abortable::new(template.run_root(dsettings.clone()), abort_registration).boxed();
+                        let dsetting_clone = dsettings.clone();
+                        let future = Abortable::new(async {
+                            let rl = template.read().await;
+                            rl.run_root(dsetting_clone).await;
+                        } , abort_registration).boxed();
                         abort_handles.push(abort_handle);
                         futs.push(future);
                         println!("{:?}, {:?}", abort_handles.len(), futs.len());
@@ -104,7 +111,11 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                     },
                     Msg::StartByIndex(indexes) => {
                         let (abort_handle, abort_registration) = AbortHandle::new_pair();
-                        let future = Abortable::new(template.run(dsettings.clone(), Some(indexes)), abort_registration).boxed();
+                        let dsetting_clone = dsettings.clone();
+                        let future = Abortable::new(async {
+                            let rl = template.read().await;
+                            rl.run(dsetting_clone, Some(indexes)).await;
+                        } , abort_registration).boxed();
                         abort_handles.push(abort_handle);
                         futs.push(future);
                         println!("{:?}, {:?}", abort_handles.len(), futs.len());
@@ -117,11 +128,31 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, mut template: Tem
                         abort_handles.clear();
                     },
                     Msg::NewSettings(new_settings) => {
-                        *Arc::make_mut(&mut dsettings) = new_settings;
+                        dsettings = Arc::new(new_settings);
                     },
                     Msg::RequestEditData(widget_id) => {
-                        let edit_data = template.widget_edit_data();
+                        let edit_data = template.read().await.widget_edit_data();
                         sink.submit_command(EDIT_DATA, SingleUse::new(edit_data), Target::Widget(widget_id)).unwrap();
+                    },
+                    Msg::UpdateEditData(edit_data) => {
+                        for handle in abort_handles.iter() {
+                            handle.abort();
+                        }
+                        abort_handles.clear();
+
+                        let comm = RawCommunication::new(sink.clone());
+                        let new_template = Template::from_raw(edit_data, comm);
+                        sink.submit_command(NEW_TEMPLATE, SingleUse::new(new_template.widget_data()), Target::Global).unwrap();
+
+                        let (abort_handle, abort_registration) = AbortHandle::new_pair();
+                        let dsetting_clone = dsettings.clone();
+                        let future = Abortable::new(async {
+                            let mut wl = template.write().await;
+                            *wl = new_template;
+                            wl.prepare(dsetting_clone).await;
+                        }, abort_registration).boxed();
+                        abort_handles.push(abort_handle);
+                        futs.push(future);
                     },
                 }
             }

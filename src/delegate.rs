@@ -28,6 +28,7 @@ use crate::background_thread::{background_main, EDIT_DATA};
 use crate::widgets::tree::NodeIndex;
 use crate::settings::DownloadSettings;
 use druid_widget_nursery::selectors;
+use crate::template::widget_edit_data::TemplateEditData;
 
 #[derive(Debug)]
 pub enum Msg {
@@ -35,7 +36,9 @@ pub enum Msg {
     StartByIndex(HashSet<NodeIndex>),
     Cancel,
     NewSettings(DownloadSettings),
+
     RequestEditData(WidgetId),
+    UpdateEditData(TemplateEditData),
 }
 
 #[derive(Debug)]

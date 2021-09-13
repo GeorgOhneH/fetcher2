@@ -25,6 +25,7 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use crate::ui::TemplateInfoSelect;
+use crate::background_thread::NEW_TEMPLATE;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {
@@ -159,13 +160,18 @@ impl<W: Widget<TemplateData>> Controller<TemplateData, W> for TemplateUpdate {
         env: &Env,
     ) {
         match event {
-            Event::Command(cmd) => {
-                if let Some(event) = cmd.get(NODE_EVENT) {
-                    ctx.set_handled();
-                    let (node_event, idx) = event.take().unwrap();
-                    data.update_node(node_event, &idx);
-                    return;
-                }
+            Event::Command(cmd) if cmd.is(NODE_EVENT) => {
+                ctx.set_handled();
+                let (node_event, idx) = cmd.get_unchecked(NODE_EVENT).take().unwrap();
+                data.update_node(node_event, &idx);
+                return;
+            }
+            Event::Command(cmd) if cmd.is(NEW_TEMPLATE) => {
+                ctx.set_handled();
+                let template_data = cmd.get_unchecked(NEW_TEMPLATE).take().unwrap();
+                *data = template_data;
+                ctx.request_update();
+                return;
             }
             _ => (),
         }

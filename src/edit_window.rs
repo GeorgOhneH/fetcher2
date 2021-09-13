@@ -1,4 +1,5 @@
 use crate::cstruct_window::{c_option_window, APPLY};
+use crate::delegate::{Msg, MSG_THREAD};
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
@@ -10,7 +11,7 @@ use config::{CEnum, ConfigEnum};
 use druid::commands::CLOSE_WINDOW;
 use druid::widget::prelude::*;
 use druid::widget::{Button, Flex, Label};
-use druid::{lens, SingleUse, WindowId};
+use druid::{lens, Command, SingleUse, WindowId};
 use druid::{InternalEvent, LensExt};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
 use druid_widget_nursery::selectors;
@@ -18,17 +19,19 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 selectors! {
-    APPLY_NODE,
-    APPLY_BUFFER
+    SAVE_EDIT
 }
 
-pub struct DataBuffer<T> {
-    pub child: WidgetPod<T, Box<dyn Widget<T>>>,
-    pub edit_data: T,
+pub struct DataBuffer {
+    pub child: WidgetPod<TemplateEditData, Box<dyn Widget<TemplateEditData>>>,
+    pub edit_data: TemplateEditData,
 }
 
-impl<T: Data> DataBuffer<T> {
-    pub fn new(child: impl Widget<T> + 'static, edit_data: T) -> Self {
+impl DataBuffer {
+    pub fn new(
+        child: impl Widget<TemplateEditData> + 'static,
+        edit_data: TemplateEditData,
+    ) -> Self {
         Self {
             child: WidgetPod::new(child.boxed()),
             edit_data,
@@ -36,12 +39,16 @@ impl<T: Data> DataBuffer<T> {
     }
 }
 
-impl<T: Data, C: Data> Widget<T> for DataBuffer<C> {
+impl<T: Data> Widget<T> for DataBuffer {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
         match event {
-            Event::Command(command) if command.is(APPLY_BUFFER) => {
+            Event::Command(command) if command.is(SAVE_EDIT) => {
                 ctx.set_handled();
-                let sink = ctx.get_external_handle();
+                ctx.submit_command(Command::new(
+                    MSG_THREAD,
+                    SingleUse::new(Msg::UpdateEditData(self.edit_data.clone())),
+                    Target::Global,
+                ));
                 ctx.window().close();
             }
             _ => (),
@@ -114,7 +121,7 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
             Flex::row().with_child(
                 Button::new("Save")
                     .on_click(|ctx, data: &mut TemplateEditData, env| {
-                        ctx.submit_command(APPLY_BUFFER.to(Target::Window(ctx.window_id())));
+                        ctx.submit_command(SAVE_EDIT.to(Target::Window(ctx.window_id())));
                     })
                 // .disabled_if(|data: &Option<T>, env| match &data.c_struct {
                 //     Some(c_struct) => !matches!(c_struct.state(), State::Valid),

@@ -4,28 +4,29 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 use config::{Config, ConfigEnum};
-use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
-use druid::widget::Label;
 use druid::widget::prelude::*;
+use druid::widget::Label;
+use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::settings::DownloadSettings;
-use crate::site_modules::{Minimal, Polybox};
 use crate::site_modules::Mode as PolyboxMode;
 use crate::site_modules::Module;
+use crate::site_modules::{Minimal, Polybox};
 use crate::task::Task;
 use crate::template::communication::{Communication, RawCommunication};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
 use crate::template::nodes::node::{MetaData, Node, RawNode, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
+use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::template::widget_data::TemplateData;
+use crate::template::widget_edit_data::TemplateEditData;
 use crate::ui::TemplateInfoSelect;
 use crate::widgets::tree::NodeIndex;
-use crate::template::widget_edit_data::TemplateEditData;
 
 pub mod communication;
 pub mod node_type;
@@ -36,7 +37,7 @@ pub mod widget_edit_data;
 #[derive(Debug)]
 pub struct Template {
     root: RootNode,
-    raw_comm: RawCommunication,
+    is_prepared: bool,
 }
 
 impl Template {
@@ -112,14 +113,36 @@ impl Template {
         let raw_root = RawRootNode::parse_from_app(&raw_app).unwrap();
 
         Self {
-            root: raw_root.transform(comm.clone()),
-            raw_comm: comm,
+            root: raw_root.transform(comm),
+            is_prepared: false,
         }
     }
 
+    pub fn from_raw(edit_data: TemplateEditData, comm: RawCommunication) -> Self {
+        let raw_root = edit_data.root.raw();
+        Self {
+            root: raw_root.transform(comm),
+            is_prepared: false,
+        }
+    }
+
+    pub async fn load(path: &Path, comm: RawCommunication) -> Result<Self> {
+        let x = String::from_utf8(fs::read(path).await?)?;
+        let raw_root = RawRootNode::load_from_str(&*x)?;
+        Ok(Self {
+            root: raw_root.transform(comm),
+            is_prepared: false,
+        })
+    }
+
     pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Status {
+        // since only one mutable reference is allowed this cant run in parallel
         let session = Session::new();
-        self.root.prepare(&session, dsettings).await
+        let r = self.root.prepare(&session, dsettings).await;
+        if let Status::Success = r {
+            self.is_prepared = true;
+        }
+        r
     }
 
     pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) {
@@ -127,7 +150,11 @@ impl Template {
         self.root.run(&session, dsettings, None).await
     }
 
-    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: Option<HashSet<NodeIndex>>) {
+    pub async fn run(
+        &self,
+        dsettings: Arc<DownloadSettings>,
+        indexes: Option<HashSet<NodeIndex>>,
+    ) {
         let session = Session::new();
         self.root.run(&session, dsettings, indexes.as_ref()).await
     }
@@ -144,13 +171,6 @@ impl Template {
         f.write_all(&template_str.as_bytes()).await?;
 
         f.shutdown().await?;
-        Ok(())
-    }
-
-    pub async fn load(&mut self, path: &Path) -> Result<()> {
-        let x = String::from_utf8(fs::read(path).await?)?;
-        let raw_root = RawRootNode::load_from_str(&*x)?;
-        self.root = raw_root.transform(self.raw_comm.clone());
         Ok(())
     }
 

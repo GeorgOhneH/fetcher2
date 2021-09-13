@@ -33,16 +33,6 @@ pub enum NodeType {
     Site(Arc<Site>),
 }
 
-
-impl From<NodeTypeEditKindData> for NodeType {
-    fn from(data: NodeTypeEditKindData) -> Self {
-        match data {
-            NodeTypeEditKindData::Folder(folder) => Self::Folder(folder.into()),
-            NodeTypeEditKindData::Site(site) => Self::Site(Arc::new(site.into())),
-        }
-    }
-}
-
 impl NodeType {
     pub async fn path_segment(
         &self,
@@ -140,6 +130,12 @@ pub enum NodeTypeEditKindData {
 }
 
 impl NodeTypeEditKindData {
+    pub fn raw(self) -> NodeType {
+        match self {
+            Self::Folder(folder) => NodeType::Folder(folder.raw()),
+            Self::Site(site) => NodeType::Site(Arc::new(site.raw())),
+        }
+    }
     pub fn name(&self) -> String {
         match self {
             Self::Folder(folder) => folder.name(),

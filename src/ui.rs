@@ -84,7 +84,8 @@ fn template_ui() -> impl Widget<AppData> {
             Split::rows(
                 TemplateData::build_widget()
                     .border(Color::WHITE, 1.)
-                    .lens(AppData::template),
+                    .lens(AppData::template)
+                ,
                 info_view_ui(),
             )
             .draggable(true)
@@ -162,6 +163,8 @@ fn tool_bar() -> impl Widget<AppData> {
             ))
         })
         .on_command2(EDIT_DATA, |ctx, command_data, data: &mut (), env| {
+            ctx.set_handled();
+
             let edit_data = command_data.take().unwrap();
             let window = ctx.window();
             let win_pos = window.get_position();

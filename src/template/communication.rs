@@ -20,6 +20,7 @@ use druid_widget_nursery::{selectors, Wedge};
 use std::path::{Path, PathBuf};
 use crate::widgets::tree::{NodeIndex};
 
+// TODO: use tokens for templates to make sure it will work correctly
 pub const NODE_EVENT: Selector<SingleUse<(NodeEvent, NodeIndex)>> =
     Selector::new("fetcher2.communucation.node_event");
 

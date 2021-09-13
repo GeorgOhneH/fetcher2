@@ -68,16 +68,6 @@ pub struct Site {
 }
 
 
-impl From<SiteEditData> for Site {
-    fn from(data: SiteEditData) -> Self {
-        Self {
-            module: data.module,
-            storage: data.storage.unwrap_or(Arc::new(SiteStorage::new())),
-            download_args: data.download_args,
-        }
-    }
-}
-
 impl Site {
     pub async fn path_segment(
         &self,

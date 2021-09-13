@@ -55,6 +55,11 @@ pub struct FolderEditData {
 }
 
 impl FolderEditData {
+    pub fn raw(self) -> Folder {
+        Folder {
+            name: self.name
+        }
+    }
     pub fn name(&self) -> String {
         self.name.clone()
     }

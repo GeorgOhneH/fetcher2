@@ -12,7 +12,7 @@ use druid::{
 };
 
 use crate::template::node_type::NodeTypeData;
-use crate::template::nodes::node::MetaData;
+use crate::template::nodes::node::{MetaData, RawNode};
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::widgets::tree::root::TreeNodeRoot;
@@ -29,6 +29,13 @@ pub struct RootNodeEditData {
 }
 
 impl RootNodeEditData {
+    pub fn raw(self) -> RawRootNode {
+        let children = self.children.into_iter().filter_map(|child| child.raw()).collect();
+        RawRootNode {
+            children,
+        }
+    }
+
     pub fn node(&self, idx: &[usize]) -> &NodeEditData {
         if idx.len() == 0 {
             panic!("Can't access root node")

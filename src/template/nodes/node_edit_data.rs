@@ -13,7 +13,7 @@ use druid::{
 
 use crate::template::communication::NODE_EVENT;
 use crate::template::node_type::{NodeTypeData, NodeTypeEditKindData, NodeTypeEditData};
-use crate::template::nodes::node::{NodeEvent, PathEvent};
+use crate::template::nodes::node::{NodeEvent, PathEvent, RawNode};
 use crate::template::MetaData;
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::NodeIndex;
@@ -33,6 +33,23 @@ pub struct NodeEditData {
 }
 
 impl NodeEditData {
+    pub fn raw(self) -> Option<RawNode> {
+        if let Some(ty) = self.ty {
+            let children = self
+                .children
+                .into_iter()
+                .filter_map(|child| child.raw())
+                .collect();
+            Some(RawNode {
+                ty: ty.kind.raw(),
+                children,
+                meta_data: ty.meta_data,
+                cached_path_segment: None,
+            })
+        } else {
+            None
+        }
+    }
     pub fn name(&self) -> String {
         if let Some(ty) = &self.ty {
             ty.kind.name()

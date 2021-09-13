@@ -47,24 +47,6 @@ pub struct RawNode {
 }
 
 impl RawNode {
-    pub fn from_data(data: NodeEditData) -> Option<Self> {
-        let children = data
-            .children
-            .into_iter()
-            .filter_map(|child| RawNode::from_data(child))
-            .collect();
-        if let Some(ty) = data.ty {
-            Some(Self {
-                ty: ty.kind.into(),
-                children,
-                meta_data: ty.meta_data,
-                cached_path_segment: None,
-            })
-        } else {
-            None
-        }
-    }
-
     pub fn transform(self, index: NodeIndex, comm: RawCommunication) -> Node {
         Node {
             ty: self.ty,
