@@ -11,7 +11,6 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::delegate::{Msg, MSG_THREAD};
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;

@@ -33,9 +33,6 @@ pub struct DownloadSettings {
     #[config(name = "Save Path")]
     pub save_path: PathBuf,
 
-    #[config(ty = "Vec<_>")]
-    pub x: Vector<bool>,
-
     #[config(ty = "Struct")]
     #[config(name = "Standard Module Setting")]
     pub download_args: DownloadArgs,

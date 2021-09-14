@@ -1,4 +1,4 @@
-use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
+
 use crate::template::widget_data::TemplateData;
 use config::State;
 use config::{CStruct, Config, ConfigEnum};
@@ -30,6 +30,7 @@ use tokio::time;
 use tokio::time::Duration;
 
 use druid_widget_nursery::selectors;
+use druid::commands::CLOSE_WINDOW;
 
 selectors! {
     APPLY
@@ -69,7 +70,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
                         (on_change_fn)(ctx, data, &mut new_data)
                     }
                     *data = Some(new_data);
-                    ctx.window().close();
+                    ctx.submit_command(CLOSE_WINDOW);
                 }
             }
             _ => (),
@@ -139,7 +140,7 @@ pub fn c_option_window<T: Config + Data>(
                 )
                 .with_child(
                     Button::new("Cancel").on_click(|ctx, data: &mut CStruct, env| {
-                        ctx.window().close();
+                        ctx.submit_command(CLOSE_WINDOW);
                     }),
                 ),
         );

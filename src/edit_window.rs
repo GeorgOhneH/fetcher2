@@ -1,5 +1,5 @@
+use crate::controller::{SubStateController, SubWindowInfo, INIT_EDIT_WINDOW_STATE, NEW_WIN_INFO, SAVE_EDIT_WINDOW_STATE, MSG_THREAD, Msg};
 use crate::cstruct_window::{c_option_window, APPLY};
-use crate::delegate::{Msg, MSG_THREAD};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
@@ -14,7 +14,7 @@ use config::{CEnum, ConfigEnum};
 use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
 use druid::im::Vector;
 use druid::widget::prelude::*;
-use druid::widget::{Button, Controller, Flex, Label};
+use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
 use druid::{
     commands, lens, Command, FileDialogOptions, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
 };
@@ -24,6 +24,7 @@ use druid_widget_nursery::selectors;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 selectors! {
     SAVE_EDIT,
@@ -40,6 +41,12 @@ pub enum NodePosition {
     Above,
     Below,
     Child,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[serde(default)]
+pub struct EditWindowState {
+    node_win_info: SubWindowInfo<()>,
 }
 
 pub struct DataBuffer {
@@ -80,14 +87,14 @@ impl<T: Data> Widget<T> for DataBuffer {
                 ctx.set_handled();
                 if let Some(save_path) = &self.edit_data.save_path {
                     Self::send_update_msg(ctx, self.edit_data.root.clone(), save_path.clone());
-                    ctx.window().close();
+                    ctx.submit_command(CLOSE_WINDOW);
                 }
             }
             Event::Command(command) if command.is(SAVE_FILE_AS) => {
                 ctx.set_handled();
                 let save_path = command.get_unchecked(SAVE_FILE_AS);
                 Self::send_update_msg(ctx, self.edit_data.root.clone(), save_path.path.clone());
-                ctx.window().close();
+                ctx.submit_command(CLOSE_WINDOW);
             }
             _ => (),
         }
@@ -120,10 +127,20 @@ impl<T: Data> Widget<T> for DataBuffer {
     }
 }
 
-pub struct EditController;
+pub struct NodeController {
+    win_info: SubWindowInfo<()>,
+}
+
+impl NodeController {
+    pub fn new() -> Self {
+        Self {
+            win_info: SubWindowInfo::new(()),
+        }
+    }
+}
 
 impl<L, S, const N: usize>
-    Controller<RootNodeEditData, Tree<RootNodeEditData, NodeEditData, L, S, N>> for EditController
+    Controller<RootNodeEditData, Tree<RootNodeEditData, NodeEditData, L, S, N>> for NodeController
 where
     L: Lens<NodeEditData, bool> + Clone + 'static,
     S: Lens<RootNodeEditData, Vector<DataNodeIndex>> + Clone + 'static,
@@ -137,6 +154,17 @@ where
         env: &Env,
     ) {
         match event {
+            Event::Command(cmd) if cmd.is(NEW_WIN_INFO) => {
+                self.win_info = cmd.get_unchecked(NEW_WIN_INFO).take().unwrap();
+            }
+            Event::Command(cmd) if cmd.is(INIT_EDIT_WINDOW_STATE) => {
+                let win_data = cmd.get_unchecked(INIT_EDIT_WINDOW_STATE);
+                self.win_info = win_data.node_win_info.clone()
+            }
+            Event::Command(cmd) if cmd.is(SAVE_EDIT_WINDOW_STATE) => {
+                let edit_state = cmd.get_unchecked(SAVE_EDIT_WINDOW_STATE);
+                edit_state.write().unwrap().node_win_info = self.win_info.clone();
+            }
             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
                 if let Some(idx) = child.node_at(mouse.pos) {
                     ctx.show_context_menu(make_node_menu(idx), mouse.window_pos);
@@ -146,18 +174,14 @@ where
             Event::Command(cmd) if cmd.is(OPEN_NODE) => {
                 ctx.set_handled();
                 let idx = cmd.get_unchecked(OPEN_NODE);
-                let window = ctx.window();
-                let win_pos = window.get_position();
-                let (win_size_w, win_size_h) = window.get_size().into();
-                let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-                let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+                let (size, pos) = self.win_info.get_size_pos(ctx.window());
                 ctx.new_sub_window(
                     WindowConfig::default()
                         .show_titlebar(true)
-                        .window_size(Size::new(size_w, size_h))
+                        .window_size(size)
                         .set_position(pos)
                         .set_level(WindowLevel::Modal),
-                    node_window(idx),
+                    node_window(idx).controller(SubStateController::new((), ctx.widget_id())),
                     data.clone(),
                     env.clone(),
                 );
@@ -239,7 +263,7 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
     .on_activate(|ctx, data: &mut RootNodeEditData, env, idx| {
         ctx.submit_command(OPEN_NODE.with(idx.clone()));
     })
-    .controller(EditController)
+    .controller(NodeController::new())
     .padding(0.)
     .lens(TemplateEditData::root);
 
@@ -263,7 +287,7 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
                 ))
                 .with_child(Button::new("Cancel").on_click(
                     |ctx, data: &mut TemplateEditData, env| {
-                        ctx.window().close();
+                        ctx.submit_command(CLOSE_WINDOW);
                     },
                 )),
         )

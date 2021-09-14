@@ -1,4 +1,4 @@
-use crate::delegate::{Msg, TemplateDelegate};
+
 use crate::template::widget_data::TemplateData;
 use config::CStruct;
 use druid::im::{vector, Vector};
@@ -46,6 +46,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
 
+use crate::controller::Msg;
 use crate::template::communication::RawCommunication;
 use crate::template::widget_edit_data::TemplateEditData;
 use crate::widgets::tree::NodeIndex;
@@ -60,15 +61,21 @@ enum RunType {
     Indexes(HashSet<NodeIndex>),
 }
 
-pub fn background_main(sink: ExtEventSink, rx: flume::Receiver<Msg>, template: Template) {
+pub fn background_main(
+    sink: ExtEventSink,
+    rx: flume::Receiver<Msg>,
+) {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(manager(sink, rx, template));
+        .block_on(manager(sink, rx));
 }
 
-async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Template) {
+async fn manager(
+    sink: ExtEventSink,
+    rx: flume::Receiver<Msg>,
+) {
     let mut dsettings = Arc::new(DownloadSettings {
         username: Some(std::env::var("USERNAME").unwrap()),
         password: Some(std::env::var("PASSWORD").unwrap()),
@@ -80,24 +87,10 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
             },
             keep_old_files: true,
         },
-        x: Vector::new(),
         force: false,
     });
 
-    sink.submit_command(
-        NEW_TEMPLATE,
-        SingleUse::new(init_template.widget_data()),
-        Target::Global,
-    )
-    .unwrap();
-    sink.submit_command(
-        NEW_EDIT_TEMPLATE,
-        SingleUse::new(init_template.widget_edit_data()),
-        Target::Global,
-    )
-    .unwrap();
-
-    let template = tokio::sync::RwLock::new(init_template);
+    let template = tokio::sync::RwLock::new(Template::new());
 
     let mut futs = FuturesUnordered::new();
     let mut abort_handles = Vec::new();
@@ -130,6 +123,15 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
                         let fut = replace_template(&template, new_template, dsettings.clone(), sink.clone());
                         add_new_future(fut, &mut futs, &mut abort_handles);
                     },
+                    Msg::NewTemplateByPath(path) => {
+                        cancel_all(&mut abort_handles);
+                        let fut = replace_template_by_path(&template, path, dsettings.clone(), sink.clone());
+                        add_new_future(fut, &mut futs, &mut abort_handles);
+                    },
+                    Msg::ExitAndSave => {
+                        cancel_all(&mut abort_handles);
+                        break;
+                    }
                 }
             }
             Some(result) = futs.next() => {
@@ -141,6 +143,12 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
             },
         }
     }
+
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    // We use write so we are sure the other operations are finished
+    template.write().await.save().await.unwrap();
+
+    println!("GRACEFUL EXIT");
 }
 
 fn add_new_future<'a>(
@@ -159,6 +167,18 @@ fn cancel_all(abort_handles: &mut Vec<AbortHandle>) {
         handle.abort();
     }
     abort_handles.clear();
+}
+
+
+async fn replace_template_by_path(
+    old_template: &tokio::sync::RwLock<Template>,
+    path: PathBuf,
+    dsettings: Arc<DownloadSettings>,
+    sink: ExtEventSink,
+) {
+    let comm = RawCommunication::new(sink.clone());
+    let new_template = Template::load(path.as_path(), comm).await.unwrap(); // TODO not panic
+    replace_template(old_template, new_template, dsettings, sink).await
 }
 
 async fn replace_template(

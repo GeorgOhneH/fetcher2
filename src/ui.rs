@@ -13,9 +13,12 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{io, thread};
 
-use crate::controller::{EditController, SettingController, TemplateController, OPEN_EDIT};
+use crate::controller::{
+    EditController, MainController, Msg, SettingController, TemplateController, MSG_THREAD,
+    OPEN_EDIT,
+};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
+
 use crate::edit_window::edit_window;
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
@@ -34,7 +37,13 @@ use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
     Maybe, Padding, Scroll, SizedBox, Spinner, Split, Switch, TextBox, ViewSwitcher,
 };
-use druid::{commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, Menu, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel, MenuItem, SysMods};
+use druid::{
+    commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx,
+    Env, Event, EventCtx, ExtEventSink, FileInfo, Handled, LayoutCtx, Lens, LifeCycle,
+    LifeCycleCtx, LocalizedString, Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector,
+    SingleUse, Size, SysMods, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId,
+    WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel,
+};
 use druid_widget_nursery::WidgetExt as _;
 use flume;
 use futures::future::BoxFuture;
@@ -59,42 +68,62 @@ pub enum TemplateInfoSelect {
 #[derive(Clone, Lens, Debug, Data)]
 pub struct AppData {
     pub template: TemplateData,
+    #[data(eq)]
+    pub recent_templates: Vector<PathBuf>,
     pub settings: Option<Settings>,
     pub template_info_select: TemplateInfoSelect,
 }
 
-pub fn make_menu(_: Option<WindowId>, state: &AppData, _: &Env) -> Menu<AppData> {
+pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> {
     let mut base = Menu::empty();
-    // #[cfg(target_os = "macos")]
-    // {
-    base = Menu::new(LocalizedString::new(""))
-        .entry(
-            Menu::new(LocalizedString::new("macos-menu-application-menu"))
-                .entry(menu::sys::mac::application::preferences())
-                .separator()
-                .entry(menu::sys::mac::application::hide())
-                .entry(menu::sys::mac::application::hide_others())
-                .separator()
-                .entry(menu::sys::mac::application::quit()),
-        )
-        .entry(
-            Menu::new(LocalizedString::new("common-menu-file-menu"))
-                .entry(menu::sys::mac::file::new_file())
-                .entry(menu::sys::mac::file::open_file())
-                .separator()
-                .entry(
-                    MenuItem::new("Open Edit")
-                        .command(OPEN_EDIT)
-                        .hotkey(SysMods::Cmd, "e"),
+
+    let mut open_recent = Menu::new("Open Recent");
+    for path in data.recent_templates.iter() {
+        if let Some(file_name) = path.file_name() {
+            let path_clone = path.clone();
+            open_recent = open_recent.entry(
+                MenuItem::new(file_name.to_string_lossy().to_string()).on_activate(
+                    move |ctx, data: &mut AppData, env| {
+                        ctx.submit_command(commands::OPEN_FILE.with(FileInfo {
+                            path: path_clone.clone(),
+                            format: None,
+                        }))
+                    },
                 ),
-        );
-    // }
+            )
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        base = Menu::new(LocalizedString::new(""))
+            .entry(
+                Menu::new(LocalizedString::new("macos-menu-application-menu"))
+                    .entry(menu::sys::mac::application::preferences())
+                    .separator()
+                    .entry(menu::sys::mac::application::hide())
+                    .entry(menu::sys::mac::application::hide_others()),
+            )
+            .entry(
+                Menu::new(LocalizedString::new("common-menu-file-menu"))
+                    .entry(menu::sys::mac::file::new_file())
+                    .entry(menu::sys::mac::file::open_file())
+                    .entry(open_recent)
+                    .separator()
+                    .entry(
+                        MenuItem::new("Open Edit")
+                            .command(OPEN_EDIT)
+                            .hotkey(SysMods::Cmd, "e"),
+                    ),
+            );
+    }
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
         base = base.entry(
             Menu::new("Hello")
                 .entry(menu::sys::win::file::new())
                 .entry(menu::sys::win::file::open())
+                .entry(open_recent)
                 .separator()
                 .entry(
                     MenuItem::new("Open Edit")
@@ -106,26 +135,23 @@ pub fn make_menu(_: Option<WindowId>, state: &AppData, _: &Env) -> Menu<AppData>
                     MenuItem::new("Settings")
                         .command(commands::SHOW_PREFERENCES)
                         .hotkey(SysMods::Cmd, "d"),
-                )
-                .separator()
-                .entry(menu::sys::win::file::exit()),
+                ),
         );
     }
 
-    base
+    base.rebuild_on(|old_data, data, env| old_data.recent_templates != data.recent_templates)
 }
 pub fn build_ui() -> impl Widget<AppData> {
     Flex::column()
         .cross_axis_alignment(CrossAxisAlignment::Start)
         .with_child(
             SizedBox::empty()
-                .controller(TemplateController)
+                .controller(TemplateController::new())
                 .padding(0.)
-                .lens(AppData::template),
         )
         .with_child(
             SizedBox::empty()
-                .controller(SettingController)
+                .controller(SettingController::new())
                 .padding(0.)
                 .lens(AppData::settings),
         )

@@ -28,6 +28,12 @@ pub struct RootNodeData {
 }
 
 impl RootNodeData {
+    pub fn new() -> Self {
+        Self {
+            children: Vector::new(),
+            selected: Vector::new(),
+        }
+    }
     pub fn node(&self, idx: &[usize]) -> &NodeData {
         if idx.len() == 0 {
             panic!("Can't access root node")

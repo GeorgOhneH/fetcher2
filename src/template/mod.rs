@@ -195,6 +195,7 @@ impl Template {
     pub fn widget_data(&self) -> TemplateData {
         TemplateData {
             root: self.root.widget_data(),
+            save_path: self.save_path.clone(),
         }
     }
 

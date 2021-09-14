@@ -6,19 +6,18 @@
 #![allow(unused_imports)]
 
 mod background_thread;
+pub mod controller;
 mod cstruct_window;
-mod delegate;
+pub mod edit_window;
 mod error;
 mod session;
 mod settings;
 mod site_modules;
 mod task;
 mod template;
+pub mod ui;
 mod utils;
 pub mod widgets;
-pub mod ui;
-pub mod edit_window;
-pub mod controller;
 
 pub use error::{Result, TError};
 
@@ -35,7 +34,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
-use std::{io, thread};
+use std::{fs, io, thread};
 
 fn main2() {
     // let mut base_config = fern::Dispatch::new();
@@ -78,8 +77,6 @@ enum Test2 {
     Bar,
 }
 
-
-
 #[derive(Config, Serialize, Clone, Debug)]
 struct Test3 {
     #[config(default = true)]
@@ -91,10 +88,14 @@ struct Test3 {
     path: PathBuf,
 }
 
+use crate::controller::{MainController, MainWindowState, WINDOW_STATE_DIR};
 use crate::cstruct_window::CStructBuffer;
-use crate::delegate::{Msg, TemplateDelegate, MSG_THREAD};
-use crate::template::nodes::node_data::{NodeData};
-use crate::template::widget_data::{TemplateData};
+use crate::template::communication::RawCommunication;
+use crate::template::nodes::node_data::NodeData;
+use crate::template::nodes::root_data::RootNodeData;
+use crate::template::widget_data::TemplateData;
+use crate::ui::{build_ui, make_menu, AppData, TemplateInfoSelect};
+use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 use config::CStruct;
@@ -122,10 +123,6 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
-use crate::template::nodes::root_data::RootNodeData;
-use crate::template::communication::RawCommunication;
-use crate::widgets::file_watcher::FileWatcher;
-use crate::ui::{build_ui, AppData, TemplateInfoSelect, make_menu};
 
 //
 pub fn main() {
@@ -157,19 +154,37 @@ pub fn main() {
     // test.efsdfs = Some(Test2::Bar);
     // test.update_app(&mut cstruct).unwrap();
 
-    let main_window = WindowDesc::new(build_ui()).menu(make_menu)
-        .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
-    let app_launcher = AppLauncher::with_window(main_window);
-
-    let sink = app_launcher.get_external_handle();
-    let template = Template::test(RawCommunication::new(sink.clone()));
-    let data = AppData {
-        template: template.widget_data(),
-        settings: None,
-        template_info_select: TemplateInfoSelect::Nothing,
+    let win_state = if let Ok(file_content) = &fs::read(WINDOW_STATE_DIR.as_path()) {
+        let file_str = String::from_utf8_lossy(file_content);
+        if let Ok(win_state) = serde_json::from_str::<MainWindowState>(&file_str) {
+            win_state
+        } else {
+            MainWindowState::default()
+        }
+    } else {
+        MainWindowState::default()
     };
 
-    let delegate = TemplateDelegate::new(sink, template);
+    let pos = win_state.win_pos;
+    let size = win_state.win_size;
+    let mut main_window = WindowDesc::new(build_ui().controller(MainController::new(win_state)))
+        .menu(make_menu)
+        .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
+    if let Some(pos) = pos {
+        main_window = main_window.set_position(pos);
+    }
+    if let Some(size) = size {
+        main_window = main_window.window_size(size);
+    }
+
+    let app_launcher = AppLauncher::with_window(main_window);
+
+    let data = AppData {
+        template: TemplateData::new(),
+        settings: None,
+        recent_templates: Vector::new(),
+        template_info_select: TemplateInfoSelect::Nothing,
+    };
 
     use tracing_subscriber::prelude::*;
     let filter_layer = tracing_subscriber::filter::LevelFilter::DEBUG;
@@ -188,7 +203,6 @@ pub fn main() {
         .init();
 
     app_launcher
-        .delegate(delegate)
         // .log_to_console()
         .launch(data)
         .expect("launch failed");
