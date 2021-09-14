@@ -61,7 +61,7 @@ impl NodeEditData {
         if let Some(ty) = &self.ty {
             ty.kind.name()
         } else {
-            "Add new Node".to_string()
+            "New Node".to_string()
         }
     }
     pub fn node(&self, idx: &[usize]) -> &Self {

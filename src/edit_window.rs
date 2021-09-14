@@ -50,8 +50,11 @@ pub struct DataBuffer {
 impl DataBuffer {
     pub fn new(
         child: impl Widget<TemplateEditData> + 'static,
-        edit_data: TemplateEditData,
+        mut edit_data: TemplateEditData,
     ) -> Self {
+        if edit_data.root.children.len() == 0 {
+            edit_data.root.children.push_back(NodeEditData::new(true))
+        }
         Self {
             child: WidgetPod::new(child.boxed()),
             edit_data,
@@ -164,6 +167,9 @@ where
                 ctx.set_handled();
                 let idx = cmd.get_unchecked(DELETE_NODE);
                 data.remove(idx);
+                if data.children.len() == 0 {
+                    data.children.push_back(NodeEditData::new(true))
+                }
                 ctx.request_update();
                 ctx.request_paint();
                 return;
@@ -233,7 +239,7 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
     .on_activate(|ctx, data: &mut RootNodeEditData, env, idx| {
         ctx.submit_command(OPEN_NODE.with(idx.clone()));
     })
-    .controller(EditController {})
+    .controller(EditController)
     .padding(0.)
     .lens(TemplateEditData::root);
 
@@ -264,15 +270,16 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
 }
 
 fn node_window(idx: &NodeIndex) -> impl Widget<RootNodeEditData> {
-    c_option_window(Some(Box::new(
-        |ctx, old_data, data: &mut NodeTypeEditData| {
+    c_option_window(
+        Some("Node"),
+        Some(Box::new(|ctx, old_data, data: &mut NodeTypeEditData| {
             if let Some(old) = old_data {
                 if !old.same(data) {
                     data.invalidate_cache();
                 }
             }
-        },
-    )))
+        })),
+    )
     .lens(NodeLens::new(idx.clone()).then(NodeEditData::ty))
 }
 

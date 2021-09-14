@@ -28,7 +28,7 @@ use druid_enums::Matcher;
 use std::iter::FromIterator;
 use druid::widget::Label;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum State {
     Valid,
     None,

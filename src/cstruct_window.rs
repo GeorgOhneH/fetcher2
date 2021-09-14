@@ -39,16 +39,18 @@ pub struct CStructBuffer<T> {
     pub child: WidgetPod<CStruct, Box<dyn Widget<CStruct>>>,
     pub c_struct_data: CStruct,
     pub on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T)>>,
-    _marker: PhantomData<T>,
 }
 
 impl<T: Config + Data> CStructBuffer<T> {
-    pub fn new() -> Self {
+    pub fn new(child: impl Widget<CStruct> + 'static, name: Option<&str>) -> Self {
+        let mut c_struct = T::builder();
+        if let Some(name) = name {
+            c_struct = c_struct.name(name);
+        }
         Self {
-            child: WidgetPod::new(CStruct::widget().boxed()),
-            c_struct_data: T::builder().name("Settings").build(),
+            child: WidgetPod::new(child.boxed()),
+            c_struct_data: c_struct.build(),
             on_change_fn: None,
-            _marker: PhantomData,
         }
     }
 
@@ -121,28 +123,29 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
 }
 
 pub fn c_option_window<T: Config + Data>(
+    name: Option<&str>,
     on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T)>>,
 ) -> impl Widget<Option<T>> {
-    let mut buffer = CStructBuffer::new();
+    let child = Flex::column()
+        .with_flex_child(CStruct::widget().scroll(), 1.0)
+        .with_child(
+            Flex::row()
+                .with_child(
+                    Button::new("Save")
+                        .on_click(|ctx, data: &mut CStruct, env| {
+                            ctx.submit_command(APPLY.to(Target::Window(ctx.window_id())));
+                        })
+                        .disabled_if(|data: &CStruct, env| data.state() != State::Valid),
+                )
+                .with_child(
+                    Button::new("Cancel").on_click(|ctx, data: &mut CStruct, env| {
+                        ctx.window().close();
+                    }),
+                ),
+        );
+    let mut buffer = CStructBuffer::new(child, name);
     if let Some(on_change) = on_change_fn {
         buffer.on_change(on_change)
     }
-    Flex::column()
-        .with_flex_child(buffer.scroll(), 1.0)
-        .with_child(
-            Flex::row().with_child(
-                Button::new("Save")
-                    .on_click(|ctx, data: &mut Option<T>, env| {
-                        ctx.submit_command(APPLY.to(Target::Window(ctx.window_id())));
-                    })
-                // .disabled_if(|data: &Option<T>, env| match &data.c_struct {
-                //     Some(c_struct) => !matches!(c_struct.state(), State::Valid),
-                //     None => true,
-                // }),
-            ).with_child(
-                Button::new("Cancel")
-                    .on_click(|ctx, data: &mut Option<T>, env| {
-                        ctx.window().close();
-                    })),
-        )
+    buffer
 }

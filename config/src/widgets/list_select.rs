@@ -133,10 +133,12 @@ where
 
         match event {
             Event::MouseDown(mouse) => {
-                if let Some(idx) = self.at(mouse.pos) {
-                    if self.update_selection(Some(idx)) {
-                        ctx.request_paint();
-                        self.selected_lens.put(data, Some(idx))
+                if !ctx.is_disabled() {
+                    if let Some(idx) = self.at(mouse.pos) {
+                        if self.update_selection(Some(idx)) {
+                            ctx.request_paint();
+                            self.selected_lens.put(data, Some(idx))
+                        }
                     }
                 }
             }
@@ -251,7 +253,7 @@ impl<T: Data> Widget<T> for ListItem<T> {
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
-        if let LifeCycle::HotChanged(_) = event {
+        if let LifeCycle::HotChanged(_) | LifeCycle::DisabledChanged(_) = event {
             ctx.request_paint()
         }
         self.child.lifecycle(ctx, event, data, env)
@@ -268,12 +270,21 @@ impl<T: Data> Widget<T> for ListItem<T> {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        if self.selected {
-            let rect = ctx.size().to_rect();
-            ctx.fill(rect, &env.get(theme::PRIMARY_DARK));
-        } else if ctx.is_hot() {
-            let rect = ctx.size().to_rect();
-            ctx.fill(rect, &env.get(theme::PRIMARY_LIGHT));
+        let rect = ctx.size().to_rect();
+        if ctx.is_disabled() {
+            if self.selected {
+                ctx.fill(rect, &env.get(theme::DISABLED_FOREGROUND_DARK));
+            } else {
+                ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
+            }
+        } else {
+            if self.selected {
+                ctx.fill(rect, &env.get(theme::PRIMARY_DARK));
+            } else if ctx.is_hot() {
+                ctx.fill(rect, &env.get(theme::PRIMARY_LIGHT));
+            } else {
+                ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
+            }
         }
         self.child.paint(ctx, data, env)
     }

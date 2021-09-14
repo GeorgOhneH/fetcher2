@@ -14,15 +14,17 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::background_thread::{NEW_TEMPLATE, NEW_EDIT_TEMPLATE};
+use crate::background_thread::{NEW_EDIT_TEMPLATE, NEW_TEMPLATE};
 use crate::cstruct_window::c_option_window;
 use crate::delegate::{Msg, MSG_THREAD};
+use crate::edit_window::edit_window;
 use crate::settings::Settings;
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
+use crate::template::widget_edit_data::TemplateEditData;
 use crate::template::Template;
 use crate::ui::TemplateInfoSelect;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
@@ -32,13 +34,10 @@ use druid_widget_nursery::{selectors, Wedge};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use crate::edit_window::edit_window;
-use crate::template::widget_edit_data::TemplateEditData;
 
 selectors! {
     OPEN_EDIT
 }
-
 
 pub struct TemplateController;
 
@@ -91,15 +90,18 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
                 let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
                 let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
                 let main_win_id = ctx.window_id();
-                let c_window = c_option_window(Some(Box::new(
-                    move |inner_ctx: &mut EventCtx, old_data, data: &mut Settings| {
-                        inner_ctx.submit_command(
-                            MSG_THREAD
-                                .with(SingleUse::new(Msg::NewSettings(data.downs.clone())))
-                                .to(main_win_id.clone()),
-                        )
-                    },
-                )));
+                let c_window = c_option_window(
+                    Some("Settings"),
+                    Some(Box::new(
+                        move |inner_ctx: &mut EventCtx, old_data, data: &mut Settings| {
+                            inner_ctx.submit_command(
+                                MSG_THREAD
+                                    .with(SingleUse::new(Msg::NewSettings(data.downs.clone())))
+                                    .to(main_win_id.clone()),
+                            )
+                        },
+                    )),
+                );
                 ctx.new_sub_window(
                     WindowConfig::default()
                         .show_titlebar(true)
@@ -119,15 +121,14 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
     }
 }
 
-
 pub struct EditController {
-    current_data: TemplateEditData
+    current_data: TemplateEditData,
 }
 
 impl EditController {
     pub fn new() -> Self {
         Self {
-            current_data: TemplateEditData::new()
+            current_data: TemplateEditData::new(),
         }
     }
     fn make_sub_window(ctx: &mut EventCtx, env: &Env, edit_data: TemplateEditData) {
@@ -150,7 +151,14 @@ impl EditController {
 }
 
 impl<W: Widget<()>> Controller<(), W> for EditController {
-    fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut (), env: &Env) {
+    fn event(
+        &mut self,
+        child: &mut W,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut (),
+        env: &Env,
+    ) {
         match event {
             Event::Command(cmd) if cmd.is(NEW_EDIT_TEMPLATE) => {
                 ctx.set_handled();

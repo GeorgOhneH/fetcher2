@@ -109,8 +109,10 @@ impl CEnum {
     }
 
     pub fn is_leaf(&self) -> bool {
-        // TODO
-        true
+        match self.get_selected() {
+            None => true,
+            Some(carg) => carg.is_unit(),
+        }
     }
 
     pub fn widget() -> impl Widget<Self> {

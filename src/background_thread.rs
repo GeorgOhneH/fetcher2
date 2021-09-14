@@ -127,10 +127,7 @@ async fn manager(sink: ExtEventSink, rx: flume::Receiver<Msg>, init_template: Te
                     },
                     Msg::NewTemplate(new_template) => {
                         cancel_all(&mut abort_handles);
-                        sink.submit_command(NEW_TEMPLATE, SingleUse::new(new_template.widget_data()), Target::Global).unwrap();
-                        sink.submit_command(NEW_EDIT_TEMPLATE, SingleUse::new(new_template.widget_edit_data()), Target::Global).unwrap();
-
-                        let fut = replace_template(&template, new_template, dsettings.clone());
+                        let fut = replace_template(&template, new_template, dsettings.clone(), sink.clone());
                         add_new_future(fut, &mut futs, &mut abort_handles);
                     },
                 }
@@ -168,9 +165,24 @@ async fn replace_template(
     old_template: &tokio::sync::RwLock<Template>,
     new_template: Template,
     dsettings: Arc<DownloadSettings>,
+    sink: ExtEventSink,
 ) {
     let mut wl = old_template.write().await;
+
+    sink.submit_command(
+        NEW_TEMPLATE,
+        SingleUse::new(new_template.widget_data()),
+        Target::Global,
+    )
+    .unwrap();
+    sink.submit_command(
+        NEW_EDIT_TEMPLATE,
+        SingleUse::new(new_template.widget_edit_data()),
+        Target::Global,
+    )
+    .unwrap();
     wl.save().await.unwrap(); // TODO not panic
+    new_template.save().await.unwrap(); // TODO not panic
     *wl = new_template;
     wl.prepare(dsettings).await;
 }
