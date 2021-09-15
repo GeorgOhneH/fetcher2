@@ -1,4 +1,3 @@
-
 use crate::template::widget_data::TemplateData;
 use config::CStruct;
 use druid::im::{vector, Vector};
@@ -54,6 +53,14 @@ use crate::widgets::tree::NodeIndex;
 selectors! {
     NEW_TEMPLATE: SingleUse<TemplateData>,
     NEW_EDIT_TEMPLATE: SingleUse<TemplateEditData>,
+
+    MSG_MAIN: SingleUse<MsgMain>,
+}
+
+pub enum MsgMain {
+    SettingsRequired,
+    TemplateLoadingError(TError),
+    TemplateSaveError(TError),
 }
 
 enum RunType {
@@ -61,42 +68,22 @@ enum RunType {
     Indexes(HashSet<NodeIndex>),
 }
 
-pub fn background_main(
-    sink: ExtEventSink,
-    rx: flume::Receiver<Msg>,
-) {
+pub fn background_main(rx: flume::Receiver<Msg>, r: crossbeam_channel::Receiver<ExtEventSink>) {
+    let sink = r.recv().expect("Should always work");
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(manager(sink, rx));
+        .block_on(manager(rx, sink));
 }
 
-async fn manager(
-    sink: ExtEventSink,
-    rx: flume::Receiver<Msg>,
-) {
-    let mut dsettings = Arc::new(DownloadSettings {
-        username: Some(std::env::var("USERNAME").unwrap()),
-        password: Some(std::env::var("PASSWORD").unwrap()),
-        save_path: PathBuf::from("C:\\programming\\rust\\fetcher2\\test"),
-        download_args: DownloadArgs {
-            extensions: Extensions {
-                inner: im::HashSet::new(),
-                mode: Mode::Forbidden,
-            },
-            keep_old_files: true,
-        },
-        force: false,
-    });
-
+async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
     let template = tokio::sync::RwLock::new(Template::new());
+    let mut dsettings: Option<Arc<DownloadSettings>> = None;
 
     let mut futs = FuturesUnordered::new();
     let mut abort_handles = Vec::new();
 
-    let fut = prepare_template(&template, dsettings.clone());
-    add_new_future(fut, &mut futs, &mut abort_handles);
 
     let mut time = Instant::now();
     loop {
@@ -105,18 +92,35 @@ async fn manager(
                 println!("{:?}", msg);
                 match msg {
                     Msg::StartAll => {
-                        let fut = run_template(&template, dsettings.clone(), RunType::Root);
-                        add_new_future(fut, &mut futs, &mut abort_handles);
+                        with_settings(
+                            |settings| run_template(&template, settings, RunType::Root),
+                            dsettings.clone(),
+                            &mut futs,
+                            &mut abort_handles,
+                            sink.clone()
+                        );
                     },
                     Msg::StartByIndex(indexes) => {
-                        let fut = run_template(&template, dsettings.clone(), RunType::Indexes(indexes));
-                        add_new_future(fut, &mut futs, &mut abort_handles);
+                        with_settings(
+                            |settings| run_template(&template, settings, RunType::Indexes(indexes)),
+                            dsettings.clone(),
+                            &mut futs,
+                            &mut abort_handles,
+                            sink.clone()
+                        );
                     },
                     Msg::Cancel => {
                         cancel_all(&mut abort_handles)
                     },
                     Msg::NewSettings(new_settings) => {
-                        dsettings = Arc::new(new_settings);
+                        dsettings = Some(Arc::new(new_settings));
+                        with_settings(
+                            |settings| prepare_template(&template, settings),
+                            dsettings.clone(),
+                            &mut futs,
+                            &mut abort_handles,
+                            sink.clone()
+                        );
                     },
                     Msg::NewTemplate(new_template) => {
                         cancel_all(&mut abort_handles);
@@ -144,11 +148,29 @@ async fn manager(
         }
     }
 
-    tokio::time::sleep(Duration::from_secs(1)).await;
     // We use write so we are sure the other operations are finished
     template.write().await.save().await.unwrap();
 
     println!("GRACEFUL EXIT");
+}
+
+fn with_settings<'a, T: Future<Output = ()> + Send + 'a>(
+    fut: impl FnOnce(Arc<DownloadSettings>) -> T,
+    dsettings: Option<Arc<DownloadSettings>>,
+    futs: &mut FuturesUnordered<BoxFuture<'a, std::result::Result<(), Aborted>>>,
+    abort_handles: &mut Vec<AbortHandle>,
+    sink: ExtEventSink,
+) {
+    if let Some(dsettings) = dsettings {
+        add_new_future(fut(dsettings.clone()), futs, abort_handles);
+    } else {
+        sink.submit_command(
+            MSG_MAIN,
+            SingleUse::new(MsgMain::SettingsRequired),
+            Target::Global,
+        )
+        .unwrap()
+    }
 }
 
 fn add_new_future<'a>(
@@ -169,22 +191,29 @@ fn cancel_all(abort_handles: &mut Vec<AbortHandle>) {
     abort_handles.clear();
 }
 
-
 async fn replace_template_by_path(
     old_template: &tokio::sync::RwLock<Template>,
     path: PathBuf,
-    dsettings: Arc<DownloadSettings>,
+    dsettings: Option<Arc<DownloadSettings>>,
     sink: ExtEventSink,
 ) {
     let comm = RawCommunication::new(sink.clone());
-    let new_template = Template::load(path.as_path(), comm).await.unwrap(); // TODO not panic
-    replace_template(old_template, new_template, dsettings, sink).await
+    match Template::load(path.as_path(), comm).await {
+        Ok(new_template) => replace_template(old_template, new_template, dsettings, sink).await,
+        Err(err) => sink
+            .submit_command(
+                MSG_MAIN,
+                SingleUse::new(MsgMain::TemplateLoadingError(err)),
+                Target::Global,
+            )
+            .unwrap(),
+    }
 }
 
 async fn replace_template(
     old_template: &tokio::sync::RwLock<Template>,
     new_template: Template,
-    dsettings: Arc<DownloadSettings>,
+    dsettings: Option<Arc<DownloadSettings>>,
     sink: ExtEventSink,
 ) {
     let mut wl = old_template.write().await;
@@ -201,10 +230,26 @@ async fn replace_template(
         Target::Global,
     )
     .unwrap();
-    wl.save().await.unwrap(); // TODO not panic
-    new_template.save().await.unwrap(); // TODO not panic
+    if let Err(err) = wl.save().await {
+        sink.submit_command(
+            MSG_MAIN,
+            SingleUse::new(MsgMain::TemplateSaveError(err)),
+            Target::Global,
+        )
+        .unwrap()
+    }
+    if let Err(err) = new_template.save().await {
+        sink.submit_command(
+            MSG_MAIN,
+            SingleUse::new(MsgMain::TemplateSaveError(err)),
+            Target::Global,
+        )
+        .unwrap()
+    }
     *wl = new_template;
-    wl.prepare(dsettings).await;
+    if let Some(settings) = dsettings {
+        wl.prepare(settings).await;
+    }
 }
 
 async fn run_template(

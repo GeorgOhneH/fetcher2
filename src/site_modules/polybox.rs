@@ -2,7 +2,7 @@ use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
-use druid::Data;
+use druid::{Data, LensExt};
 use soup::prelude::*;
 
 use config::ConfigEnum;
@@ -20,6 +20,7 @@ use regex::{Regex, RegexBuilder};
 use crate::site_modules::utils::save_path;
 use crate::site_modules::ModuleExt;
 use futures::stream::{StreamExt, TryStreamExt};
+use html5ever::rcdom::NodeData;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Method;
 use std::str::FromStr;

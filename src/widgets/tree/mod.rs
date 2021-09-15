@@ -51,7 +51,7 @@ where
     selected_lens: S,
     selection_mode: SelectionMode,
 
-    on_activate_fn: Option<Box<dyn Fn(&mut EventCtx, &mut R, &Env, &NodeIndex)>>
+    on_activate_fn: Option<Box<dyn Fn(&mut EventCtx, &mut R, &Env, &NodeIndex)>>,
 }
 
 /// Tree Implementation
@@ -86,7 +86,10 @@ where
         }
     }
 
-    pub fn on_activate(mut self, on_activate_fn: impl Fn(&mut EventCtx, &mut R, &Env, &NodeIndex) + 'static) -> Self {
+    pub fn on_activate(
+        mut self,
+        on_activate_fn: impl Fn(&mut EventCtx, &mut R, &Env, &NodeIndex) + 'static,
+    ) -> Self {
         self.on_activate_fn = Some(Box::new(on_activate_fn));
         self
     }
@@ -126,7 +129,12 @@ where
         }
     }
 
-    fn update_selection(&mut self, new_node: &NodeIndex, mode: SelectUpdateMode, data: &mut R) -> bool {
+    fn update_selection(
+        &mut self,
+        new_node: &NodeIndex,
+        mode: SelectUpdateMode,
+        data: &mut R,
+    ) -> bool {
         let current_selected = self.root_node.widget().child().get_selected();
         match mode {
             SelectUpdateMode::Single => {
@@ -151,13 +159,12 @@ where
             }
             SelectUpdateMode::Add => {
                 if current_selected.contains(new_node) {
-                    return false
+                    return false;
                 }
                 let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
                 node.selected = true;
-                self.selected_lens.with_mut(data, |selected| {
-                    selected.push_back(new_node.into())
-                });
+                self.selected_lens
+                    .with_mut(data, |selected| selected.push_back(new_node.into()));
                 true
             }
             SelectUpdateMode::Sub => {
@@ -260,7 +267,25 @@ where
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &R, data: &R, env: &Env) {
         self.header.update(ctx, data, env);
         self.root_node.update(ctx, data, env);
-        //TODO lens update select after root update!
+
+        let lens_selected = self.selected_lens.get(data);
+        let current_selected = self.root_node.widget().child().get_selected();
+        for selected_child_idx in &current_selected {
+            let node = self
+                .root_node
+                .widget_mut()
+                .child_mut()
+                .node_mut(selected_child_idx);
+            node.selected = false;
+        }
+        for selected_child_idx in &lens_selected {
+            let node = self
+                .root_node
+                .widget_mut()
+                .child_mut()
+                .node_mut(&selected_child_idx.iter().map(|x| *x).collect::<Vec<_>>());
+            node.selected = true;
+        }
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &R, env: &Env) -> Size {

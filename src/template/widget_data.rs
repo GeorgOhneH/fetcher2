@@ -74,19 +74,9 @@ impl TemplateData {
         self.root.node(idx)
     }
 
+    // Be careful can produce weird behavior
     pub fn node_mut(&mut self, idx: &NodeIndex) -> &mut NodeData {
         self.root.node_mut(idx)
-    }
-
-    pub fn update_node(&mut self, event: NodeEvent, idx: &NodeIndex) {
-        let node = self.node_mut(idx);
-        match event {
-            NodeEvent::Path(path_event) => node.state.path.update(path_event, &mut node.path),
-            NodeEvent::Site(site_event) => {
-                let site = node.ty.site_mut().unwrap();
-                site.state.update(site_event, &mut site.history)
-            }
-        }
     }
 }
 

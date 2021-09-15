@@ -11,8 +11,8 @@ pub type Result<T> = std::result::Result<T, TError>;
 #[derive(Error, Debug)]
 #[error("{kind:?}")]
 pub struct TError {
-    kind: TErrorKind,
-    backtrace: Backtrace,
+    pub kind: TErrorKind,
+    pub backtrace: Backtrace,
 }
 
 impl TError {

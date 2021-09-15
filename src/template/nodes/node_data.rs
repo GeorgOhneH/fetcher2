@@ -124,6 +124,17 @@ impl NodeData {
             },
         }
     }
+
+    pub fn update_node(&mut self, event: NodeEvent) {
+        match event {
+            NodeEvent::Path(path_event) => self.state.path.update(path_event, &mut self.path),
+            NodeEvent::Site(site_event) => {
+                let site = self.ty.site_mut().unwrap();
+                // TODO history is mut always deep copy
+                site.state.update(site_event, &mut site.history)
+            }
+        }
+    }
 }
 
 impl TreeNode for NodeData {

@@ -21,85 +21,23 @@ pub mod widgets;
 
 pub use error::{Result, TError};
 
-use crate::settings::{DownloadSettings, Settings, Test};
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
-use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use config_derive::Config;
-use futures::StreamExt;
-use log::{debug, error, info, log_enabled, Level};
-use serde::Serialize;
-use std::collections::HashSet;
-use std::error::Error;
-use std::ops::{Deref, DerefMut};
-use std::path::Path;
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
-use std::{fs, io, thread};
-
-fn main2() {
-    // let mut base_config = fern::Dispatch::new();
-    //
-    // base_config = base_config.level(log::LevelFilter::Trace);
-    //
-    // let stdout_config = fern::Dispatch::new()
-    //     .filter(|metadata| {
-    //         !(metadata.target().starts_with("html5ever")
-    //             || !metadata.target().starts_with("mio")
-    //             || !metadata.target().starts_with("reqwest::connect"))
-    //     })
-    //     .format(|out, message, record| {
-    //         out.finish(format_args!(
-    //             "[{}][{}][{}] {}",
-    //             chrono::Local::now().format("%H:%M"),
-    //             record.target(),
-    //             record.level(),
-    //             message
-    //         ))
-    //     })
-    //     .chain(io::stdout());
-    //
-    // base_config.chain(stdout_config).apply().unwrap();
-
-    // let mut template = Template::new();
-    // tokio::runtime::Builder::new_multi_thread()
-    //     .enable_all()
-    //     .build()
-    //     .unwrap()
-    //     .block_on(run(&mut template));
-}
-
-use config::ConfigEnum;
-
-#[derive(Config, Serialize, Clone, Debug)]
-enum Test2 {
-    Hellfffffffffffffffo(String),
-    Foo(String),
-    Bar,
-}
-
-#[derive(Config, Serialize, Clone, Debug)]
-struct Test3 {
-    #[config(default = true)]
-    hello: bool,
-    #[config()]
-    hello2: String,
-    #[config(default = 0, min = 0)]
-    int: isize,
-    path: PathBuf,
-}
-
+use crate::background_thread::background_main;
 use crate::controller::{MainController, MainWindowState, WINDOW_STATE_DIR};
 use crate::cstruct_window::CStructBuffer;
+use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::ui::{build_ui, make_menu, AppData, TemplateInfoSelect};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 use config::CStruct;
 use config::State;
+use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
+use config_derive::Config;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
@@ -115,45 +53,27 @@ use druid::{
 };
 use flume;
 use futures::future::BoxFuture;
+use futures::StreamExt;
+use log::{debug, error, info, log_enabled, Level};
+use serde::Serialize;
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::error::Error;
 use std::future::Future;
+use std::ops::{Deref, DerefMut};
+use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::Instant;
+use std::{fs, io, thread};
 use tokio::time;
 use tokio::time::Duration;
 
 //
 pub fn main() {
-    // let mut base_config = fern::Dispatch::new();
-    //
-    // base_config = base_config.level(log::LevelFilter::Trace);
-    //
-    // let stdout_config = fern::Dispatch::new()
-    //     .filter(|metadata| {
-    //         !(metadata.target().starts_with("html5ever")
-    //             || !metadata.target().starts_with("mio")
-    //             || !metadata.target().starts_with("reqwest::connect"))
-    //     })
-    //     .format(|out, message, record| {
-    //         out.finish(format_args!(
-    //             "[{}][{}][{}] {}",
-    //             chrono::Local::now().format("%H:%M"),
-    //             record.target(),
-    //             record.level(),
-    //             message
-    //         ))
-    //     })
-    //     .chain(io::stdout());
-    //
-    // base_config.chain(stdout_config).apply().unwrap();
-
-    let cstruct = Test::builder().build();
-    // let mut test: Test = Test::parse_from_app(&cstruct).unwrap();
-    // test.efsdfs = Some(Test2::Bar);
-    // test.update_app(&mut cstruct).unwrap();
-
     let win_state = if let Ok(file_content) = &fs::read(WINDOW_STATE_DIR.as_path()) {
         let file_str = String::from_utf8_lossy(file_content);
         if let Ok(win_state) = serde_json::from_str::<MainWindowState>(&file_str) {
@@ -165,11 +85,18 @@ pub fn main() {
         MainWindowState::default()
     };
 
+    let (tx, rx) = flume::unbounded();
+    let (s, r) = crossbeam_channel::bounded(5);
+    let handle = thread::spawn(move || {
+        background_main(rx, r);
+    });
+
     let pos = win_state.win_pos;
     let size = win_state.win_size;
-    let mut main_window = WindowDesc::new(build_ui().controller(MainController::new(win_state)))
-        .menu(make_menu)
-        .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
+    let mut main_window =
+        WindowDesc::new(build_ui().controller(MainController::new(win_state, tx)))
+            .menu(make_menu)
+            .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
     if let Some(pos) = pos {
         main_window = main_window.set_position(pos);
     }
@@ -178,6 +105,8 @@ pub fn main() {
     }
 
     let app_launcher = AppLauncher::with_window(main_window);
+
+    s.send(app_launcher.get_external_handle()).unwrap();
 
     let data = AppData {
         template: TemplateData::new(),
@@ -206,4 +135,6 @@ pub fn main() {
         // .log_to_console()
         .launch(data)
         .expect("launch failed");
+
+    handle.join().unwrap();
 }

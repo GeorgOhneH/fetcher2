@@ -11,7 +11,7 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::template::node_type::site::{Msg};
+use crate::template::node_type::site::{TaskMsg};
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::{Template};

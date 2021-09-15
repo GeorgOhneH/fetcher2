@@ -30,9 +30,12 @@ use std::sync::{Mutex, RwLock};
 use tokio::join;
 
 use crate::template::communication::Communication;
+use crate::template::node_type::site::{TaskMsg, MsgKind};
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
+use crate::template::node_type::Site;
 use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
+use crate::template::DownloadArgs;
 use crate::utils::spawn_drop;
 use dashmap::mapref::entry::Entry;
 use druid::im::Vector;
@@ -49,10 +52,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinError;
 use url::Url;
-use crate::template::DownloadArgs;
-use crate::template::node_type::site::{Msg, MsgKind};
-use crate::template::node_type::Site;
-
 
 #[derive(Debug, Clone, Data)]
 pub struct SiteData {
@@ -60,7 +59,7 @@ pub struct SiteData {
 
     pub download_args: Option<DownloadArgs>,
 
-    pub history: Vector<Msg>,
+    pub history: Vector<TaskMsg>,
 
     pub state: SiteState,
 }
@@ -77,7 +76,6 @@ impl SiteData {
         )
     }
 }
-
 
 #[derive(Debug)]
 pub enum SiteEvent {
@@ -181,13 +179,13 @@ impl UrlFetchEvent {
 #[derive(Debug)]
 pub enum DownloadEvent {
     Start,
-    Finish(Msg),
+    Finish(TaskMsg),
     Err(TError),
 }
 
 impl DownloadEvent {
     pub async fn wrapper(
-        inner_fn: impl Future<Output = Result<Msg>>,
+        inner_fn: impl Future<Output = Result<TaskMsg>>,
         comm: Communication,
         site: Arc<Site>,
     ) -> Status {
@@ -207,7 +205,6 @@ impl DownloadEvent {
     }
 }
 
-
 #[derive(Debug, Clone, Data)]
 pub struct SiteState {
     pub run: usize,
@@ -226,7 +223,7 @@ impl SiteState {
         }
     }
 
-    pub fn update(&mut self, event: SiteEvent, history: &mut Vector<Msg>) {
+    pub fn update(&mut self, event: SiteEvent, history: &mut Vector<TaskMsg>) {
         match event {
             SiteEvent::Run(run_event) => match run_event {
                 RunEvent::Start => self.run += 1,
@@ -331,7 +328,7 @@ impl DownloadState {
         }
     }
 
-    pub fn update(&mut self, event: DownloadEvent, history: &mut Vector<Msg>) {
+    pub fn update(&mut self, event: DownloadEvent, history: &mut Vector<TaskMsg>) {
         match event {
             DownloadEvent::Start => {
                 self.count += 1;
@@ -339,11 +336,11 @@ impl DownloadState {
             }
             DownloadEvent::Finish(msg) => {
                 match &msg {
-                    Msg {
+                    TaskMsg {
                         kind: MsgKind::AddedFile,
                         ..
                     } => self.new_added += 1,
-                    Msg {
+                    TaskMsg {
                         kind: MsgKind::ReplacedFile(_),
                         ..
                     } => self.new_replaced += 1,

@@ -49,7 +49,7 @@ impl Template {
             save_path: None,
         }
     }
-    
+
     pub fn test(comm: RawCommunication) -> Self {
         let mut raw_app = RawNode::builder().build();
 
@@ -128,12 +128,16 @@ impl Template {
         }
     }
 
-    pub fn from_raw(edit_data: RootNodeEditData, comm: RawCommunication, save_path: PathBuf) -> Self {
+    pub fn from_raw(
+        edit_data: RootNodeEditData,
+        comm: RawCommunication,
+        save_path: PathBuf,
+    ) -> Self {
         let raw_root = edit_data.raw();
         Self {
             root: raw_root.transform(comm),
             is_prepared: false,
-            save_path: Some(save_path)
+            save_path: Some(save_path),
         }
     }
 
@@ -143,7 +147,7 @@ impl Template {
         Ok(Self {
             root: raw_root.transform(comm),
             is_prepared: false,
-            save_path: Some(path.to_owned())
+            save_path: Some(path.to_owned()),
         })
     }
 
@@ -152,7 +156,11 @@ impl Template {
     }
 
     pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Status {
-        // since only one mutable reference is allowed this cant run in parallel
+        // since only one mutable reference is allowed this cant
+        // run in parallel and self.is_prepared is always correct
+        if self.is_prepared {
+            return Status::Success;
+        }
         let session = Session::new();
         let r = self.root.prepare(&session, dsettings).await;
         if let Status::Success = r {
@@ -166,11 +174,7 @@ impl Template {
         self.root.run(&session, dsettings, None).await
     }
 
-    pub async fn run(
-        &self,
-        dsettings: Arc<DownloadSettings>,
-        indexes: &HashSet<NodeIndex>,
-    ) {
+    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: &HashSet<NodeIndex>) {
         let session = Session::new();
         self.root.run(&session, dsettings, Some(indexes)).await
     }

@@ -14,7 +14,9 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::background_thread::{background_main, NEW_EDIT_TEMPLATE, NEW_TEMPLATE};
+use crate::background_thread::{
+    background_main, MsgMain, MSG_MAIN, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
+};
 use crate::cstruct_window::c_option_window;
 use crate::edit_window::{edit_window, EditWindowState};
 use crate::settings::{DownloadSettings, Settings};
@@ -26,6 +28,7 @@ use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
 use crate::template::Template;
 use crate::ui::TemplateInfoSelect;
+use crate::utils::show_err;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{AppData, Result};
 use config::Config;
@@ -62,7 +65,6 @@ selectors! {
 }
 
 selectors! {
-    //
     NEW_WIN_INFO: SingleUse<SubWindowInfo<()>>,
 }
 lazy_static! {
@@ -97,21 +99,16 @@ pub struct MainWindowState {
     pub recent_templates: Vec<PathBuf>,
 }
 
-pub struct ThreadData {
-    pub tx: flume::Sender<Msg>,
-    pub handle: SingleUse<JoinHandle<()>>,
-}
-
 pub struct MainController {
-    thread_data: Option<ThreadData>,
+    tx: flume::Sender<Msg>,
     saved: bool,
     win_state: Arc<RwLock<MainWindowState>>,
 }
 
 impl MainController {
-    pub fn new(win_state: MainWindowState) -> Self {
+    pub fn new(win_state: MainWindowState, tx: flume::Sender<Msg>) -> Self {
         Self {
-            thread_data: None,
+            tx,
             saved: false,
             win_state: Arc::new(RwLock::new(win_state)),
         }
@@ -131,36 +128,31 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
             Event::Command(cmd) if cmd.is(MSG_THREAD) => {
                 ctx.set_handled();
                 let msg = cmd.get_unchecked(MSG_THREAD).take().unwrap();
-                self.thread_data
-                    .as_ref()
-                    .expect("Got Msg before WindowConnected")
-                    .tx
-                    .send(msg)
-                    .unwrap();
+                self.tx.send(msg).unwrap();
                 return;
+            }
+            Event::Command(cmd) if cmd.is(MSG_MAIN) => {
+                ctx.set_handled();
+                let msg_main = cmd.get_unchecked(MSG_MAIN).take().unwrap();
+                match msg_main {
+                    MsgMain::SettingsRequired => ctx.submit_command(commands::SHOW_PREFERENCES),
+                    MsgMain::TemplateLoadingError(err) => {
+                        show_err(ctx, env, err, "Could not load template")
+                    }
+                    MsgMain::TemplateSaveError(err) => {
+                        show_err(ctx, env, err, "Could not save template")
+                    }
+                };
             }
             Event::Command(cmd) if cmd.is(commands::OPEN_FILE) => {
                 ctx.set_handled();
                 let file_info = cmd.get_unchecked(commands::OPEN_FILE);
-                self.thread_data
-                    .as_ref()
-                    .expect("Got Msg before WindowConnected")
-                    .tx
+                self.tx
                     .send(Msg::NewTemplateByPath(file_info.path.clone()))
                     .unwrap();
                 return;
             }
             Event::WindowConnected => {
-                let (tx, rx) = flume::unbounded();
-                let sink = ctx.get_external_handle();
-                let handle = thread::spawn(move || {
-                    background_main(sink, rx);
-                });
-                self.thread_data = Some(ThreadData {
-                    tx,
-                    handle: SingleUse::new(handle),
-                });
-
                 ctx.submit_command(
                     INIT_MAIN_WINDOW_STATE.with(self.win_state.read().unwrap().clone()),
                 );
@@ -194,20 +186,7 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
                 }
             }
             Event::WindowDisconnected => {
-                self.thread_data
-                    .as_ref()
-                    .expect("Got Msg before WindowConnected")
-                    .tx
-                    .send(Msg::ExitAndSave)
-                    .unwrap();
-                self.thread_data
-                    .as_ref()
-                    .expect("Got Msg before WindowConnected")
-                    .handle
-                    .take()
-                    .unwrap()
-                    .join()
-                    .unwrap();
+                self.tx.send(Msg::ExitAndSave).unwrap();
             }
             _ => (),
         }
@@ -236,7 +215,8 @@ impl<W: Widget<AppData>> Controller<AppData, W> for TemplateController {
             Event::Command(cmd) if cmd.is(NODE_EVENT) => {
                 ctx.set_handled();
                 let (node_event, idx) = cmd.get_unchecked(NODE_EVENT).take().unwrap();
-                data.template.update_node(node_event, &idx);
+                let node = data.template.node_mut(&idx);
+                node.update_node(node_event);
                 return;
             }
             Event::Command(cmd) if cmd.is(NEW_TEMPLATE) => {
@@ -467,6 +447,9 @@ impl<T: Clone + Default + Debug + Serialize> SubWindowInfo<T> {
         if let Some(win_state) = &self.win_state {
             return (win_state.size, win_state.pos);
         }
+        Self::size_pos(win_handle)
+    }
+    pub fn size_pos(win_handle: &WindowHandle) -> (Size, Point) {
         let win_pos = win_handle.get_position();
         let (win_size_w, win_size_h) = win_handle.get_size().into();
         let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));

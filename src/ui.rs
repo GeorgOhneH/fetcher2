@@ -21,11 +21,14 @@ use crate::cstruct_window::{c_option_window, CStructBuffer};
 
 use crate::edit_window::edit_window;
 use crate::template::communication::RawCommunication;
+use crate::template::node_type::site::TaskMsg;
+use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
+use crate::widgets::history_tree::History;
 use crate::widgets::tree::Tree;
 use crate::widgets::widget_ext::WidgetExt as _;
 use config::CStruct;
@@ -72,6 +75,27 @@ pub struct AppData {
     pub recent_templates: Vector<PathBuf>,
     pub settings: Option<Settings>,
     pub template_info_select: TemplateInfoSelect,
+}
+
+impl AppData {
+    pub fn get_selected_node(&self) -> Option<&NodeData> {
+        if self.template.root.selected.len() > 0 {
+            let data_idx = &self.template.root.selected[0];
+            let idx = data_idx.clone().into_iter().collect::<Vec<_>>();
+            Some(self.template.node(&idx))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_selected_history(&self) -> Option<Vector<TaskMsg>> {
+        self.get_selected_node()
+            .map(|node| match &node.ty {
+                NodeTypeData::Folder(_) => None,
+                NodeTypeData::Site(site) => Some(site.history.clone()),
+            })
+            .flatten()
+    }
 }
 
 pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> {
@@ -139,7 +163,8 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
         );
     }
 
-    base.rebuild_on(|old_data, data, env| old_data.recent_templates != data.recent_templates)
+    // base.rebuild_on(|old_data, data, env| old_data.recent_templates != data.recent_templates)
+    base
 }
 pub fn build_ui() -> impl Widget<AppData> {
     Flex::column()
@@ -147,7 +172,7 @@ pub fn build_ui() -> impl Widget<AppData> {
         .with_child(
             SizedBox::empty()
                 .controller(TemplateController::new())
-                .padding(0.)
+                .padding(0.),
         )
         .with_child(
             SizedBox::empty()
@@ -187,24 +212,36 @@ fn info_view_ui() -> impl Widget<AppData> {
     ViewSwitcher::new(
         |data: &AppData, _env| data.template_info_select,
         |selector, _data, _env| match selector {
-            TemplateInfoSelect::General => Label::new("General").boxed(),
-            TemplateInfoSelect::Folder => FileWatcher::new(|data: &AppData| match &data.settings {
-                Some(settings) if data.template.root.selected.len() > 0 => {
-                    let idx = &data.template.root.selected[0];
-                    let node = data
-                        .template
-                        .node(&idx.clone().into_iter().collect::<Vec<_>>());
-                    node.path
-                        .as_ref()
-                        .map(|path| settings.downs.save_path.join(path))
-                }
-                _ => None,
-            })
-            .boxed(),
-            TemplateInfoSelect::History => Label::new("History").boxed(),
+            TemplateInfoSelect::General => info_general().boxed(),
+            TemplateInfoSelect::Folder => info_folder().boxed(),
+            TemplateInfoSelect::History => info_history().boxed(),
             TemplateInfoSelect::Nothing => SizedBox::empty().boxed(),
         },
     )
+}
+
+fn info_general() -> impl Widget<AppData> {
+    Label::dynamic(|data: &AppData, env| {
+        let node = data.get_selected_node();
+        format!("{:#?}", node)
+    })
+    .scroll()
+}
+
+fn info_folder() -> impl Widget<AppData> {
+    FileWatcher::new(
+        |data: &AppData| match (&data.settings, data.get_selected_node()) {
+            (Some(settings), Some(node)) => node
+                .path
+                .as_ref()
+                .map(|path| settings.downs.save_path.join(path)),
+            _ => None,
+        },
+    )
+}
+
+fn info_history() -> impl Widget<AppData> {
+    History::new().expand()
 }
 
 fn info_view_selector_ui() -> impl Widget<TemplateInfoSelect> {
