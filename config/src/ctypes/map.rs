@@ -3,7 +3,6 @@ use crate::{CArg, CType, ConfigError, InvalidError, State};
 use druid::im;
 use druid::widget::{Flex, Label, List, ListIter};
 use druid::{Data, Widget, WidgetExt};
-use ron::{Map, Value};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::path::PathBuf;
@@ -15,24 +14,6 @@ pub enum HashKey {
 }
 
 impl HashKey {
-    fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
-        match self {
-            HashKey::String(str) => match value {
-                Value::String(vstr) => {
-                    *str = vstr;
-                    Ok(())
-                }
-                _ => Err(InvalidError::new("Expected String").into()),
-            },
-            HashKey::Path(path) => match value {
-                Value::String(vstr) => {
-                    *path = PathBuf::from(vstr);
-                    Ok(())
-                }
-                _ => Err(InvalidError::new("Expected String").into()),
-            },
-        }
-    }
     pub fn set(&mut self, name: String) {
         match self {
             Self::String(str) => *str = name,

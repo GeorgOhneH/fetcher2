@@ -4,7 +4,6 @@ use druid::{
     BoxConstraints, Color, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
     PaintCtx, Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
-use ron::Map;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CCheckableStruct {

@@ -16,7 +16,6 @@ use crate::{CType, ConfigError, RequiredError, State};
 use druid::im::Vector;
 use druid::widget::SizedBox;
 use druid_widget_nursery::WidgetExt as _;
-use ron::{Map, Value};
 use serde::de::Error;
 
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
@@ -65,15 +64,6 @@ impl CStruct {
 
     pub fn get_idx_ty_mut(&mut self, idx: usize) -> Option<&mut CType> {
         self.inner.get_mut(idx).map(|kwarg| &mut kwarg.ty)
-    }
-
-    pub fn load_from_string(&mut self, str: &str) -> Result<(), ConfigError> {
-        let value = ron::from_str::<Value>(&str)?;
-        if let Value::Map(map) = value {
-            self.consume_map(map)
-        } else {
-            Err(RequiredError::new("Root", "Must be a mapping").into())
-        }
     }
 
     pub fn iter(&self) -> im::vector::Iter<CKwarg> {

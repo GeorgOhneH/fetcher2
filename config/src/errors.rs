@@ -6,9 +6,6 @@ pub enum ConfigError {
     #[error(transparent)]
     Required(#[from] RequiredError),
 
-    #[error("Loading Error")]
-    Load(#[from] ron::Error),
-
     #[error(transparent)]
     Invalid(#[from] InvalidError),
 }

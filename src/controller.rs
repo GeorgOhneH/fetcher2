@@ -277,7 +277,7 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
                 //TODO not in main thread
                 if let Ok(file_content) = &fs::read(SETTINGS_DIR.as_path()) {
                     let file_str = String::from_utf8_lossy(file_content);
-                    if let Ok(settings) = Settings::load_from_str(file_str.as_ref()) {
+                    if let Ok(settings) = ron::from_str::<Settings>(file_str.as_ref()) {
                         ctx.submit_command(
                             MSG_THREAD
                                 .with(SingleUse::new(Msg::NewSettings(settings.downs.clone()))),

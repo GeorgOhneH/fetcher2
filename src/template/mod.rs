@@ -129,7 +129,7 @@ impl Template {
 
     pub async fn load(path: &Path, comm: RawCommunication) -> Result<Self> {
         let x = String::from_utf8(fs::read(path).await?)?;
-        let raw_root = RawRootNode::load_from_str(&*x)?;
+        let raw_root: RawRootNode = ron::from_str(&*x)?;
         Ok(Self {
             root: raw_root.transform(comm),
             is_prepared: false,

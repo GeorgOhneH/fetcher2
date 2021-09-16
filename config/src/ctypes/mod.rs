@@ -26,7 +26,6 @@ use crate::{ConfigError, InvalidError};
 use druid::widget::Label;
 use druid::{lens, Data, LensExt, Widget, WidgetExt};
 use druid_enums::Matcher;
-use ron::Value;
 use std::iter::FromIterator;
 
 #[derive(Debug, PartialEq)]

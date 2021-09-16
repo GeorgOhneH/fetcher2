@@ -25,7 +25,7 @@ use druid::im::{OrdMap, Vector};
 use druid::keyboard_types::Key;
 use druid::lens::Identity;
 use druid::widget::{Controller, CrossAxisAlignment, Label, LabelText};
-use ron::{Map, Value};
+use crate::{State, InvalidError, CType};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {
