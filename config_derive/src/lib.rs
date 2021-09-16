@@ -7,14 +7,22 @@ mod build_app;
 mod config_attr;
 mod config_type;
 mod derives;
+mod deserialize;
 mod parse_from_app;
 mod update_app;
 
-use crate::derives::derive_config;
+use crate::derives::{derive_config_enum, derive_config_struct};
 
 #[proc_macro_derive(Config, attributes(config))]
 #[proc_macro_error]
 pub fn config(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
-    derive_config(&input).into()
+    derive_config_struct(&input).into()
+}
+
+#[proc_macro_derive(ConfigEnum, attributes(config))]
+#[proc_macro_error]
+pub fn config_enum(input: TokenStream) -> TokenStream {
+    let input: DeriveInput = parse_macro_input!(input);
+    derive_config_enum(&input).into()
 }

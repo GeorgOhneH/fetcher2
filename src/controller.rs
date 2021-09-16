@@ -6,8 +6,9 @@ use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
 use druid::{
-    commands, theme, Command, ExtEventSink, Menu, MenuItem, Rect, Selector, SingleUse, Target,
-    WidgetExt, WidgetId, WindowConfig, WindowHandle, WindowLevel,
+    commands, theme, Command, ExtEventSink, HasRawWindowHandle, Menu, MenuItem, RawWindowHandle,
+    Rect, Selector, SingleUse, Target, WidgetExt, WidgetId, WindowConfig, WindowHandle,
+    WindowLevel,
 };
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -172,7 +173,7 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
                     win_state.win_size = Some(ctx.window().get_size());
                     win_state.win_pos = Some(ctx.window().get_position());
                     // TODO not in main thread
-                    let serialized = serde_json::to_string(&win_state).unwrap();
+                    let serialized = ron::to_string(&win_state).unwrap();
 
                     fs::create_dir_all(WINDOW_STATE_DIR.as_path().parent().unwrap()).unwrap();
 
@@ -310,7 +311,7 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
                                     .to(main_win_id.clone()),
                             );
                             // TODO not in main thread
-                            let serialized = serde_yaml::to_string(&data).unwrap();
+                            let serialized = ron::to_string(&data).unwrap();
 
                             fs::create_dir_all(SETTINGS_DIR.as_path().parent().unwrap()).unwrap();
 

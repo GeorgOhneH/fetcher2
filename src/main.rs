@@ -37,19 +37,19 @@ use crate::widgets::tree::Tree;
 use config::CStruct;
 use config::State;
 use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use config_derive::Config;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
 use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
-    Maybe, Scroll, Spinner, Switch, TextBox,
+    Maybe, Scroll, SizedBox, Spinner, Switch, TextBox,
 };
 use druid::{
     im, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event,
     EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
-    MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target, UnitPoint, UpdateCtx,
-    Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc, WindowLevel,
+    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
 };
 use flume;
 use futures::future::BoxFuture;
@@ -72,11 +72,11 @@ use std::{fs, io, thread};
 use tokio::time;
 use tokio::time::Duration;
 
-//
+// //
 pub fn main() {
     let win_state = if let Ok(file_content) = &fs::read(WINDOW_STATE_DIR.as_path()) {
         let file_str = String::from_utf8_lossy(file_content);
-        if let Ok(win_state) = serde_json::from_str::<MainWindowState>(&file_str) {
+        if let Ok(win_state) = ron::from_str::<MainWindowState>(&file_str) {
             win_state
         } else {
             MainWindowState::default()
@@ -138,3 +138,98 @@ pub fn main() {
 
     handle.join().unwrap();
 }
+
+//
+// use config::{CStruct, Config, ConfigEnum};
+// use ron::ser::PrettyConfig;
+// use ron::{Map, Value};
+// use serde::{Serialize};
+// use std::path::PathBuf;
+// use std::sync::{Arc, Mutex, RwLock};
+// use std::collections::HashMap;
+//
+// //
+// fn main() {
+//
+//     #[derive(Serialize, Debug, Config, PartialEq, Clone)]
+//     struct Hello {
+//         bool: bool,
+//         bool_option: Option<bool>,
+//         int: isize,
+//         int_option: Option<isize>,
+//         str: String,
+//         str_option: Option<String>,
+//         path: PathBuf,
+//         path_option: Option<PathBuf>,
+//         normal_map: HashMap<String, Vec<String>>,
+//         #[config(ty = "_<_, Struct>")]
+//         path_map: HashMap<PathBuf, NestedStruct>,
+//
+//         vec: Vec<isize>,
+//         #[config(ty = "_<Struct>")]
+//         vec_nested: Vec<NestedStruct>,
+//
+//         #[config(ty = "Struct")]
+//         nested: NestedStruct,
+//         #[config(ty = "_<Struct>")]
+//         nested_option: Option<NestedStruct>,
+//
+//         #[config(ty = "Enum")]
+//         test_enum: HelloEnum,
+//
+//         #[config(ty = "_<Enum>")]
+//         test_enum_option: Option<HelloEnum>,
+//
+//         wrapper: Arc<String>,
+//     }
+//
+//
+//
+//     #[derive(Debug, Serialize, ConfigEnum, PartialEq, Clone)]
+//     enum HelloEnum {
+//         Unit,
+//         #[config(ty = "Struct")]
+//         Struct(NestedStruct),
+//         With(String),
+//     }
+//
+//
+//     #[derive(Serialize, Debug, Config, PartialEq, Clone)]
+//     struct NestedStruct {
+//         x: isize,
+//     }
+//
+//     let mut map = HashMap::new();
+//     map.insert("Hello".to_string(), vec!["hello again".to_string()]);
+//     let mut map2 = HashMap::new();
+//     map2.insert(PathBuf::from("Hello"), NestedStruct {x: 42});
+//
+//     let init = Hello {
+//         bool: true,
+//         bool_option: Some(false),
+//         int: -10,
+//         int_option: None,
+//         str: "".to_string(),
+//         normal_map: map,
+//         path_map: map2,
+//         vec: vec![],
+//         path: PathBuf::from("C:\\msys64"),
+//         nested_option: None,
+//         test_enum: HelloEnum::Struct(NestedStruct {x: 88}),
+//         test_enum_option: None,
+//         wrapper: Arc::new("efg".to_string()),
+//         str_option: None,
+//         path_option: Some(PathBuf::from("C:\\msys64")),
+//         vec_nested: vec![],
+//         nested: NestedStruct { x: 400 }
+//     };
+//
+//     let init2 = init.clone();
+//
+//     let x = ron::to_string(&init).unwrap();
+//     println!("{}", &x);
+//     let y: Hello = ron::from_str(&x).unwrap();
+//     dbg!(&y);
+//     assert_eq!(&init, &y);
+//
+// }

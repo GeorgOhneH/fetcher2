@@ -14,9 +14,9 @@ use druid::{
 
 use crate::widgets::header::{Header, HeaderConstrains};
 use crate::widgets::tree::opener::Opener;
+use crate::widgets::tree::NodeIndex;
 use druid_widget_nursery::selectors;
 use std::process::id;
-use crate::widgets::tree::NodeIndex;
 
 selectors! {
     /// Notification to send from the widget that requires removal

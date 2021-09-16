@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{InvalidError, State};
 use druid::commands::OPEN_FILE;
 use druid::im::Vector;
 use druid::widget::{Button, Flex, Label, Maybe, TextBox};
@@ -79,6 +79,18 @@ impl CPath {
 
     pub fn get(&self) -> Option<&PathBuf> {
         Option::from(&self.value)
+    }
+
+    pub fn set_raw<T>(&mut self, value: Option<T>) -> Result<(), InvalidError>
+    where
+        PathBuf: From<T>,
+    {
+        if let Some(value) = value {
+            self.set(value)
+        } else {
+            self.value = None;
+            Ok(())
+        }
     }
 
     pub fn set<T>(&mut self, path: T) -> Result<(), InvalidError>

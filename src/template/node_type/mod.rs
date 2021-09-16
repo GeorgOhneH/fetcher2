@@ -1,31 +1,29 @@
-use crate::error::{Result};
+use crate::error::Result;
 use crate::session::Session;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
 use serde::Serialize;
 
 pub mod folder;
 pub mod site;
-mod utils;
 pub mod site_data;
 pub mod site_edit_data;
+mod utils;
 
 use crate::settings::DownloadSettings;
 pub use crate::template::node_type::folder::Folder;
+use crate::template::node_type::folder::{FolderData, FolderEditData};
 pub use crate::template::node_type::site::Mode;
 pub use crate::template::node_type::site::Site;
 pub use crate::template::node_type::site::SiteStorage;
 pub use crate::template::node_type::site::{DownloadArgs, Extensions};
-use std::sync::Arc;
-use druid::Data;
-use std::path::PathBuf;
-use crate::template::node_type::folder::{FolderData, FolderEditData};
-use crate::template::node_type::site_data::SiteData;
+use crate::template::node_type::site_data::{SiteData, SiteState};
 use crate::template::node_type::site_edit_data::SiteEditData;
 use crate::template::nodes::node::MetaData;
+use druid::Data;
+use std::path::PathBuf;
+use std::sync::Arc;
 
-
-#[derive(Config, Serialize, Debug, Clone)]
+#[derive(ConfigEnum, Serialize, Debug, Clone)]
 pub enum NodeType {
     #[config(ty = "Struct")]
     Folder(Folder),
@@ -57,10 +55,7 @@ impl NodeType {
             NodeType::Site(site) => NodeTypeEditKindData::Site(site.widget_edit_data()),
             NodeType::Folder(folder) => NodeTypeEditKindData::Folder(folder.widget_edit_data()),
         };
-        NodeTypeEditData {
-            kind,
-            meta_data,
-        }
+        NodeTypeEditData { kind, meta_data }
     }
 }
 
@@ -102,8 +97,21 @@ impl NodeTypeData {
             Self::Site(site) => site.name(),
         }
     }
-}
 
+    pub fn is_finished(&self) -> bool {
+        match self {
+            Self::Folder(_) => true,
+            Self::Site(site) => site.state.run == 0,
+        }
+    }
+
+    pub fn reset_state(&mut self) {
+        match self {
+            Self::Folder(_) => (),
+            Self::Site(site) => site.state = SiteState::new(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct NodeTypeEditData {
@@ -120,8 +128,7 @@ impl NodeTypeEditData {
     }
 }
 
-
-#[derive(Debug, Clone, Data, Config)]
+#[derive(Debug, Clone, Data, ConfigEnum)]
 pub enum NodeTypeEditKindData {
     #[config(ty = "Struct")]
     Folder(FolderEditData),

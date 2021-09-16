@@ -1,10 +1,7 @@
 use proc_macro2::TokenStream;
 
-
 use quote::quote;
-use syn::{
-    self, punctuated::Punctuated, token::Comma, Field, LitStr,
-};
+use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
 
 use crate::config_type::{parse_type, ConfigType};
 use crate::update_app::utils::gen_set;
@@ -24,7 +21,7 @@ fn gen_setter(fields: &Punctuated<Field, Comma>) -> TokenStream {
         .filter_map(|field| {
             let typ = parse_type(&field.ty, &field.attrs);
             if let ConfigType::Skip(_) = typ {
-                return None
+                return None;
             }
 
             let field_name = field.ident.as_ref().expect("Unreachable");

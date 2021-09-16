@@ -4,7 +4,7 @@ use crate::site_modules::minimal::Minimal;
 use crate::task::Task;
 use async_trait::async_trait;
 use config::Config;
-use config_derive::Config;
+use config::ConfigEnum;
 use enum_dispatch::enum_dispatch;
 use fetcher2_macro::{login_locks, LoginLock};
 use serde::Serialize;
@@ -22,7 +22,7 @@ use tokio::sync::mpsc::Sender;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[derive(Config, Serialize, Debug, LoginLock, Data, Clone, Display)]
+#[derive(ConfigEnum, Serialize, Debug, LoginLock, Data, Clone, Display)]
 pub enum Module {
     #[config(ty = "Struct")]
     Minimal(Minimal),

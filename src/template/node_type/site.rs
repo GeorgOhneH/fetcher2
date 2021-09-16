@@ -6,7 +6,6 @@ use crate::task::Task;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
 use enum_dispatch::enum_dispatch;
 use futures::{
     future::{Fuse, FusedFuture, FutureExt},
@@ -268,6 +267,8 @@ impl Site {
         }
 
         let file_checksum = String::from_utf8_lossy(&hasher.finalize()[..]).into_owned();
+        let current_file_checksum = Self::compute_file_checksum(temp_path.as_path()).await?;
+        assert_eq!(current_file_checksum, file_checksum); // TODO remove later
         let etag = response
             .headers()
             .get("ETag")
@@ -276,8 +277,10 @@ impl Site {
 
         if action == Action::Replace {
             if let Some(mut file_data) = self.storage.files.get_mut(&final_path) {
+                dbg!(&file_data.file_checksum, &file_checksum);
                 if file_data.file_checksum == file_checksum {
                     file_data.etag = etag;
+                    file_data.task_checksum = task_checksum;
                     return Ok(TaskMsg::new(final_path, MsgKind::FileChecksumSame));
                 }
             } else {
@@ -288,12 +291,13 @@ impl Site {
                         let file_data = entry.get_mut();
                         if file_data.file_checksum == file_checksum {
                             file_data.etag = etag;
+                            file_data.task_checksum = task_checksum;
                             return Ok(TaskMsg::new(final_path, MsgKind::FileChecksumSame));
                         }
                     }
                     Entry::Vacant(entry) => {
                         if current_file_checksum == file_checksum {
-                            let mut data = FileData::new(file_checksum, etag, task_checksum);
+                            let data = FileData::new(file_checksum, etag, task_checksum);
                             entry.insert(data);
                             return Ok(TaskMsg::new(final_path, MsgKind::FileChecksumSame));
                         }
@@ -424,7 +428,7 @@ impl TaskMsg {
     }
 }
 
-#[derive(Config, Serialize, Debug, Clone, Data, PartialEq)]
+#[derive(ConfigEnum, Serialize, Debug, Clone, Data, PartialEq)]
 pub enum MsgKind {
     AddedFile,
     ReplacedFile(#[data(same_fn = "PartialEq::eq")] PathBuf),
@@ -464,7 +468,7 @@ impl Extensions {
     }
 }
 
-#[derive(Config, Serialize, Debug, Clone, Data, PartialEq)]
+#[derive(ConfigEnum, Serialize, Debug, Clone, Data, PartialEq)]
 pub enum Mode {
     Forbidden,
     Allowed,

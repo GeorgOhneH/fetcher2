@@ -1,13 +1,10 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 
-
 use quote::quote;
-use syn::{
-    self, Field, LitStr,
-};
+use syn::{self, Field, LitStr};
 
-use crate::config_type::{ConfigHashType, ConfigType};
+use crate::config_type::{ConfigHashType, ConfigType, ConfigWrapperType};
 use syn::spanned::Spanned;
 
 pub fn gen_set(
@@ -51,7 +48,10 @@ pub fn gen_set(
                 ::config::CType::Integer(ref mut cint) => {
                     match #set_arg {
                         Some(int) => cint.set(int),
-                        None => cint.unset(),
+                        None => {
+                            cint.unset();
+                            Ok(())
+                        }
                     }
                 },
                 _ => panic!("This should never happen"),
@@ -96,12 +96,12 @@ pub fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
-        ConfigType::Wrapper(_, inner_ty, name) => {
+        ConfigType::Wrapper(_, inner_ty, wrapper_ty) => {
             let inner_setter = gen_set(inner_ty, field, quote! {inner}, quote! {value});
-            let unwrap_value = if name == "Arc" {
-                quote! {Arc::try_unwrap(#set_arg).unwrap()}
-            } else {
-                quote! {#set_arg.into_inner().unwrap()}
+            let unwrap_value = match wrapper_ty {
+                ConfigWrapperType::Arc => quote! {Arc::try_unwrap(#set_arg).unwrap()},
+                ConfigWrapperType::Mutex => quote! {#set_arg.into_inner().unwrap()},
+                ConfigWrapperType::RwLock => quote! {#set_arg.into_inner().unwrap()},
             };
             quote! {{
                 match #match_arg {
@@ -228,7 +228,7 @@ pub fn gen_set(
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
         ConfigType::Skip(_) => abort!(field.span(), "Skip shouldn't be a possible value"),
     }
 }

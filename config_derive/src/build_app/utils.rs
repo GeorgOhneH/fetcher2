@@ -1,4 +1,4 @@
-use crate::config_attr::{ConfigAttr};
+use crate::config_attr::ConfigAttr;
 use proc_macro2::{Span, TokenStream};
 
 use proc_macro_error::abort;
@@ -6,11 +6,14 @@ use quote::{quote, quote_spanned};
 
 use syn::LitStr;
 
-
 use crate::config_type::{ConfigHashType, ConfigType};
 
-
-pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span, name: Option<&LitStr>) -> TokenStream {
+pub fn gen_type(
+    typ: &ConfigType,
+    config_attrs: &[ConfigAttr],
+    span: Span,
+    name: Option<&LitStr>,
+) -> TokenStream {
     let args = attrs_to_sub_args(config_attrs);
     let gui_fn = if let Some(name) = name {
         quote! {.name(#name.to_string())}
@@ -61,8 +64,9 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span, name:
                 )
             }
         }
-        ConfigType::Wrapper(_, inner_ty, wrapper_name) => {
+        ConfigType::Wrapper(path, inner_ty, wrapper_ty) => {
             let inner = gen_type(inner_ty, config_attrs, span, name);
+            let wrapper_name = path.segments[0].ident.to_owned();
             quote_spanned! {span=>
                 ::config::CType::Wrapper(Box::new(
                     ::config::CWrapperBuilder::new(#inner, ::config::CWrapperKind::#wrapper_name)
@@ -113,12 +117,16 @@ pub fn gen_type(typ: &ConfigType, config_attrs: &[ConfigAttr], span: Span, name:
                     .build()
                 )
             }
-        },
+        }
         ConfigType::Skip(_) => abort!(span, "Skip shouldn't be a possible value"),
     }
 }
 
-pub fn gen_hash_type(typ: &ConfigHashType, _config_attrs: &[ConfigAttr], span: Span) -> TokenStream {
+pub fn gen_hash_type(
+    typ: &ConfigHashType,
+    _config_attrs: &[ConfigAttr],
+    span: Span,
+) -> TokenStream {
     match typ {
         ConfigHashType::String => quote_spanned! {span=>
             ::config::HashKey::String("".to_owned())

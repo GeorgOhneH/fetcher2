@@ -6,7 +6,6 @@ use crate::task::Task;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
 use enum_dispatch::enum_dispatch;
 use futures::{
     future::{Fuse, FusedFuture, FutureExt},
@@ -30,7 +29,7 @@ use std::sync::{Mutex, RwLock};
 use tokio::join;
 
 use crate::template::communication::Communication;
-use crate::template::node_type::site::{TaskMsg, MsgKind};
+use crate::template::node_type::site::{MsgKind, TaskMsg};
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::node_type::Site;
 use crate::template::nodes::node::Status;
@@ -83,6 +82,15 @@ pub enum SiteEvent {
     Login(LoginEvent),
     UrlFetch(UrlFetchEvent),
     Download(DownloadEvent),
+}
+
+impl SiteEvent {
+    pub fn is_start(&self) -> bool {
+        match self {
+            Self::Run(RunEvent::Start) => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<RunEvent> for SiteEvent {
@@ -223,6 +231,13 @@ impl SiteState {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.run = 0;
+        self.login.reset();
+        self.fetch.reset();
+        self.download.reset();
+    }
+
     pub fn update(&mut self, event: SiteEvent, history: &mut Vector<TaskMsg>) {
         match event {
             SiteEvent::Run(run_event) => match run_event {
@@ -232,6 +247,14 @@ impl SiteState {
             SiteEvent::Login(login_event) => self.login.update(login_event),
             SiteEvent::UrlFetch(fetch_event) => self.fetch.update(fetch_event),
             SiteEvent::Download(down_event) => self.download.update(down_event, history),
+        }
+    }
+
+    pub fn run_state(&self) -> CurrentState {
+        if self.run == 0 {
+            CurrentState::Idle
+        } else {
+            CurrentState::Active("Cleaning Up".into())
         }
     }
 }
@@ -250,6 +273,11 @@ impl LoginState {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.count = 0;
+        self.errs.clear();
+    }
+
     pub fn update(&mut self, event: LoginEvent) {
         match event {
             LoginEvent::Start => self.count += 1,
@@ -263,9 +291,9 @@ impl LoginState {
 
     pub fn current_state(&self) -> CurrentState {
         if self.count != 0 {
-            CurrentState::Active
+            CurrentState::Active("Logging in".into())
         } else if self.errs.len() != 0 {
-            CurrentState::Error
+            CurrentState::Error("Error while logging in".into())
         } else {
             CurrentState::Idle
         }
@@ -286,6 +314,11 @@ impl FetchState {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.count = 0;
+        self.errs.clear();
+    }
+
     pub fn update(&mut self, event: UrlFetchEvent) {
         match event {
             UrlFetchEvent::Start => self.count += 1,
@@ -299,9 +332,9 @@ impl FetchState {
 
     pub fn current_state(&self) -> CurrentState {
         if self.count != 0 {
-            CurrentState::Active
+            CurrentState::Active("Fetching Urls".into())
         } else if self.errs.len() != 0 {
-            CurrentState::Error
+            CurrentState::Error("Error while fetching Urls".into())
         } else {
             CurrentState::Idle
         }
@@ -326,6 +359,12 @@ impl DownloadState {
             new_replaced: 0,
             errs: Vector::new(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.count = 0;
+        self.total = 0;
+        self.errs.clear();
     }
 
     pub fn update(&mut self, event: DownloadEvent, history: &mut Vector<TaskMsg>) {
@@ -359,13 +398,15 @@ impl DownloadState {
         }
     }
 
-    pub fn state_string(&self) -> String {
+    pub fn current_state(&self) -> CurrentState {
         if self.count != 0 {
-            format!("Processing {}/{}", self.total - self.count, self.total)
+            CurrentState::Active(
+                format!("Processing {}/{}", self.total - self.count, self.total).into(),
+            )
         } else if self.errs.len() != 0 {
-            "Error while downloading files".to_string()
+            CurrentState::Error("Error while downloading files".into())
         } else {
-            "Idle".to_string()
+            CurrentState::Idle
         }
     }
 }

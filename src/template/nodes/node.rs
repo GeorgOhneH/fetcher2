@@ -2,7 +2,6 @@ use crate::error::Result;
 use crate::session::Session;
 use async_recursion::async_recursion;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
 use druid::im::Vector;
 use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use sha1::Digest;
@@ -179,6 +178,13 @@ impl Node {
         join_all(futures).await;
     }
 
+    pub fn inform_of_cancel(&self) {
+        for child in &self.children {
+            child.inform_of_cancel()
+        }
+        self.comm.send_event(NodeEvent::Canceled)
+    }
+
     pub fn widget_data(&self) -> NodeData {
         let children: Vector<_> = self
             .children
@@ -214,6 +220,7 @@ impl Node {
 pub enum NodeEvent {
     Path(PathEvent),
     Site(SiteEvent),
+    Canceled,
 }
 
 impl From<PathEvent> for NodeEvent {
@@ -240,6 +247,12 @@ pub enum PathEvent {
 }
 
 impl PathEvent {
+    pub fn is_start(&self) -> bool {
+        match self {
+            Self::Start | Self::Cached(_) => true,
+            _ => false,
+        }
+    }
     pub async fn wrapper(
         inner_fn: impl Future<Output = Result<PathBuf>>,
         comm: &Communication,

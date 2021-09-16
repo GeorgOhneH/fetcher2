@@ -13,6 +13,12 @@ pub enum ConfigHashType {
     Path,
 }
 
+pub enum ConfigWrapperType {
+    Mutex,
+    RwLock,
+    Arc,
+}
+
 pub enum ConfigType {
     String(Path),
     OptionString(Path),
@@ -28,7 +34,7 @@ pub enum ConfigType {
     CheckableStruct(Path), // aka OptionStruct
     Enum(Path),
     OptionEnum(Path),
-    Wrapper(Path, Box<ConfigType>, Ident),
+    Wrapper(Path, Box<ConfigType>, ConfigWrapperType),
     Skip(Expr),
 }
 
@@ -125,31 +131,19 @@ fn _parse_type(ty: &Type, type_annots: Option<TypeAnnotations>) -> ConfigType {
                 let inner_type_annot =
                     type_annots.and_then(|type_annots| type_annots.into_inner_1());
                 let inner_ty = _parse_type(inner, inner_type_annot);
-                ConfigType::Wrapper(
-                    path.clone(),
-                    Box::new(inner_ty),
-                    path.segments[0].ident.to_owned(),
-                )
+                ConfigType::Wrapper(path.clone(), Box::new(inner_ty), ConfigWrapperType::Mutex)
             }
             ("RwLock", [inner]) => {
                 let inner_type_annot =
                     type_annots.and_then(|type_annots| type_annots.into_inner_1());
                 let inner_ty = _parse_type(inner, inner_type_annot);
-                ConfigType::Wrapper(
-                    path.clone(),
-                    Box::new(inner_ty),
-                    path.segments[0].ident.to_owned(),
-                )
+                ConfigType::Wrapper(path.clone(), Box::new(inner_ty), ConfigWrapperType::RwLock)
             }
             ("Arc", [inner]) => {
                 let inner_type_annot =
                     type_annots.and_then(|type_annots| type_annots.into_inner_1());
                 let inner_ty = _parse_type(inner, inner_type_annot);
-                ConfigType::Wrapper(
-                    path.clone(),
-                    Box::new(inner_ty),
-                    path.segments[0].ident.to_owned(),
-                )
+                ConfigType::Wrapper(path.clone(), Box::new(inner_ty), ConfigWrapperType::Arc)
             }
             ("String", []) => ConfigType::String(path.clone()),
             ("isize", []) => ConfigType::Integer(path.clone()),

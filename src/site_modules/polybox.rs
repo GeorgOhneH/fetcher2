@@ -5,8 +5,8 @@ use async_trait::async_trait;
 use druid::{Data, LensExt};
 use soup::prelude::*;
 
+use config::Config;
 use config::ConfigEnum;
-use config_derive::Config;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde::Serialize;
@@ -69,7 +69,7 @@ pub struct Polybox {
     pub mode: Mode,
 }
 
-#[derive(Config, Serialize, Debug, Clone, Data)]
+#[derive(ConfigEnum, Serialize, Debug, Clone, Data)]
 pub enum Mode {
     Shared(Option<String>),
     Private,

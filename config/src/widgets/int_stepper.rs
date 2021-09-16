@@ -264,13 +264,25 @@ impl Widget<Option<isize>> for IntStepper {
         }
     }
 
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, _data: &Option<isize>, _env: &Env) {
+    fn lifecycle(
+        &mut self,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        _data: &Option<isize>,
+        _env: &Env,
+    ) {
         if let LifeCycle::DisabledChanged(_) = event {
             ctx.request_paint();
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &Option<isize>, data: &Option<isize>, _env: &Env) {
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        old_data: &Option<isize>,
+        data: &Option<isize>,
+        _env: &Env,
+    ) {
         if *data != *old_data {
             ctx.request_paint();
         }

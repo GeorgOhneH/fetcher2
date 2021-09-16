@@ -5,7 +5,6 @@ use crate::task::Task;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
 use enum_dispatch::enum_dispatch;
 use lazy_static::lazy_static;
 use regex::Regex;

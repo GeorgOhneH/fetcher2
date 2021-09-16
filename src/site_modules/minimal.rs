@@ -3,7 +3,7 @@ use crate::session::Session;
 use crate::task::{Task, TaskBuilder};
 use async_trait::async_trait;
 
-use config_derive::Config;
+use config::Config;
 use serde::Serialize;
 use std::path::PathBuf;
 use tokio::sync::mpsc::Sender;
@@ -11,11 +11,11 @@ use tokio::sync::mpsc::Sender;
 use crate::settings::DownloadSettings;
 
 use crate::site_modules::module::ModuleExt;
+use druid::Data;
 use futures::stream::StreamExt;
 use std::sync::Arc;
-use url::Url;
-use druid::Data;
 use std::time::Duration;
+use url::Url;
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Minimal {

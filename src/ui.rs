@@ -1,7 +1,6 @@
 use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use config_derive::Config;
 use futures::StreamExt;
 use log::{debug, error, info, log_enabled, Level};
 use serde::Serialize;
@@ -144,7 +143,7 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
         base = base.entry(
-            Menu::new("Hello")
+            Menu::new("File")
                 .entry(menu::sys::win::file::new())
                 .entry(menu::sys::win::file::open())
                 .entry(open_recent)
@@ -163,8 +162,7 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
         );
     }
 
-    // base.rebuild_on(|old_data, data, env| old_data.recent_templates != data.recent_templates)
-    base
+    base.rebuild_on(|old_data, data, env| old_data.recent_templates != data.recent_templates)
 }
 pub fn build_ui() -> impl Widget<AppData> {
     Flex::column()

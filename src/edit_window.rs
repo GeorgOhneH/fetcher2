@@ -1,4 +1,7 @@
-use crate::controller::{SubStateController, SubWindowInfo, INIT_EDIT_WINDOW_STATE, NEW_WIN_INFO, SAVE_EDIT_WINDOW_STATE, MSG_THREAD, Msg};
+use crate::controller::{
+    Msg, SubStateController, SubWindowInfo, INIT_EDIT_WINDOW_STATE, MSG_THREAD, NEW_WIN_INFO,
+    SAVE_EDIT_WINDOW_STATE,
+};
 use crate::cstruct_window::{c_option_window, APPLY};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
@@ -21,10 +24,10 @@ use druid::{
 use druid::{InternalEvent, LensExt};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
 use druid_widget_nursery::selectors;
+use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 
 selectors! {
     SAVE_EDIT,

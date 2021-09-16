@@ -2,13 +2,12 @@ use crate::error::Result;
 use crate::session::Session;
 use async_recursion::async_recursion;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
 use druid::im::Vector;
 use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use sha1::Digest;
 use std::path::PathBuf;
 
-use futures::future::{try_join_all, join_all};
+use futures::future::{join_all, try_join_all};
 
 use crate::settings::DownloadSettings;
 use futures::prelude::*;
@@ -19,16 +18,15 @@ use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root_data::RootNodeData;
-use std::collections::HashSet;
-use crate::widgets::tree::NodeIndex;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
+use crate::widgets::tree::NodeIndex;
+use std::collections::HashSet;
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawRootNode {
     #[config(ty = "Vec<Struct>")]
     pub children: Vec<RawNode>,
 }
-
 
 impl RawRootNode {
     pub fn transform(self, comm: RawCommunication) -> RootNode {
@@ -51,24 +49,16 @@ pub struct RootNode {
 impl RootNode {
     pub fn new() -> Self {
         Self {
-            children: Vec::new()
+            children: Vec::new(),
         }
     }
     pub fn raw(self) -> RawRootNode {
         RawRootNode {
-            children: self
-                .children
-                .into_iter()
-                .map(|node| node.raw())
-                .collect(),
+            children: self.children.into_iter().map(|node| node.raw()).collect(),
         }
     }
 
-    pub async fn prepare(
-        &mut self,
-        session: &Session,
-        dsettings: Arc<DownloadSettings>,
-    ) -> Status {
+    pub async fn prepare(&mut self, session: &Session, dsettings: Arc<DownloadSettings>) -> Status {
         let futures: Vec<_> = self
             .children
             .iter_mut()
@@ -76,7 +66,11 @@ impl RootNode {
             .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
             .collect();
 
-        if join_all(futures).await.iter().any(|r| r == &Status::Failure) {
+        if join_all(futures)
+            .await
+            .iter()
+            .any(|r| r == &Status::Failure)
+        {
             Status::Failure
         } else {
             Status::Success
@@ -99,6 +93,12 @@ impl RootNode {
         join_all(futures).await;
     }
 
+    pub fn inform_of_cancel(&self) {
+        for child in &self.children {
+            child.inform_of_cancel()
+        }
+    }
+
     pub fn widget_data(&self) -> RootNodeData {
         let children: Vector<_> = self
             .children
@@ -106,7 +106,10 @@ impl RootNode {
             .map(|node| node.widget_data())
             .collect();
 
-        RootNodeData { children, selected: Vector::new() }
+        RootNodeData {
+            children,
+            selected: Vector::new(),
+        }
     }
 
     pub fn widget_edit_data(&self) -> RootNodeEditData {
@@ -116,6 +119,9 @@ impl RootNode {
             .map(|node| node.widget_edit_data())
             .collect();
 
-        RootNodeEditData { children, selected: Vector::new() }
+        RootNodeEditData {
+            children,
+            selected: Vector::new(),
+        }
     }
 }

@@ -17,10 +17,10 @@ use crate::widgets::tree::node::{
     OpenerFactory, TreeItemFactory, TreeNode, TreeNodeWidget, TREE_CHILD_REMOVE_INTERNAL,
     TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
 };
+use crate::widgets::tree::NodeIndex;
 use druid_widget_nursery::selectors;
 use std::process::id;
 use std::time::Instant;
-use crate::widgets::tree::NodeIndex;
 
 pub trait TreeNodeRoot<T: TreeNode>
 where

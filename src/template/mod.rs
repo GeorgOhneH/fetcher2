@@ -100,20 +100,6 @@ impl Template {
                     children: vec![].into(),
                     meta_data: MetaData {},
                 },
-                // Node {
-                //     ty: NodeType::Site(Arc::new(Site {
-                //         module: Module::Polybox(Polybox {
-                //             id: "sYrHnA3ZBbuDcip".to_owned(),
-                //             mode: PolyboxMode::Shared(None),
-                //         }),
-                //         storage: SiteStorage {
-                //             files: dashmap::DashMap::new(),
-                //         },
-                //         download_args: None,
-                //     })),
-                //     children: vec![],
-                //     meta_data: MetaData {},
-                // },
             ]
             .into(),
         };
@@ -179,9 +165,13 @@ impl Template {
         self.root.run(&session, dsettings, Some(indexes)).await
     }
 
+    pub fn inform_of_cancel(&self) {
+        self.root.inform_of_cancel()
+    }
+
     pub async fn save(&self) -> Result<()> {
         if let Some(save_path) = &self.save_path {
-            let template_str = serde_yaml::to_string(&self.root.clone().raw())?;
+            let template_str = ron::to_string(&self.root.clone().raw())?;
 
             let mut f = fs::OpenOptions::new()
                 .write(true)

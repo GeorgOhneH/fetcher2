@@ -1,4 +1,3 @@
-
 use crate::template::widget_data::TemplateData;
 use config::State;
 use config::{CStruct, Config, ConfigEnum};
@@ -29,8 +28,8 @@ use std::pin::Pin;
 use tokio::time;
 use tokio::time::Duration;
 
-use druid_widget_nursery::selectors;
 use druid::commands::CLOSE_WINDOW;
+use druid_widget_nursery::selectors;
 
 selectors! {
     APPLY

@@ -2,9 +2,10 @@ use crate::{CType, ConfigError, State};
 
 use druid::im::Vector;
 use druid::widget::{Button, Controller, Flex, ListIter};
-use druid::{im, Env, Event, EventCtx, Selector, Widget, SingleUse, LifeCycleCtx, LifeCycle, UpdateCtx};
+use druid::{
+    im, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Selector, SingleUse, UpdateCtx, Widget,
+};
 use druid::{lens, Data, Lens, LensExt, WidgetExt};
-use serde_yaml::Sequence;
 use std::ops::Deref;
 
 #[derive(Debug, Clone, Data, Lens)]
@@ -75,19 +76,6 @@ impl CVec {
 
     pub fn state(&self) -> State {
         self.inner.iter().map(|item| item.ty.state()).collect()
-    }
-
-    pub(crate) fn consume_sequence(&mut self, seq: Sequence) -> Result<(), ConfigError> {
-        self.inner.clear();
-        let mut result = Ok(());
-        for value in seq {
-            let mut template = self.get_template();
-            match template.consume_value(value) {
-                Ok(()) => self.push(template),
-                Err(err) => result = Err(err),
-            }
-        }
-        result
     }
 
     pub fn widget() -> impl Widget<Self> {
@@ -173,4 +161,3 @@ impl CItem {
         Self { index: idx, ty }
     }
 }
-

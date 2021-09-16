@@ -1,12 +1,10 @@
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
 use config::Config;
-use config_derive::Config;
+use druid::im::Vector;
 use druid::Data;
 use serde::Serialize;
 use std::path::PathBuf;
-use druid::im::Vector;
-
 
 #[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct Test {

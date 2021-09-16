@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![feature(backtrace)]
 #![feature(int_roundings)]
+#![feature(box_patterns)]
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -11,19 +12,12 @@ mod widgets;
 
 pub use crate::ctypes::*;
 pub use crate::errors::*;
+pub use config_derive::{Config, ConfigEnum};
 
 pub trait Config: Sized + Send + Debug {
     fn parse_from_app(app: &CStruct) -> Result<Self, RequiredError>;
     fn builder() -> CStructBuilder;
     fn update_app(self, app: &mut CStruct) -> Result<(), InvalidError>;
-
-    fn load_from_str(data: &str) -> Result<Self, ConfigError> {
-        let mut app = Self::builder().build();
-        app.load_from_string(data)?;
-        let result = Self::parse_from_app(&app)?;
-        Ok(result)
-    }
-
     fn default() -> Result<Self, RequiredError> {
         Self::parse_from_app(&Self::builder().build())
     }

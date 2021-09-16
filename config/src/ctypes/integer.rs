@@ -1,8 +1,8 @@
-use crate::*;
-use druid::text::{Formatter, Selection, Validation, ValidationError};
-use druid::widget::{Flex, Label, TextBox, Maybe, Stepper};
-use druid::{Data, Lens, Widget, WidgetExt, TextAlignment};
 use crate::widgets::IntStepper;
+use crate::{InvalidError, State};
+use druid::text::{Formatter, Selection, Validation, ValidationError};
+use druid::widget::{Flex, Label, Maybe, Stepper, TextBox};
+use druid::{Data, Lens, TextAlignment, Widget, WidgetExt};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CInteger {
@@ -29,15 +29,21 @@ impl CInteger {
         if self.min <= *value && *value <= self.max {
             Ok(())
         } else {
-            Err(InvalidError::new(format!(
-                "Value must be between {} and {}",
-                self.min, self.max
-            )))
+            Err(InvalidError::new("Value must be between in bounds"))
         }
     }
 
     pub fn get(&self) -> Option<&isize> {
         Option::from(&self.value)
+    }
+
+    pub fn set_raw(&mut self, value: Option<isize>) -> Result<(), InvalidError> {
+        if let Some(value) = value {
+            self.set(value)
+        } else {
+            self.value = None;
+            Ok(())
+        }
     }
 
     pub fn set(&mut self, value: isize) -> Result<(), InvalidError> {
@@ -58,11 +64,11 @@ impl CInteger {
 
     pub fn widget() -> impl Widget<Self> {
         Flex::row()
-            .with_child(Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":")).lens(Self::name))
             .with_child(
-                IntStepper::new()
-                    .lens(Self::value),
+                Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":"))
+                    .lens(Self::name),
             )
+            .with_child(IntStepper::new().lens(Self::value))
     }
 }
 

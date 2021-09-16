@@ -11,14 +11,14 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::template::node_type::site::{TaskMsg};
+use crate::template::node_type::site::TaskMsg;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::{Template};
+use crate::template::Template;
+use crate::widgets::tree::NodeIndex;
 use crate::{Result, TError};
 use druid_widget_nursery::{selectors, Wedge};
 use std::path::{Path, PathBuf};
-use crate::widgets::tree::{NodeIndex};
 
 // TODO: use tokens for templates to make sure it will work correctly
 pub const NODE_EVENT: Selector<SingleUse<(NodeEvent, NodeIndex)>> =
@@ -45,7 +45,6 @@ impl Debug for RawCommunication {
     }
 }
 
-
 #[derive(Clone)]
 pub struct Communication {
     sink: ExtEventSink,
@@ -54,12 +53,16 @@ pub struct Communication {
 
 impl Communication {
     pub fn new(sink: ExtEventSink, idx: NodeIndex) -> Self {
-        Self { sink, idx, }
+        Self { sink, idx }
     }
 
     pub fn send_event<T: Into<NodeEvent>>(&self, event: T) {
         self.sink
-            .submit_command(NODE_EVENT, SingleUse::new((event.into(), self.idx.clone())), Target::Global)
+            .submit_command(
+                NODE_EVENT,
+                SingleUse::new((event.into(), self.idx.clone())),
+                Target::Global,
+            )
             .expect("Main Thread existed before this one");
     }
 }

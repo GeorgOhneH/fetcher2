@@ -29,7 +29,6 @@ use crate::settings::DownloadSettings;
 use crate::template::nodes::node::Status;
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use config_derive::Config;
 use druid_widget_nursery::selectors;
 use futures::future::{AbortHandle, Abortable, Aborted};
 use futures::prelude::stream::FuturesUnordered;
@@ -84,7 +83,6 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
     let mut futs = FuturesUnordered::new();
     let mut abort_handles = Vec::new();
 
-
     let mut time = Instant::now();
     loop {
         tokio::select! {
@@ -110,7 +108,9 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
                         );
                     },
                     Msg::Cancel => {
-                        cancel_all(&mut abort_handles)
+                        cancel_all(&mut abort_handles);
+                        let fut = async { template.read().await.inform_of_cancel() };
+                        add_new_future(fut, &mut futs, &mut abort_handles);
                     },
                     Msg::NewSettings(new_settings) => {
                         dsettings = Some(Arc::new(new_settings));
@@ -148,6 +148,7 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
         }
     }
 
+    while let Some(x) = futs.next().await {}
     // We use write so we are sure the other operations are finished
     template.write().await.save().await.unwrap();
 
@@ -216,6 +217,7 @@ async fn replace_template(
     dsettings: Option<Arc<DownloadSettings>>,
     sink: ExtEventSink,
 ) {
+    old_template.read().await.inform_of_cancel();
     let mut wl = old_template.write().await;
 
     sink.submit_command(

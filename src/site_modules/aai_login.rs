@@ -1,4 +1,4 @@
-use crate::error::{TErrorFast, Result, TErrorKind};
+use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::site_modules::utils::unescape;
@@ -69,7 +69,9 @@ pub async fn aai_login<T: Serialize + ?Sized>(
         text
     };
 
-    let sam_url = Url::parse(&unescape(&ACTION_URL_RE.captures(&sam_text).wrong_format()?[1]))?;
+    let sam_url = Url::parse(&unescape(
+        &ACTION_URL_RE.captures(&sam_text).wrong_format()?[1],
+    ))?;
     let ssm = unescape(&RELAY_STATE_RE.captures(&sam_text).wrong_format()?[1]);
     let sam = unescape(&SAMLRESPONSE_RE.captures(&sam_text).wrong_format()?[1]);
 

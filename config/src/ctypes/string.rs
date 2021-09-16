@@ -1,4 +1,4 @@
-use crate::*;
+use crate::State;
 use druid::widget::{Flex, Label, Maybe, TextBox};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LensExt, LifeCycle, LifeCycleCtx,
@@ -21,6 +21,14 @@ impl CString {
 
     pub fn get(&self) -> Option<&String> {
         Option::from(&self.value)
+    }
+
+    pub fn set_raw(&mut self, value: Option<String>) {
+        if let Some(value) = value {
+            self.set(value)
+        } else {
+            self.value = None;
+        }
     }
 
     pub fn set(&mut self, value: String) {

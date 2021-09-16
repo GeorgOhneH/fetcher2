@@ -12,6 +12,7 @@ use druid::{
 };
 
 use crate::background_thread::NEW_TEMPLATE;
+use crate::controller::{Msg, MSG_THREAD};
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
@@ -25,13 +26,12 @@ use druid_widget_nursery::{selectors, Wedge};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use crate::controller::{MSG_THREAD, Msg};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {
     pub root: RootNodeData,
     #[data(eq)]
-    pub save_path: Option<PathBuf>
+    pub save_path: Option<PathBuf>,
 }
 
 impl TemplateData {

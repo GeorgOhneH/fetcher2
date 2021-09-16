@@ -353,7 +353,7 @@ impl<T: Data, const N: usize> Widget<T> for Header<T, N> {
         };
 
         if N > 0 {
-            let last_index = N-1;
+            let last_index = N - 1;
             let mut total_size = 0.;
             for (i, w_size) in self.wanted_size[..last_index].iter().enumerate() {
                 let size = w_size.max(self.min_sizes[i]);

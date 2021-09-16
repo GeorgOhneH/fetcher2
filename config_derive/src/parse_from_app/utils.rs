@@ -3,17 +3,20 @@ use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 
 use quote::quote;
-use syn::{
-    self, LitStr,
-};
+use syn::{self, LitStr};
 
 use crate::config_type::{ConfigHashType, ConfigType};
 
-pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, field_name: &LitStr) -> TokenStream {
+pub fn gen_arg(
+    typ: &ConfigType,
+    match_arg: TokenStream,
+    span: Span,
+    field_name: &LitStr,
+) -> TokenStream {
     if let ConfigType::Skip(expr) = typ {
         return quote! {
             Ok(#expr)
-        }
+        };
     }
     let option_arg = gen_option_arg(typ, match_arg, span, field_name);
     match &typ {
@@ -41,7 +44,12 @@ pub fn gen_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, field_name:
     }
 }
 
-pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, field_name: &LitStr) -> TokenStream {
+pub fn gen_option_arg(
+    typ: &ConfigType,
+    match_arg: TokenStream,
+    span: Span,
+    field_name: &LitStr,
+) -> TokenStream {
     match typ {
         ConfigType::String(_) | ConfigType::OptionString(_) => quote! {{
             match #match_arg {
@@ -67,14 +75,15 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, fiel
                 _ => panic!("This should never happen"),
             }
         }},
-        ConfigType::Wrapper(_, inner_ty, name) => {
+        ConfigType::Wrapper(path, inner_ty, wrapper_ty) => {
             let inner_token = gen_arg(inner_ty, quote! {inner}, span, field_name);
+            let wrapper_name = path.segments[0].ident.to_owned();
             quote! {{
                 match #match_arg {
                     ::config::CType::Wrapper(cwrapper) => {
                         let inner = cwrapper.inner();
                         let x = #inner_token?;
-                        Ok(#name::new(x))
+                        Ok(#wrapper_name::new(x))
                     },
                     _ => panic!("This should never happen"),
                 }
@@ -160,7 +169,7 @@ pub fn gen_option_arg(typ: &ConfigType, match_arg: TokenStream, span: Span, fiel
                     _ => panic!("This should never happen"),
                 }
             }}
-        },
+        }
         ConfigType::Skip(_) => abort!(span, "Skip shouldn't be a possible value"),
     }
 }

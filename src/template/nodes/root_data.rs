@@ -4,27 +4,26 @@ use std::sync::Arc;
 
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Controller, Label};
 use druid::{theme, WidgetExt, WidgetId};
-use druid::widget::{Label, Controller};
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod, Lens,
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
+    Point, UpdateCtx, Widget, WidgetPod,
 };
 
-use druid_widget_nursery::{selectors, Wedge};
 use crate::template::node_type::NodeTypeData;
-use std::path::PathBuf;
-use druid::im::Vector;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::DataNodeIndex;
-
+use druid::im::Vector;
+use druid_widget_nursery::{selectors, Wedge};
+use std::path::PathBuf;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeData {
     pub children: Vector<NodeData>,
-    pub selected: Vector<DataNodeIndex>
+    pub selected: Vector<DataNodeIndex>,
 }
 
 impl RootNodeData {
@@ -51,7 +50,6 @@ impl RootNodeData {
     }
 }
 
-
 impl TreeNodeRoot<NodeData> for RootNodeData {
     fn children_count(&self) -> usize {
         self.children.len()
@@ -73,4 +71,3 @@ impl TreeNodeRoot<NodeData> for RootNodeData {
         self.children.remove(index);
     }
 }
-

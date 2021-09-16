@@ -1,7 +1,8 @@
 use crate::{CType, ConfigError, State};
-use serde_yaml::Value;
-use druid::{Data, Lens, Widget, WidgetExt};
+
 use druid::widget::Label;
+use druid::{Data, Lens, Widget, WidgetExt};
+use ron::Value;
 
 impl Data for Box<CWrapper> {
     fn same(&self, other: &Self) -> bool {
@@ -36,10 +37,6 @@ impl CWrapper {
 
     pub fn kind(&self) -> &CWrapperKind {
         &self.kind
-    }
-
-    pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
-        self.inner.consume_value(value)
     }
 
     pub fn state(&self) -> State {

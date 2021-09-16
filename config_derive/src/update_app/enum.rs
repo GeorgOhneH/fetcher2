@@ -2,11 +2,9 @@ use proc_macro2::TokenStream;
 
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{
-    self, DataEnum, Fields, FieldsUnnamed, LitStr,
-};
+use syn::{self, DataEnum, Fields, FieldsUnnamed, LitStr};
 
-use crate::config_type::{parse_type};
+use crate::config_type::parse_type;
 use crate::update_app::utils::gen_set;
 
 pub fn gen_enum_update_app_fn(e: &DataEnum) -> TokenStream {

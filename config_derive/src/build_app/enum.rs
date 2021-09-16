@@ -1,15 +1,12 @@
-
 use crate::build_app::utils::gen_type;
-use crate::config_attr::{parse_config_attributes};
-use proc_macro2::{TokenStream};
+use crate::config_attr::parse_config_attributes;
+use proc_macro2::TokenStream;
 
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
-use syn::{
-    self, DataEnum, Fields, FieldsUnnamed, LitStr,
-};
+use syn::{self, DataEnum, Fields, FieldsUnnamed, LitStr};
 
-use crate::config_type::{parse_type};
+use crate::config_type::parse_type;
 use syn::spanned::Spanned;
 
 pub fn gen_enum_build_app_fn(e: &DataEnum) -> TokenStream {
@@ -36,7 +33,7 @@ fn gen_enum_augmentation(e: &DataEnum) -> TokenStream {
             Fields::Unit => {
                 quote! {}
             }
-            _ => abort!(var.fields, "Only Structs are allowed"),
+            _ => abort!(var.fields, "Only Unit and Single Tuple Enums are allowed"),
         };
 
         quote_spanned! {var.span()=>

@@ -12,10 +12,10 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 
-use crate::widgets::header::{Header};
-use druid_widget_nursery::selectors;
-use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::header::Header;
 use crate::widgets::tree::node::{TreeNode, TREE_ACTIVATE_NODE};
+use crate::widgets::tree::root::TreeNodeRoot;
+use druid_widget_nursery::selectors;
 
 /// A tree widget for a collection of items organized in a hierarchical way.
 
@@ -23,25 +23,24 @@ use crate::widgets::tree::node::{TreeNode, TREE_ACTIVATE_NODE};
 // its inner user-defined widget.
 // TODO: Try use a Controller instead of a plain widget.
 pub struct Opener<T>
-    where
-        T: TreeNode,
+where
+    T: TreeNode,
 {
     widget: WidgetPod<T, Box<dyn Widget<T>>>,
 }
 
-
 impl<T: TreeNode> Opener<T> {
     pub fn new(widget: Box<dyn Widget<T>>) -> Self {
         Self {
-            widget: WidgetPod::new(widget)
+            widget: WidgetPod::new(widget),
         }
     }
 }
 
 /// Implementing Widget for the Opener.
 impl<T: TreeNode> Widget<T> for Opener<T>
-    where
-        T: Data,
+where
+    T: Data,
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, _env: &Env) {
         match event {
@@ -85,9 +84,9 @@ impl<T: TreeNode> Widget<T> for Opener<T>
 
 // The default opener if none is passed to the Tree builder.
 pub struct Wedge<T, L>
-    where
-        T: TreeNode,
-        L: Lens<T, bool>,
+where
+    T: TreeNode,
+    L: Lens<T, bool>,
 {
     expand_lens: L,
     phantom: PhantomData<T>,

@@ -55,7 +55,9 @@ fn err_widget(err: TError, title: &str) -> impl Widget<()> {
             Label::new(format!("{:?}", err.kind)).with_line_break_mode(LineBreaking::WordWrap),
         )
         .with_flex_child(
-            Label::new(format!("{}", err.backtrace)).with_line_break_mode(LineBreaking::Overflow).scroll(),
+            Label::new(format!("{}", err.backtrace))
+                .with_line_break_mode(LineBreaking::Overflow)
+                .scroll(),
             1.0,
         )
 }

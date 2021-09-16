@@ -12,7 +12,6 @@ pub trait WidgetExt<T: Data>: Widget<T> + Sized + 'static {
     ) -> ControllerHost<Self, OnCmd<CT, T>> {
         self.controller(OnCmd::new(selector, handler))
     }
-
 }
 
 impl<T: Data, W: Widget<T> + 'static> WidgetExt<T> for W {}

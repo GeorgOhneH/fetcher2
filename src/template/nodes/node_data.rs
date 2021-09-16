@@ -12,6 +12,7 @@ use druid::{
 };
 
 use crate::template::communication::NODE_EVENT;
+use crate::template::node_type::site_data::SiteState;
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
 use crate::template::MetaData;
@@ -21,6 +22,7 @@ use crate::{AppData, TError};
 use druid::im::{HashSet, Vector};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 #[derive(Data, Clone, Debug, Lens)]
@@ -106,32 +108,56 @@ impl NodeData {
     pub fn state_string(&self) -> String {
         match &self.ty {
             NodeTypeData::Folder(_) => "".to_string(),
-            NodeTypeData::Site(site) => match self.state.current_state() {
-                CurrentState::Active => "Calculation Path".to_string(),
-                CurrentState::Error => "Error while calculation Path".to_string(),
-                CurrentState::Idle => match site.state.login.current_state() {
-                    CurrentState::Active => "Logging in".to_string(),
-                    CurrentState::Error => "Error while logging in".to_string(),
-                    CurrentState::Idle => match site.state.fetch.current_state() {
-                        CurrentState::Active => "Fetching Urls".to_string(),
-                        CurrentState::Error => "Error while fetching Urls".to_string(),
-                        CurrentState::Idle => match site.state.run {
-                            0 => site.state.download.state_string(),
-                            _ => "Cleaning Up".to_string(),
-                        },
-                    },
-                },
-            },
+            NodeTypeData::Site(site) => {
+                let order = [
+                    self.state.current_state(),
+                    site.state.login.current_state(),
+                    site.state.fetch.current_state(),
+                    site.state.download.current_state(),
+                    site.state.run_state(),
+                ];
+
+                for state in &order {
+                    if let CurrentState::Error(msg) = state {
+                        return msg.to_string();
+                    }
+                }
+
+                if self.state.canceled {
+                    return "Canceled".to_string();
+                }
+
+                for state in &order {
+                    if let CurrentState::Active(msg) = state {
+                        return msg.to_string();
+                    }
+                }
+                "Idle".to_string()
+            }
         }
     }
 
     pub fn update_node(&mut self, event: NodeEvent) {
         match event {
-            NodeEvent::Path(path_event) => self.state.path.update(path_event, &mut self.path),
+            NodeEvent::Path(path_event) => {
+                if path_event.is_start() {
+                    self.state.canceled = false;
+                    self.state.reset();
+                }
+                self.state.path.update(path_event, &mut self.path)
+            }
             NodeEvent::Site(site_event) => {
                 let site = self.ty.site_mut().unwrap();
-                // TODO history is mut always deep copy
+                if site_event.is_start() {
+                    self.state.canceled = false;
+                    site.state.reset();
+                }
                 site.state.update(site_event, &mut site.history)
+            }
+            NodeEvent::Canceled => {
+                if self.state.path.count != 0 || !self.ty.is_finished() {
+                    self.state.canceled = true;
+                }
             }
         }
     }
@@ -159,32 +185,38 @@ impl TreeNode for NodeData {
     }
 }
 
-pub enum CurrentState {
+pub enum CurrentState<'a> {
     Idle,
-    Active,
-    Error,
+    Active(Cow<'a, str>),
+    Error(Cow<'a, str>),
 }
 
 #[derive(Data, Clone, Debug)]
 pub struct NodeState {
     pub path: PathState,
+    pub canceled: bool,
 }
 
 impl NodeState {
     pub fn new() -> Self {
         Self {
             path: PathState::new(),
+            canceled: false,
         }
     }
 
     pub fn current_state(&self) -> CurrentState {
         if self.path.count != 0 {
-            CurrentState::Active
+            CurrentState::Active("Calculating Path".into())
         } else if self.path.errs.len() != 0 {
-            CurrentState::Error
+            CurrentState::Error("Error while calculating Path".into())
         } else {
             CurrentState::Idle
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.path.reset();
     }
 }
 
@@ -200,6 +232,11 @@ impl PathState {
             count: 0,
             errs: Vector::new(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.count = 0;
+        self.errs.clear();
     }
 
     pub fn update(&mut self, event: PathEvent, path: &mut Option<PathBuf>) {

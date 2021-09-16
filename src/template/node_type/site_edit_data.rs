@@ -3,7 +3,6 @@ use crate::template::node_type::{Site, SiteStorage};
 use crate::template::DownloadArgs;
 use config::Config;
 use config::ConfigEnum;
-use config_derive::Config;
 use druid::Data;
 use std::sync::Arc;
 

@@ -11,17 +11,17 @@ use druid::{
     Point, UpdateCtx, Widget, WidgetPod,
 };
 
+use crate::edit_window::NodePosition;
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{MetaData, RawNode};
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::node_edit_data::NodeEditData;
+use crate::template::nodes::root::RawRootNode;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::DataNodeIndex;
 use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
 use std::path::PathBuf;
-use crate::template::nodes::root::RawRootNode;
-use crate::edit_window::NodePosition;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeEditData {
@@ -37,12 +37,13 @@ impl RootNodeEditData {
         }
     }
 
-
     pub fn raw(self) -> RawRootNode {
-        let children = self.children.into_iter().filter_map(|child| child.raw()).collect();
-        RawRootNode {
-            children,
-        }
+        let children = self
+            .children
+            .into_iter()
+            .filter_map(|child| child.raw())
+            .collect();
+        RawRootNode { children }
     }
 
     pub fn node(&self, idx: &[usize]) -> &NodeEditData {
@@ -65,7 +66,7 @@ impl RootNodeEditData {
         match idx.len() {
             0 => panic!("Can't remove the root node"),
             1 => self.children.remove(idx[0]),
-            _ => self.children[idx[0]].remove(&idx[1..])
+            _ => self.children[idx[0]].remove(&idx[1..]),
         }
     }
 
@@ -80,15 +81,17 @@ impl RootNodeEditData {
     pub fn insert_sibling(&mut self, idx: &[usize], offset: usize) {
         match idx.len() {
             0 => panic!("Can't do this"),
-            1 => self.children.insert(idx[0] + offset, NodeEditData::new(true)),
-            _ => self.children[idx[0]].insert_sibling(&idx[1..], offset)
+            1 => self
+                .children
+                .insert(idx[0] + offset, NodeEditData::new(true)),
+            _ => self.children[idx[0]].insert_sibling(&idx[1..], offset),
         }
     }
 
     pub fn insert_child(&mut self, idx: &[usize]) {
         match idx.len() {
             0 => self.children.push_back(NodeEditData::new(true)),
-            _ => self.children[idx[0]].insert_child(&idx[1..])
+            _ => self.children[idx[0]].insert_child(&idx[1..]),
         }
     }
 }

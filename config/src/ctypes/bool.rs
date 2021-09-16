@@ -1,6 +1,9 @@
-use crate::*;
-use druid::widget::{Checkbox, Switch, Flex};
-use druid::{Data, Lens, LensExt, Widget, WidgetExt, Env, EventCtx, LifeCycle, PaintCtx, BoxConstraints, LifeCycleCtx, Size, LayoutCtx, Event, UpdateCtx, WidgetPod};
+use crate::State;
+use druid::widget::{Checkbox, Flex, Switch};
+use druid::{
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LensExt, LifeCycle, LifeCycleCtx,
+    PaintCtx, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
+};
 
 #[derive(Debug, Clone, Data)]
 pub struct CBool {
@@ -13,11 +16,15 @@ impl CBool {
     fn new() -> Self {
         Self {
             value: false,
-            name: None
+            name: None,
         }
     }
     pub fn get(&self) -> bool {
         self.value
+    }
+
+    pub fn set_option(&mut self, value: Option<bool>) {
+        self.value = value.unwrap_or(false);
     }
 
     pub fn set(&mut self, value: bool) {
@@ -62,13 +69,13 @@ impl CBoolBuilder {
 }
 
 pub struct CBoolWidget {
-    checkbox: Checkbox
+    checkbox: Checkbox,
 }
 
 impl CBoolWidget {
     pub fn new() -> Self {
         Self {
-            checkbox: Checkbox::new("")
+            checkbox: Checkbox::new(""),
         }
     }
 }
@@ -91,7 +98,13 @@ impl Widget<CBool> for CBoolWidget {
         self.checkbox.update(ctx, &old_data.value, &data.value, env)
     }
 
-    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &CBool, env: &Env) -> Size {
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &CBool,
+        env: &Env,
+    ) -> Size {
         self.checkbox.layout(ctx, bc, &data.value, env)
     }
 

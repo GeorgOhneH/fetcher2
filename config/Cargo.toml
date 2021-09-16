@@ -8,7 +8,8 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.8"
+config_derive = { path = "./../config_derive" }
+ron = "0.6"
 lazy_static = "1"
 thiserror = "1.0"
 log = "0.4"

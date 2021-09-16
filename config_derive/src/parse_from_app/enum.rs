@@ -1,13 +1,10 @@
-use proc_macro2::{TokenStream};
+use proc_macro2::TokenStream;
 
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{
-    self, spanned::Spanned, DataEnum, Fields,
-    FieldsUnnamed, LitStr,
-};
+use syn::{self, spanned::Spanned, DataEnum, Fields, FieldsUnnamed, LitStr};
 
-use crate::config_type::{parse_type};
+use crate::config_type::parse_type;
 use crate::parse_from_app::utils::gen_arg;
 
 pub fn gen_enum_parse_fn(e: &DataEnum) -> TokenStream {
@@ -33,7 +30,12 @@ fn gen_carg(e: &DataEnum) -> TokenStream {
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 let field = &unnamed[0];
                 let config_type = parse_type(&field.ty, &var.attrs);
-                let config = gen_arg(&config_type, quote! {carg.get().unwrap()}, field.span(), &name_lit);
+                let config = gen_arg(
+                    &config_type,
+                    quote! {carg.get().unwrap()},
+                    field.span(),
+                    &name_lit,
+                );
                 quote! {
                     #name_lit => {
                         match #config {

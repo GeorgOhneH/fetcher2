@@ -3,9 +3,8 @@ use std::sync::Arc;
 
 use async_recursion::async_recursion;
 use config::{Config, ConfigEnum};
-use config_derive::Config;
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use druid::im::Vector;
+use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use futures::future::try_join_all;
 use futures::prelude::*;
 use serde::Serialize;
@@ -16,10 +15,9 @@ use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::template::node_type::{NodeType, NodeTypeData};
 
-pub mod root;
-pub mod root_data;
 pub mod node;
 pub mod node_data;
 pub mod node_edit_data;
+pub mod root;
+pub mod root_data;
 pub mod root_edit_data;
-

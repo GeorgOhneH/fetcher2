@@ -1,8 +1,6 @@
-use crate::*;
 use druid::widget::{Button, Either, Flex, ListIter, Maybe, ViewSwitcher};
 use druid::{im, LensExt, Widget, WidgetExt, WidgetPod};
 use druid::{Data, Lens};
-use serde_yaml::{Mapping, Value};
 
 use druid::kurbo::BezPath;
 use druid::piet::{FontFamily, ImageFormat, InterpolationMode, Text, TextLayoutBuilder};
@@ -11,6 +9,23 @@ use druid::{
     Affine, AppLauncher, Color, FontDescriptor, LocalizedString, Point, Rect, TextLayout,
     WindowDesc,
 };
+
+use druid::widget::{Click, Container, ControllerHost, DefaultScopePolicy, Scope};
+use druid::{
+    theme, BoxConstraints, Env, Event, EventCtx, Insets, LayoutCtx, LifeCycle, LifeCycleCtx,
+    LinearGradient, PaintCtx, RenderContext, Selector, Size, UnitPoint, UpdateCtx,
+};
+use druid_widget_nursery::dropdown::{Dropdown, DROPDOWN_SHOW};
+use druid_widget_nursery::Wedge;
+use std::marker::PhantomData;
+
+use crate::widgets::drop_select::DropdownSelect;
+use crate::widgets::ListSelect;
+use druid::im::{OrdMap, Vector};
+use druid::keyboard_types::Key;
+use druid::lens::Identity;
+use druid::widget::{Controller, CrossAxisAlignment, Label, LabelText};
+use ron::{Map, Value};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {
@@ -83,21 +98,6 @@ impl CEnum {
                 Ok(&mut self.inner[*i])
             }
             None => Err(InvalidError::new("Key does not exist")),
-        }
-    }
-
-    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
-        if map.len() != 1 {
-            Err(InvalidError::new("Enum map has the wrong format").into())
-        } else if let Some((vkey, value)) = map.into_iter().next() {
-            let key = match vkey {
-                Value::String(str) => str,
-                _ => return Err(InvalidError::new("map key is not String").into()),
-            };
-            let carg = self.set_selected_mut(&key)?;
-            carg.consume_value(value)
-        } else {
-            unreachable!()
         }
     }
 
@@ -204,19 +204,6 @@ impl CArg {
         self.parameter.is_none()
     }
 
-    pub(crate) fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
-        match &mut self.parameter {
-            Some(ctype) => ctype.consume_value(value),
-            None => {
-                if let Value::String(_) = value {
-                    Ok(())
-                } else {
-                    Err(InvalidError::new("Unit Enum must be a String").into())
-                }
-            }
-        }
-    }
-
     pub fn state(&self) -> State {
         match &self.parameter {
             Some(ty) => ty.state(),
@@ -249,21 +236,6 @@ impl CArgBuilder {
         self.inner
     }
 }
-use druid::widget::{Click, Container, ControllerHost, DefaultScopePolicy, Scope};
-use druid::{
-    theme, BoxConstraints, Env, Event, EventCtx, Insets, LayoutCtx, LifeCycle, LifeCycleCtx,
-    LinearGradient, PaintCtx, RenderContext, Selector, Size, UnitPoint, UpdateCtx,
-};
-use druid_widget_nursery::dropdown::{Dropdown, DROPDOWN_SHOW};
-use druid_widget_nursery::Wedge;
-use std::marker::PhantomData;
-
-use crate::widgets::drop_select::DropdownSelect;
-use crate::widgets::ListSelect;
-use druid::im::{OrdMap, Vector};
-use druid::keyboard_types::Key;
-use druid::lens::Identity;
-use druid::widget::{Controller, CrossAxisAlignment, Label, LabelText};
 
 struct CEnumWidget {
     widgets: Vec<WidgetPod<CArg, Box<dyn Widget<CArg>>>>,

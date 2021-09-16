@@ -1,20 +1,18 @@
-use crate::{CType, ConfigError, InvalidError, CArg, State};
+use crate::{CArg, CType, ConfigError, InvalidError, State};
 
-use serde_yaml::{Mapping, Value};
+use druid::im;
+use druid::widget::{Flex, Label, List, ListIter};
+use druid::{Data, Widget, WidgetExt};
+use ron::{Map, Value};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::path::{PathBuf};
-use druid::{Data, Widget, WidgetExt};
-use druid::im;
-use druid::widget::{Flex, List, ListIter, Label};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, Data)]
 pub enum HashKey {
     String(String),
     Path(#[data(same_fn = "PartialEq::eq")] PathBuf),
 }
-
-
 
 impl HashKey {
     fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
@@ -33,6 +31,19 @@ impl HashKey {
                 }
                 _ => Err(InvalidError::new("Expected String").into()),
             },
+        }
+    }
+    pub fn set(&mut self, name: String) {
+        match self {
+            Self::String(str) => *str = name,
+            Self::Path(path) => *path = PathBuf::from(name),
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::String(str) => str.to_owned(),
+            Self::Path(path) => path.as_os_str().to_string_lossy().to_string(),
         }
     }
 }
@@ -54,7 +65,7 @@ impl CHashMap {
             inner: im::OrdMap::new(),
             key_fn,
             value_fn,
-            name: None
+            name: None,
         }
     }
 
@@ -73,26 +84,6 @@ impl CHashMap {
     pub fn set(&mut self, map: im::OrdMap<HashKey, CType>) {
         self.inner = map;
     }
-
-    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
-        self.inner.clear();
-        let mut result = Ok(());
-        for (k, v) in map {
-            let mut key = self.get_key();
-            let mut value = self.get_value();
-            if let Err(err) = value.consume_value(v) {
-                result = Err(err);
-                continue;
-            }
-            if let Err(err) = key.consume_value(k) {
-                result = Err(err);
-                continue;
-            }
-            self.inner.insert(key, value);
-        }
-        result
-    }
-
 
     pub fn state(&self) -> State {
         self.inner.values().map(|ty| ty.state()).collect()

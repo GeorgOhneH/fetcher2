@@ -15,22 +15,22 @@ use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::{Template};
-use crate::widgets::tree::{DataNodeIndex, Tree, NodeIndex,};
+use crate::template::nodes::root_edit_data::RootNodeEditData;
+use crate::template::Template;
+use crate::ui::TemplateInfoSelect;
+use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{AppData, Result};
 use druid::im::Vector;
 use druid_widget_nursery::{selectors, Wedge};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use crate::ui::TemplateInfoSelect;
-use crate::template::nodes::root_edit_data::RootNodeEditData;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateEditData {
     pub root: RootNodeEditData,
     #[data(eq)]
-    pub save_path: Option<PathBuf>
+    pub save_path: Option<PathBuf>,
 }
 
 impl TemplateEditData {
@@ -40,5 +40,4 @@ impl TemplateEditData {
             save_path: None,
         }
     }
-
 }

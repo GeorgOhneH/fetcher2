@@ -1,5 +1,5 @@
-use thiserror::Error;
 use std::backtrace::Backtrace;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -7,7 +7,7 @@ pub enum ConfigError {
     Required(#[from] RequiredError),
 
     #[error("Loading Error")]
-    Load(#[from] serde_yaml::Error),
+    Load(#[from] ron::Error),
 
     #[error(transparent)]
     Invalid(#[from] InvalidError),
@@ -16,35 +16,35 @@ pub enum ConfigError {
 #[derive(Error, Debug)]
 #[error("{msg:?}")]
 pub struct InvalidError {
-    msg: String,
+    pub msg: &'static str,
 }
 
 impl InvalidError {
     pub fn new<T>(str: T) -> Self
     where
-        String: From<T>,
+        &'static str: From<T>,
     {
         Self { msg: str.into() }
     }
 
     pub fn into_msg(self) -> String {
-        self.msg
+        self.msg.to_owned()
     }
 }
 
 #[derive(Error, Debug)]
 #[error("Field {field:?} is required. Msg: {msg:?}")]
 pub struct RequiredError {
-    field: String,
-    msg: String,
+    pub field: &'static str,
+    pub msg: &'static str,
     backtrace: Backtrace,
 }
 
 impl RequiredError {
-    pub fn new(field: &str, msg: &str) -> Self {
+    pub fn new(field: &'static str, msg: &'static str) -> Self {
         Self {
-            field: field.to_owned(),
-            msg: msg.to_owned(),
+            field,
+            msg,
             backtrace: Backtrace::capture(),
         }
     }

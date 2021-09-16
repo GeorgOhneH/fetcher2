@@ -1,7 +1,10 @@
-use crate::*;
+use crate::{CStruct, CStructBuilder, State};
 use druid::widget::{Checkbox, Container, CrossAxisAlignment, Flex, Label, LabelText, List, Maybe};
-use druid::{BoxConstraints, Color, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget, WidgetExt, WidgetPod, Point};
-use serde_yaml::Mapping;
+use druid::{
+    BoxConstraints, Color, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    PaintCtx, Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
+};
+use ron::Map;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CCheckableStruct {
@@ -35,11 +38,6 @@ impl CCheckableStruct {
         self.checked
     }
 
-    pub(crate) fn consume_map(&mut self, map: Mapping) -> Result<(), ConfigError> {
-        self.set_checked(true);
-        self.inner.consume_map(map)
-    }
-
     pub fn state(&self) -> State {
         if self.checked {
             State::None
@@ -52,9 +50,11 @@ impl CCheckableStruct {
         Flex::column()
             .cross_axis_alignment(CrossAxisAlignment::Start)
             .with_child(CheckboxWrapper::new())
-            .with_child(CStruct::widget().lens(Self::inner).disabled_if(|data: &Self, env| {
-                !data.checked
-            }))
+            .with_child(
+                CStruct::widget()
+                    .lens(Self::inner)
+                    .disabled_if(|data: &Self, env| !data.checked),
+            )
     }
 }
 
@@ -141,7 +141,8 @@ impl Widget<CCheckableStruct> for CheckboxWrapper {
         env: &Env,
     ) -> Size {
         let size = self.checkbox.layout(ctx, bc, &data.checked, env);
-        self.checkbox.set_origin(ctx, &data.checked, env, Point::ORIGIN);
+        self.checkbox
+            .set_origin(ctx, &data.checked, env, Point::ORIGIN);
         size
     }
 

@@ -1,21 +1,17 @@
-use crate::error::{Result};
-use std::path::PathBuf;
-use serde::Serialize;
-use config_derive::Config;
+use crate::error::Result;
 use config::Config;
 use druid::Data;
+use serde::Serialize;
+use std::path::PathBuf;
 
 #[derive(Config, Serialize, Debug, Clone)]
 pub struct Folder {
     name: String,
 }
 
-
 impl From<FolderEditData> for Folder {
     fn from(data: FolderEditData) -> Self {
-        Self {
-            name: data.name
-        }
+        Self { name: data.name }
     }
 }
 
@@ -26,13 +22,13 @@ impl Folder {
 
     pub fn widget_data(&self) -> FolderData {
         FolderData {
-            name: self.name.clone()
+            name: self.name.clone(),
         }
     }
 
     pub fn widget_edit_data(&self) -> FolderEditData {
         FolderEditData {
-            name: self.name.clone()
+            name: self.name.clone(),
         }
     }
 }
@@ -48,7 +44,6 @@ impl FolderData {
     }
 }
 
-
 #[derive(Clone, Data, Debug, Config)]
 pub struct FolderEditData {
     name: String,
@@ -56,9 +51,7 @@ pub struct FolderEditData {
 
 impl FolderEditData {
     pub fn raw(self) -> Folder {
-        Folder {
-            name: self.name
-        }
+        Folder { name: self.name }
     }
     pub fn name(&self) -> String {
         self.name.clone()

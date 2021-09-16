@@ -169,9 +169,15 @@ pub struct History {
 impl History {
     pub fn new() -> Self {
         let tree = Tree::new(
-            [Label::new("Hello3")],
+            [Label::new("Name")],
             [Arc::new(|| {
-                Label::dynamic(|data: &Entry, _env| data.path.to_string_lossy().to_string()).boxed()
+                Label::dynamic(|data: &Entry, _env| {
+                    data.path
+                        .file_name()
+                        .map(|os_str| os_str.to_string_lossy().to_string())
+                        .unwrap_or("".to_owned())
+                })
+                .boxed()
             })],
             Entry::expanded,
             EntryRoot::selected,

@@ -66,7 +66,7 @@ pub enum TErrorKind {
     FileError(#[from] std::io::Error),
 
     #[error("Serde Error")]
-    SerdeError(#[from] serde_yaml::Error),
+    SerdeError(#[from] ron::Error),
 
     #[error("Utf8 Error")]
     Utf8Error(#[from] std::string::FromUtf8Error),

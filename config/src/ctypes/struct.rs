@@ -1,9 +1,25 @@
-use crate::*;
-use druid::widget::{Container, CrossAxisAlignment, Flex, FlexParams, Label, MainAxisAlignment, Maybe, List, ListIter};
+use druid::widget::{
+    Container, CrossAxisAlignment, Flex, FlexParams, Label, List, ListIter, MainAxisAlignment,
+    Maybe,
+};
 use druid::{im, Color};
 use druid::{Data, Lens, Widget, WidgetExt};
-use serde_yaml::{Mapping, Value};
 use std::collections::hash_map::Iter;
+use std::fmt;
+
+use druid::{
+    BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
+    UpdateCtx, WidgetPod,
+};
+
+use crate::{CType, ConfigError, RequiredError, State};
+use druid::im::Vector;
+use druid::widget::SizedBox;
+use druid_widget_nursery::WidgetExt as _;
+use ron::{Map, Value};
+use serde::de::Error;
+
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {
@@ -47,9 +63,13 @@ impl CStruct {
         }
     }
 
+    pub fn get_idx_ty_mut(&mut self, idx: usize) -> Option<&mut CType> {
+        self.inner.get_mut(idx).map(|kwarg| &mut kwarg.ty)
+    }
+
     pub fn load_from_string(&mut self, str: &str) -> Result<(), ConfigError> {
-        let value = serde_yaml::from_str::<Value>(&str)?;
-        if let Value::Mapping(map) = value {
+        let value = ron::from_str::<Value>(&str)?;
+        if let Value::Map(map) = value {
             self.consume_map(map)
         } else {
             Err(RequiredError::new("Root", "Must be a mapping").into())
@@ -58,28 +78,6 @@ impl CStruct {
 
     pub fn iter(&self) -> im::vector::Iter<CKwarg> {
         self.inner.iter()
-    }
-
-    pub(crate) fn consume_map(&mut self, mut map: Mapping) -> Result<(), ConfigError> {
-        let mut result = Ok(());
-        for ckwarg in self.inner.clone().iter() {
-            let name = ckwarg.name.clone();
-            let key = self
-                .index_map
-                .get(&name)
-                .ok_or(InvalidError::new(format!("{} not found in struct", name)))?;
-            match map.remove(&Value::String(ckwarg.name.clone())) {
-                Some(value) => {
-                    let mut kwarg_clone = ckwarg.clone();
-                    match kwarg_clone.consume_value(value) {
-                        Ok(()) => self.inner[*key] = kwarg_clone,
-                        Err(err) => result = Err(err),
-                    }
-                }
-                None => result = Err(RequiredError::new(&name, "Missing value(s)").into()),
-            }
-        }
-        result
     }
 
     pub fn state(&self) -> State {
@@ -197,10 +195,6 @@ impl CKwarg {
         &mut self.ty
     }
 
-    pub fn consume_value(&mut self, value: Value) -> Result<(), ConfigError> {
-        self.ty.consume_value(value)
-    }
-
     pub fn state(&self) -> State {
         match self.ty.state() {
             State::Valid => State::Valid,
@@ -275,15 +269,6 @@ impl CKwargBuilder {
         self.inner
     }
 }
-
-use druid::{
-    BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
-    UpdateCtx, WidgetPod,
-};
-
-use druid::im::Vector;
-use druid::widget::SizedBox;
-use druid_widget_nursery::WidgetExt as _;
 
 pub struct WarningLabel {
     label: Label<()>,
