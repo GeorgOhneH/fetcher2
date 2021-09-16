@@ -1,11 +1,11 @@
-use crate::{CArg, CType, ConfigError, InvalidError, State};
-
-use druid::im;
-use druid::widget::{Flex, Label, List, ListIter};
-use druid::{Data, Widget, WidgetExt};
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::path::PathBuf;
+
+use druid::{Data, Widget};
+use druid::im;
+use druid::widget::{Label, ListIter};
+
+use crate::{CType, State};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, Data)]
 pub enum HashKey {

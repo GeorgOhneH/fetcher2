@@ -1,11 +1,12 @@
-use crate::error::{Result, TErrorFast, TErrorKind};
-use crate::session::Session;
-use crate::settings::DownloadSettings;
-use crate::site_modules::utils::unescape;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Serialize;
 use url::Url;
+
+use crate::error::{Result, TErrorFast, TErrorKind};
+use crate::session::Session;
+use crate::settings::DownloadSettings;
+use crate::site_modules::utils::unescape;
 
 const SSO_URL: &str = "https://aai-logon.ethz.ch/idp/profile/SAML2/Redirect/SSO";
 const BASE_URL: &str = "https://aai-logon.ethz.ch";

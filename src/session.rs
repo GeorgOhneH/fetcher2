@@ -1,13 +1,14 @@
-use crate::error::Result;
-use crate::site_modules::LoginLocks;
-use reqwest::{Body, Client, ClientBuilder, IntoUrl, Method, Request, RequestBuilder, Response};
-
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Duration;
+
+use reqwest::{Body, Client, ClientBuilder, IntoUrl, Method, Request, RequestBuilder, Response};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use serde::Serialize;
+
+use crate::error::Result;
+use crate::site_modules::LoginLocks;
 
 #[derive(Clone)]
 pub struct Session {

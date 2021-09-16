@@ -1,7 +1,5 @@
 use proc_macro2::{Span, TokenStream};
-
 use proc_macro_error::abort;
-
 use quote::quote;
 use syn::{self, LitStr};
 

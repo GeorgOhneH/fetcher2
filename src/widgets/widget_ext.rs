@@ -1,6 +1,6 @@
-use druid::widget::prelude::*;
-use druid::widget::ControllerHost;
 use druid::{Selector, WidgetExt as _};
+use druid::widget::ControllerHost;
+use druid::widget::prelude::*;
 
 use crate::widgets::on_command::OnCmd;
 

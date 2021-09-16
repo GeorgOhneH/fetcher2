@@ -1,13 +1,12 @@
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned};
+use syn::{self, Field, LitStr, punctuated::Punctuated, token::Comma};
+use syn::spanned::Spanned;
+
 use crate::build_app::utils::attrs_to_args;
 use crate::build_app::utils::gen_type;
 use crate::config_attr::parse_config_attributes;
-use proc_macro2::TokenStream;
-
-use quote::{quote, quote_spanned};
-use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
-
-use crate::config_type::{parse_type, ConfigType};
-use syn::spanned::Spanned;
+use crate::config_type::{ConfigType, parse_type};
 
 pub fn gen_struct_build_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let augmentation = gen_app_augmentation(fields);

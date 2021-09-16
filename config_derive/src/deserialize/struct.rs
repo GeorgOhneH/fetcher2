@@ -1,10 +1,9 @@
 use proc_macro2::{Ident, TokenStream};
-
 use quote::quote;
-use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
-
-use crate::config_type::{parse_type, ConfigType, ConfigWrapperType};
+use syn::{self, Field, LitStr, punctuated::Punctuated, token::Comma};
 use syn::spanned::Spanned;
+
+use crate::config_type::{ConfigType, ConfigWrapperType, parse_type};
 
 pub fn gen_field(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let field_names = fields

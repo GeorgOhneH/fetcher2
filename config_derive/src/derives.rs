@@ -1,15 +1,13 @@
-use proc_macro_error::abort_call_site;
-
 use proc_macro2::TokenStream;
+use proc_macro_error::abort_call_site;
 use quote::quote;
+use syn::{
+    self, Attribute, Data, DataStruct, DeriveInput, Field, Fields, Ident,
+    punctuated::Punctuated, token::Comma,
+};
+use syn::DataEnum;
 
 use crate::build_app::{gen_enum_build_app_fn, gen_struct_build_app_fn};
-
-use syn::DataEnum;
-use syn::{
-    self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
-    Fields, Ident,
-};
 
 pub fn derive_config_struct(input: &DeriveInput) -> TokenStream {
     let ident = &input.ident;

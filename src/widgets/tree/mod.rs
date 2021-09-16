@@ -1,29 +1,29 @@
-pub mod node;
-pub mod opener;
-pub mod root;
-
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 use std::marker::PhantomData;
+use std::ops::Mul;
 use std::sync::Arc;
 
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
-use druid::{theme, Affine, Lens, LensExt, Rect, SingleUse, Vec2, WidgetExt};
+use druid::{Affine, Lens, LensExt, Rect, SingleUse, theme, Vec2, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::scroll_component::{ScrollbarsEnabled, ScrollComponent};
+use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
+use druid_widget_nursery::selectors;
 
 use crate::widgets::header::Header;
 use crate::widgets::tree::node::{OpenerFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;
 use crate::widgets::tree::root::{TreeNodeRoot, TreeNodeRootWidget};
-use druid::im::Vector;
-use druid::scroll_component::{ScrollComponent, ScrollbarsEnabled};
-use druid_widget_nursery::selectors;
-use std::ops::Mul;
+
+pub mod node;
+pub mod opener;
+pub mod root;
 
 pub enum SelectionMode {
     Single,

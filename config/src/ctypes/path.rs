@@ -1,11 +1,12 @@
-use crate::{InvalidError, State};
-use druid::commands::OPEN_FILE;
+use std::path::PathBuf;
+
+use druid::{Data, Lens, LensExt, Widget, WidgetExt};
+use druid::{FileDialogOptions, FileSpec};
 use druid::im::Vector;
 use druid::widget::{Button, Flex, Label, Maybe, TextBox};
-use druid::{im, FileDialogOptions, FileSpec};
-use druid::{Data, Lens, LensExt, Widget, WidgetExt};
 use druid_widget_nursery::WidgetExt as _;
-use std::path::PathBuf;
+
+use crate::{InvalidError, State};
 
 #[derive(Debug, Clone)]
 pub enum CPathTypes {
@@ -141,7 +142,7 @@ impl CPath {
             )))
             .with_child(
                 Button::new("+")
-                    .on_click(|ctx, data: &mut Self, env| {
+                    .on_click(|ctx, data: &mut Self, _env| {
                         let open_dialog_options = FileDialogOptions::new()
                             .select_directories()
                             .name_label("Target")

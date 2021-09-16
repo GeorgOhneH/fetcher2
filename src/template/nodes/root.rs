@@ -1,26 +1,25 @@
-use crate::error::Result;
-use crate::session::Session;
-use async_recursion::async_recursion;
-use config::{Config, ConfigEnum};
-use druid::im::Vector;
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
-use sha1::Digest;
+use std::collections::HashSet;
 use std::path::PathBuf;
-
-use futures::future::{join_all, try_join_all};
-
-use crate::settings::DownloadSettings;
-use futures::prelude::*;
-use serde::Serialize;
 use std::sync::Arc;
 
+use async_recursion::async_recursion;
+use config::{Config, ConfigEnum};
+use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
+use druid::im::Vector;
+use futures::future::{join_all, try_join_all};
+use futures::prelude::*;
+use serde::Serialize;
+use sha1::Digest;
+
+use crate::error::Result;
+use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::widgets::tree::NodeIndex;
-use std::collections::HashSet;
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawRootNode {

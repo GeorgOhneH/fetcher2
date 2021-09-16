@@ -1,10 +1,12 @@
-use crate::site_modules::Module;
-use crate::template::node_type::{Site, SiteStorage};
-use crate::template::DownloadArgs;
+use std::sync::Arc;
+
 use config::Config;
 use config::ConfigEnum;
 use druid::Data;
-use std::sync::Arc;
+
+use crate::site_modules::Module;
+use crate::template::DownloadArgs;
+use crate::template::node_type::{Site, SiteStorage};
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct SiteEditData {

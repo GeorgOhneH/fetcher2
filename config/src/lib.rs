@@ -2,17 +2,17 @@
 #![feature(backtrace)]
 #![feature(int_roundings)]
 #![feature(box_patterns)]
-use serde::Serialize;
-use std::collections::HashMap;
 
 use std::fmt::Debug;
-mod ctypes;
-mod errors;
-mod widgets;
+
+pub use config_derive::{Config, ConfigEnum};
 
 pub use crate::ctypes::*;
 pub use crate::errors::*;
-pub use config_derive::{Config, ConfigEnum};
+
+mod ctypes;
+mod errors;
+mod widgets;
 
 pub trait Config: Sized + Send + Debug {
     fn parse_from_app(app: &CStruct) -> Result<Self, RequiredError>;

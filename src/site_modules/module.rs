@@ -1,24 +1,26 @@
-use crate::error::{Result, TErrorKind};
-use crate::session::Session;
-use crate::site_modules::minimal::Minimal;
-use crate::task::Task;
+use std::path::PathBuf;
+use std::string::ToString;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use config::Config;
 use config::ConfigEnum;
-use enum_dispatch::enum_dispatch;
-use fetcher2_macro::{login_locks, LoginLock};
-use serde::Serialize;
-use std::path::PathBuf;
-use tokio::sync::{Mutex, MutexGuard};
-
-use crate::settings::DownloadSettings;
-use crate::site_modules::polybox::Polybox;
-use crate::template::communication::Communication;
 use druid::Data;
-use std::string::ToString;
-use std::sync::Arc;
+use enum_dispatch::enum_dispatch;
+use serde::Serialize;
 use strum_macros::Display;
+use tokio::sync::{Mutex, MutexGuard};
 use tokio::sync::mpsc::Sender;
+
+use fetcher2_macro::{login_locks, LoginLock};
+
+use crate::error::{Result, TErrorKind};
+use crate::session::Session;
+use crate::settings::DownloadSettings;
+use crate::site_modules::minimal::Minimal;
+use crate::site_modules::polybox::Polybox;
+use crate::task::Task;
+use crate::template::communication::Communication;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]

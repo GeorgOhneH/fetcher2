@@ -1,24 +1,13 @@
-use druid::widget::{
-    Container, CrossAxisAlignment, Flex, FlexParams, Label, List, ListIter, MainAxisAlignment,
-    Maybe,
-};
-use druid::{im, Color};
+use druid::{Color, im};
 use druid::{Data, Lens, Widget, WidgetExt};
-use std::collections::hash_map::Iter;
-use std::fmt;
-
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
-    UpdateCtx, WidgetPod,
+    UpdateCtx,
 };
-
-use crate::{CType, ConfigError, RequiredError, State};
 use druid::im::Vector;
-use druid::widget::SizedBox;
-use druid_widget_nursery::WidgetExt as _;
-use serde::de::Error;
+use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
 
-use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use crate::{CType, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {

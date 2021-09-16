@@ -1,12 +1,9 @@
-use crate::{CType, ConfigError, State};
-
+use druid::{Env, Event, EventCtx, im, Selector, Widget};
+use druid::{Data, Lens, WidgetExt};
 use druid::im::Vector;
 use druid::widget::{Button, Controller, Flex, ListIter};
-use druid::{
-    im, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Selector, SingleUse, UpdateCtx, Widget,
-};
-use druid::{lens, Data, Lens, LensExt, WidgetExt};
-use std::ops::Deref;
+
+use crate::{CType, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CVec {

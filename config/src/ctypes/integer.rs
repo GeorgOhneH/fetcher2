@@ -1,8 +1,8 @@
-use crate::widgets::IntStepper;
+use druid::{Data, Lens, Widget, WidgetExt};
+use druid::widget::{Flex, Label, Maybe};
+
 use crate::{InvalidError, State};
-use druid::text::{Formatter, Selection, Validation, ValidationError};
-use druid::widget::{Flex, Label, Maybe, Stepper, TextBox};
-use druid::{Data, Lens, TextAlignment, Widget, WidgetExt};
+use crate::widgets::IntStepper;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CInteger {

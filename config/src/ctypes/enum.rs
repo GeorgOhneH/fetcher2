@@ -1,31 +1,16 @@
-use druid::widget::{Button, Either, Flex, ListIter, Maybe, ViewSwitcher};
-use druid::{im, LensExt, Widget, WidgetExt, WidgetPod};
 use druid::{Data, Lens};
-
-use druid::kurbo::BezPath;
-use druid::piet::{FontFamily, ImageFormat, InterpolationMode, Text, TextLayoutBuilder};
-use druid::widget::prelude::*;
+use druid::{Widget, WidgetExt, WidgetPod};
 use druid::{
-    Affine, AppLauncher, Color, FontDescriptor, LocalizedString, Point, Rect, TextLayout,
-    WindowDesc,
+    BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
+    UpdateCtx,
 };
-
-use druid::widget::{Click, Container, ControllerHost, DefaultScopePolicy, Scope};
-use druid::{
-    theme, BoxConstraints, Env, Event, EventCtx, Insets, LayoutCtx, LifeCycle, LifeCycleCtx,
-    LinearGradient, PaintCtx, RenderContext, Selector, Size, UnitPoint, UpdateCtx,
-};
-use druid_widget_nursery::dropdown::{Dropdown, DROPDOWN_SHOW};
-use druid_widget_nursery::Wedge;
-use std::marker::PhantomData;
-
-use crate::widgets::drop_select::DropdownSelect;
-use crate::widgets::ListSelect;
 use druid::im::{OrdMap, Vector};
-use druid::keyboard_types::Key;
-use druid::lens::Identity;
-use druid::widget::{Controller, CrossAxisAlignment, Label, LabelText};
-use crate::{State, InvalidError, CType};
+use druid::Point;
+use druid::widget::{Flex, ListIter, Maybe};
+use druid::widget::Label;
+
+use crate::{CType, InvalidError, State};
+use crate::widgets::ListSelect;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {

@@ -1,7 +1,7 @@
-use crate::{CType, ConfigError, State};
-
+use druid::{Data, Lens, Widget};
 use druid::widget::Label;
-use druid::{Data, Lens, Widget, WidgetExt};
+
+use crate::{CType, State};
 
 impl Data for Box<CWrapper> {
     fn same(&self, other: &Self) -> bool {

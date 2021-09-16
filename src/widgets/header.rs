@@ -1,8 +1,8 @@
+use druid::{Color, Cursor, Data, Point, Rect, theme, WidgetPod};
 use druid::debug_state::DebugState;
 use druid::kurbo::Line;
-use druid::widget::prelude::*;
 use druid::widget::{Axis, Label};
-use druid::{theme, Color, Cursor, Data, Point, Rect, WidgetPod};
+use druid::widget::prelude::*;
 
 #[derive(Clone)]
 pub struct HeaderConstrains<const N: usize> {

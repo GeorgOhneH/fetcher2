@@ -5,6 +5,61 @@
 #![feature(type_alias_impl_trait)]
 #![allow(unused_imports)]
 
+use std::{fs, io, thread};
+use std::any::Any;
+use std::cmp::max;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::error::Error;
+use std::future::Future;
+use std::ops::{Deref, DerefMut};
+use std::path::Path;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::Instant;
+
+use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
+use config::CStruct;
+use config::State;
+use druid::{
+    AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
+    ExtEventSink, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
+    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
+};
+use druid::im::{vector, Vector};
+use druid::lens::{self, InArc, LensExt};
+use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
+use druid::widget::{
+    Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
+    Maybe, Scroll, SizedBox, Spinner, Switch, TextBox,
+};
+use flume;
+use futures::future::BoxFuture;
+use futures::StreamExt;
+use log::{debug, error, info, Level, log_enabled};
+use serde::Serialize;
+use tokio::time;
+use tokio::time::Duration;
+
+pub use error::{Result, TError};
+
+use crate::background_thread::background_main;
+use crate::controller::{MainController, MainWindowState, WINDOW_STATE_DIR};
+use crate::cstruct_window::CStructBuffer;
+use crate::settings::{DownloadSettings, Settings, Test};
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
+use crate::template::communication::RawCommunication;
+use crate::template::nodes::node_data::NodeData;
+use crate::template::nodes::root_data::RootNodeData;
+use crate::template::widget_data::TemplateData;
+use crate::ui::{AppData, build_ui, make_menu, TemplateInfoSelect};
+use crate::widgets::file_watcher::FileWatcher;
+use crate::widgets::header::Header;
+use crate::widgets::tree::Tree;
+
 mod background_thread;
 pub mod controller;
 mod cstruct_window;
@@ -18,59 +73,6 @@ mod template;
 pub mod ui;
 mod utils;
 pub mod widgets;
-
-pub use error::{Result, TError};
-
-use crate::background_thread::background_main;
-use crate::controller::{MainController, MainWindowState, WINDOW_STATE_DIR};
-use crate::cstruct_window::CStructBuffer;
-use crate::settings::{DownloadSettings, Settings, Test};
-use crate::template::communication::RawCommunication;
-use crate::template::nodes::node_data::NodeData;
-use crate::template::nodes::root_data::RootNodeData;
-use crate::template::widget_data::TemplateData;
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
-use crate::ui::{build_ui, make_menu, AppData, TemplateInfoSelect};
-use crate::widgets::file_watcher::FileWatcher;
-use crate::widgets::header::Header;
-use crate::widgets::tree::Tree;
-use config::CStruct;
-use config::State;
-use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use druid::im::{vector, Vector};
-use druid::lens::{self, InArc, LensExt};
-use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
-use druid::widget::{
-    Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
-    Maybe, Scroll, SizedBox, Spinner, Switch, TextBox,
-};
-use druid::{
-    im, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event,
-    EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
-    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
-    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
-    WindowLevel,
-};
-use flume;
-use futures::future::BoxFuture;
-use futures::StreamExt;
-use log::{debug, error, info, log_enabled, Level};
-use serde::Serialize;
-use std::any::Any;
-use std::cmp::max;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::error::Error;
-use std::future::Future;
-use std::ops::{Deref, DerefMut};
-use std::path::Path;
-use std::path::PathBuf;
-use std::pin::Pin;
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
-use std::{fs, io, thread};
-use tokio::time;
-use tokio::time::Duration;
 
 // //
 pub fn main() {

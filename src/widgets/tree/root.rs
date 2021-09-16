@@ -1,26 +1,26 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 use std::marker::PhantomData;
+use std::process::id;
 use std::sync::Arc;
+use std::time::Instant;
 
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::Label;
-use druid::{theme, Lens, LensExt, Rect, SingleUse};
+use druid::{Lens, LensExt, Rect, SingleUse, theme};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::Label;
+use druid_widget_nursery::selectors;
 
 use crate::widgets::header::{Header, HeaderConstrains};
 use crate::widgets::tree::node::{
-    OpenerFactory, TreeItemFactory, TreeNode, TreeNodeWidget, TREE_CHILD_REMOVE_INTERNAL,
-    TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
+    OpenerFactory, TREE_CHILD_REMOVE_INTERNAL, TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
+    TreeItemFactory, TreeNode, TreeNodeWidget,
 };
 use crate::widgets::tree::NodeIndex;
-use druid_widget_nursery::selectors;
-use std::process::id;
-use std::time::Instant;
 
 pub trait TreeNodeRoot<T: TreeNode>
 where

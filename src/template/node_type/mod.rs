@@ -1,27 +1,28 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use config::{Config, ConfigEnum};
+use druid::Data;
+use serde::Serialize;
+
 use crate::error::Result;
 use crate::session::Session;
-use config::{Config, ConfigEnum};
-use serde::Serialize;
+use crate::settings::DownloadSettings;
+use crate::template::node_type::folder::{FolderData, FolderEditData};
+pub use crate::template::node_type::folder::Folder;
+pub use crate::template::node_type::site::{DownloadArgs, Extensions};
+pub use crate::template::node_type::site::Mode;
+pub use crate::template::node_type::site::Site;
+pub use crate::template::node_type::site::SiteStorage;
+use crate::template::node_type::site_data::{SiteData, SiteState};
+use crate::template::node_type::site_edit_data::SiteEditData;
+use crate::template::nodes::node::MetaData;
 
 pub mod folder;
 pub mod site;
 pub mod site_data;
 pub mod site_edit_data;
 mod utils;
-
-use crate::settings::DownloadSettings;
-pub use crate::template::node_type::folder::Folder;
-use crate::template::node_type::folder::{FolderData, FolderEditData};
-pub use crate::template::node_type::site::Mode;
-pub use crate::template::node_type::site::Site;
-pub use crate::template::node_type::site::SiteStorage;
-pub use crate::template::node_type::site::{DownloadArgs, Extensions};
-use crate::template::node_type::site_data::{SiteData, SiteState};
-use crate::template::node_type::site_edit_data::SiteEditData;
-use crate::template::nodes::node::MetaData;
-use druid::Data;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 #[derive(ConfigEnum, Serialize, Debug, Clone)]
 pub enum NodeType {

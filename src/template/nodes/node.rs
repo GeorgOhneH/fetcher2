@@ -1,28 +1,27 @@
-use crate::error::Result;
-use crate::session::Session;
-use async_recursion::async_recursion;
-use config::{Config, ConfigEnum};
-use druid::im::Vector;
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
-use sha1::Digest;
+use std::collections::HashSet;
 use std::path::PathBuf;
-
-use futures::future::{join_all, try_join_all};
-
-use crate::settings::DownloadSettings;
-use futures::prelude::*;
-use serde::Serialize;
 use std::sync::Arc;
 
+use async_recursion::async_recursion;
+use config::{Config, ConfigEnum};
+use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
+use druid::im::Vector;
+use futures::future::{join_all, try_join_all};
+use futures::prelude::*;
+use serde::Serialize;
+use sha1::Digest;
+
+use crate::error::Result;
+use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::site_data::SiteEvent;
 use crate::template::node_type::{NodeType, NodeTypeData};
+use crate::template::node_type::site_data::SiteEvent;
 use crate::template::nodes::node_data::{NodeData, NodeState};
 use crate::template::nodes::node_edit_data::NodeEditData;
+use crate::TError;
 use crate::utils::spawn_drop;
 use crate::widgets::tree::NodeIndex;
-use crate::TError;
-use std::collections::HashSet;
 
 #[derive(Config, Clone, Serialize, Debug, Data)]
 pub struct MetaData {}

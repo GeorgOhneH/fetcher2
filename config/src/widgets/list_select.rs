@@ -1,23 +1,14 @@
 use std::cmp::Ordering;
-use std::collections::VecDeque;
 use std::f64;
-use std::sync::Arc;
-
-use druid::im::{OrdMap, Vector};
-
-use druid::kurbo::{Point, Rect, Size};
-
-use druid::debug_state::DebugState;
-use druid::widget::ListIter;
-use druid::{theme, LensExt, RenderContext, WidgetExt};
-use druid::{
-    widget::Axis, BoxConstraints, Data, Env, Event, EventCtx, KeyOrValue, LayoutCtx, Lens,
-    LifeCycle, LifeCycleCtx, PaintCtx, UpdateCtx, Widget, WidgetPod,
-};
 use std::marker::PhantomData;
 
-use druid_widget_nursery::dropdown::DROPDOWN_SHOW;
-use druid_widget_nursery::Dropdown;
+use druid::{LensExt, RenderContext, theme, WidgetExt};
+use druid::{
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    PaintCtx, UpdateCtx, Widget, widget::Axis, WidgetPod,
+};
+use druid::kurbo::{Point, Rect, Size};
+use druid::widget::ListIter;
 
 enum UpdateSource {
     Event(Option<usize>),
@@ -259,7 +250,7 @@ impl<T: Data> Widget<T> for ListItem<T> {
         self.child.lifecycle(ctx, event, data, env)
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &T, data: &T, env: &Env) {
         self.child.update(ctx, data, env)
     }
 

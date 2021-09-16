@@ -1,9 +1,10 @@
-use crate::{CStruct, CStructBuilder, State};
-use druid::widget::{Checkbox, Container, CrossAxisAlignment, Flex, Label, LabelText, List, Maybe};
 use druid::{
-    BoxConstraints, Color, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
-    PaintCtx, Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
+    Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
+use druid::widget::{Checkbox, CrossAxisAlignment, Flex, LabelText};
+
+use crate::{CStruct, CStructBuilder, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CCheckableStruct {
@@ -52,7 +53,7 @@ impl CCheckableStruct {
             .with_child(
                 CStruct::widget()
                     .lens(Self::inner)
-                    .disabled_if(|data: &Self, env| !data.checked),
+                    .disabled_if(|data: &Self, _env| !data.checked),
             )
     }
 }
@@ -125,7 +126,7 @@ impl Widget<CCheckableStruct> for CheckboxWrapper {
     fn update(
         &mut self,
         ctx: &mut UpdateCtx,
-        old_data: &CCheckableStruct,
+        _old_data: &CCheckableStruct,
         data: &CCheckableStruct,
         env: &Env,
     ) {

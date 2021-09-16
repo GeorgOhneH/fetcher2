@@ -1,22 +1,39 @@
+use std::{fs, thread};
+use std::any::Any;
+use std::cmp::max;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display, Formatter};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
+use std::thread::JoinHandle;
 
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Controller, Label};
+use config::Config;
+use directories::{BaseDirs, ProjectDirs, UserDirs};
 use druid::{
-    commands, theme, Command, ExtEventSink, HasRawWindowHandle, Menu, MenuItem, RawWindowHandle,
-    Rect, Selector, SingleUse, Target, WidgetExt, WidgetId, WindowConfig, WindowHandle,
+    Command, commands, ExtEventSink, HasRawWindowHandle, Menu, MenuItem, RawWindowHandle, Rect,
+    Selector, SingleUse, Target, theme, WidgetExt, WidgetId, WindowConfig, WindowHandle,
     WindowLevel,
 };
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
+use druid::commands::{CLOSE_WINDOW, QUIT_APP};
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Controller, Label};
+use druid_widget_nursery::{selectors, Wedge};
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use tokio::io::AsyncWriteExt;
+use url::Position;
 
+use crate::{AppData, Result};
 use crate::background_thread::{
-    background_main, MsgMain, MSG_MAIN, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
+    background_main, MSG_MAIN, MsgMain, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
 };
 use crate::cstruct_window::c_option_window;
 use crate::edit_window::{edit_window, EditWindowState};
@@ -25,29 +42,12 @@ use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
+use crate::template::Template;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::template::Template;
 use crate::ui::TemplateInfoSelect;
 use crate::utils::show_err;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
-use crate::{AppData, Result};
-use config::Config;
-use directories::{BaseDirs, ProjectDirs, UserDirs};
-use druid::commands::{CLOSE_WINDOW, QUIT_APP};
-use druid::im::Vector;
-use druid_widget_nursery::{selectors, Wedge};
-use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
-use std::any::Any;
-use std::cmp::max;
-use std::collections::HashSet;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::thread::JoinHandle;
-use std::{fs, thread};
-use tokio::io::AsyncWriteExt;
-use url::Position;
 
 selectors! {
     MSG_THREAD: SingleUse<Msg>

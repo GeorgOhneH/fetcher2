@@ -1,9 +1,10 @@
-use crate::State;
-use druid::widget::{Checkbox, Flex, Switch};
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LensExt, LifeCycle, LifeCycleCtx,
-    PaintCtx, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
+    UpdateCtx, Widget,
 };
+use druid::widget::Checkbox;
+
+use crate::State;
 
 #[derive(Debug, Clone, Data)]
 pub struct CBool {

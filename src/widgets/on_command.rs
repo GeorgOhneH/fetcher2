@@ -1,6 +1,6 @@
-use druid::widget::prelude::*;
-use druid::widget::Controller;
 use druid::Selector;
+use druid::widget::Controller;
+use druid::widget::prelude::*;
 
 pub struct OnCmd<CT, WT> {
     selector: Selector<CT>,

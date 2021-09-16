@@ -1,8 +1,10 @@
-use crate::error::Result;
+use std::path::PathBuf;
+
 use config::Config;
 use druid::Data;
 use serde::Serialize;
-use std::path::PathBuf;
+
+use crate::error::Result;
 
 #[derive(Config, Serialize, Debug, Clone)]
 pub struct Folder {

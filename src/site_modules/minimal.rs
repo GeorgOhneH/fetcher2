@@ -1,21 +1,20 @@
-use crate::error::Result;
-use crate::session::Session;
-use crate::task::{Task, TaskBuilder};
-use async_trait::async_trait;
-
-use config::Config;
-use serde::Serialize;
 use std::path::PathBuf;
-use tokio::sync::mpsc::Sender;
-
-use crate::settings::DownloadSettings;
-
-use crate::site_modules::module::ModuleExt;
-use druid::Data;
-use futures::stream::StreamExt;
 use std::sync::Arc;
 use std::time::Duration;
+
+use async_trait::async_trait;
+use config::Config;
+use druid::Data;
+use futures::stream::StreamExt;
+use serde::Serialize;
+use tokio::sync::mpsc::Sender;
 use url::Url;
+
+use crate::error::Result;
+use crate::session::Session;
+use crate::settings::DownloadSettings;
+use crate::site_modules::module::ModuleExt;
+use crate::task::{Task, TaskBuilder};
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Minimal {

@@ -1,23 +1,3 @@
-use crate::template::widget_data::TemplateData;
-use config::State;
-use config::{CStruct, Config, ConfigEnum};
-use druid::im::{vector, Vector};
-use druid::lens::{self, InArc, LensExt};
-use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
-use druid::widget::{
-    Button, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List, Maybe, Scroll,
-    Spinner, Switch, TextBox,
-};
-use druid::{
-    im, AppDelegate, AppLauncher, Application, BoxConstraints, Color, Command, Data, DelegateCtx,
-    Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
-    LocalizedString, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
-    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
-    WindowLevel,
-};
-use druid_widget_nursery::Tree;
-use flume;
-use futures::future::BoxFuture;
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
@@ -25,11 +5,32 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::pin::Pin;
+
+use config::{Config, ConfigEnum, CStruct};
+use config::State;
+use druid::{
+    AppDelegate, AppLauncher, Application, BoxConstraints, Color, Command, Data, DelegateCtx, Env,
+    Event, EventCtx, ExtEventSink, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    LocalizedString, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
+};
+use druid::commands::CLOSE_WINDOW;
+use druid::im::{vector, Vector};
+use druid::lens::{self, InArc, LensExt};
+use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
+use druid::widget::{
+    Button, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List, Maybe, Scroll,
+    Spinner, Switch, TextBox,
+};
+use druid_widget_nursery::selectors;
+use druid_widget_nursery::Tree;
+use flume;
+use futures::future::BoxFuture;
 use tokio::time;
 use tokio::time::Duration;
 
-use druid::commands::CLOSE_WINDOW;
-use druid_widget_nursery::selectors;
+use crate::template::widget_data::TemplateData;
 
 selectors! {
     APPLY

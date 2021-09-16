@@ -1,11 +1,9 @@
-use crate::config_attr::ConfigAttr;
 use proc_macro2::{Span, TokenStream};
-
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
-
 use syn::LitStr;
 
+use crate::config_attr::ConfigAttr;
 use crate::config_type::{ConfigHashType, ConfigType};
 
 pub fn gen_type(

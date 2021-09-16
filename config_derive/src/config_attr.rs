@@ -1,11 +1,10 @@
-use proc_macro_error::{abort, ResultExt};
-
 use proc_macro2::Span;
+use proc_macro_error::{abort, ResultExt};
 use syn::{
     self,
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    Attribute, Expr, Ident, LitStr,
+    Attribute,
+    Expr,
+    Ident, LitStr, parse::{Parse, ParseStream}, punctuated::Punctuated,
 };
 use syn::{MetaNameValue, Token};
 

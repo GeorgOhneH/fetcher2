@@ -1,9 +1,10 @@
-use crate::State;
-use druid::widget::{Flex, Label, Maybe, TextBox};
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LensExt, LifeCycle, LifeCycleCtx,
-    PaintCtx, Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
+    Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
+use druid::widget::{Flex, Label, Maybe, TextBox};
+
+use crate::State;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CString {
@@ -100,7 +101,7 @@ impl Widget<Option<String>> for CStringWidget {
     fn update(
         &mut self,
         ctx: &mut UpdateCtx,
-        old_data: &Option<String>,
+        _old_data: &Option<String>,
         data: &Option<String>,
         env: &Env,
     ) {

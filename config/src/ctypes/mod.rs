@@ -1,3 +1,22 @@
+use std::iter::FromIterator;
+
+use druid::{Data, lens, LensExt, Widget, WidgetExt};
+use druid_enums::Matcher;
+
+pub use crate::ctypes::bool::*;
+pub use crate::ctypes::checkable_struct::*;
+use crate::ctypes::CWrapper;
+pub use crate::ctypes::integer::*;
+pub use crate::ctypes::map::*;
+use crate::ctypes::map::CHashMap;
+pub use crate::ctypes::path::*;
+pub use crate::ctypes::r#enum::*;
+pub use crate::ctypes::r#struct::*;
+pub use crate::ctypes::string::*;
+pub use crate::ctypes::vec::*;
+pub use crate::ctypes::wrapper::*;
+use crate::InvalidError;
+
 mod bool;
 mod checkable_struct;
 mod r#enum;
@@ -8,25 +27,6 @@ mod string;
 mod r#struct;
 mod vec;
 mod wrapper;
-
-pub use crate::ctypes::bool::*;
-pub use crate::ctypes::checkable_struct::*;
-pub use crate::ctypes::integer::*;
-use crate::ctypes::map::CHashMap;
-pub use crate::ctypes::map::*;
-pub use crate::ctypes::path::*;
-pub use crate::ctypes::r#enum::*;
-pub use crate::ctypes::r#struct::*;
-pub use crate::ctypes::string::*;
-pub use crate::ctypes::vec::*;
-pub use crate::ctypes::wrapper::*;
-use crate::ctypes::CWrapper;
-use crate::{ConfigError, InvalidError};
-
-use druid::widget::Label;
-use druid::{lens, Data, LensExt, Widget, WidgetExt};
-use druid_enums::Matcher;
-use std::iter::FromIterator;
 
 #[derive(Debug, PartialEq)]
 pub enum State {

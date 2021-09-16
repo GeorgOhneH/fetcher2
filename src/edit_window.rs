@@ -1,33 +1,35 @@
-use crate::controller::{
-    Msg, SubStateController, SubWindowInfo, INIT_EDIT_WINDOW_STATE, MSG_THREAD, NEW_WIN_INFO,
-    SAVE_EDIT_WINDOW_STATE,
+use std::marker::PhantomData;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use config::{CEnum, ConfigEnum};
+use config::Config;
+use config::CStruct;
+use druid::{
+    Command, commands, FileDialogOptions, lens, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
 };
-use crate::cstruct_window::{c_option_window, APPLY};
+use druid::{InternalEvent, LensExt};
+use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
+use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
+use druid::im::Vector;
+use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
+use druid::widget::prelude::*;
+use druid_widget_nursery::selectors;
+use serde::{Deserialize, Serialize};
+
+use crate::controller::{
+    INIT_EDIT_WINDOW_STATE, Msg, MSG_THREAD, NEW_WIN_INFO, SAVE_EDIT_WINDOW_STATE, SubStateController,
+    SubWindowInfo,
+};
+use crate::cstruct_window::{APPLY, c_option_window};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::widget_edit_data::TemplateEditData;
 use crate::template::Template;
+use crate::template::widget_edit_data::TemplateEditData;
 use crate::ui::AppData;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
-use config::CStruct;
-use config::Config;
-use config::{CEnum, ConfigEnum};
-use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
-use druid::im::Vector;
-use druid::widget::prelude::*;
-use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
-use druid::{
-    commands, lens, Command, FileDialogOptions, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
-};
-use druid::{InternalEvent, LensExt};
-use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
-use druid_widget_nursery::selectors;
-use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 selectors! {
     SAVE_EDIT,

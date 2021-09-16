@@ -1,51 +1,50 @@
-use crate::template::widget_data::TemplateData;
+use std::{io, thread};
+use std::any::Any;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::error::Error;
+use std::future::Future;
+use std::ops::{Deref, DerefMut};
+use std::path::Path;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::Instant;
+
+use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
 use config::CStruct;
+use druid::{
+    AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink,
+    Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx,
+    Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod,
+    WindowDesc,
+};
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
 use druid::widget::{
     Button, CrossAxisAlignment, Flex, Label, LineBreaking, List, Scroll, Spinner, Switch, TextBox,
 };
-use druid::{
-    im, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
-    ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx,
-    Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod,
-    WindowDesc,
-};
+use druid_widget_nursery::selectors;
 use druid_widget_nursery::Tree;
 use flume;
+use futures::{FutureExt, StreamExt};
+use futures::future::{Abortable, Aborted, AbortHandle};
 use futures::future::BoxFuture;
-use std::any::Any;
-use std::collections::HashMap;
-use std::future::Future;
-use std::path::PathBuf;
-use std::pin::Pin;
+use futures::prelude::stream::FuturesUnordered;
+use futures::stream::FuturesOrdered;
+use log::{debug, error, info, Level, log_enabled};
+use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
 
-use crate::error::{Result, TError};
-
-use crate::settings::DownloadSettings;
-use crate::template::nodes::node::Status;
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
-use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use druid_widget_nursery::selectors;
-use futures::future::{AbortHandle, Abortable, Aborted};
-use futures::prelude::stream::FuturesUnordered;
-use futures::stream::FuturesOrdered;
-use futures::{FutureExt, StreamExt};
-use log::{debug, error, info, log_enabled, Level};
-use serde::Serialize;
-use std::collections::HashSet;
-use std::error::Error;
-use std::ops::{Deref, DerefMut};
-use std::path::Path;
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
-use std::{io, thread};
-
 use crate::controller::Msg;
+use crate::error::{Result, TError};
+use crate::settings::DownloadSettings;
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
+use crate::template::nodes::node::Status;
+use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
 use crate::widgets::tree::NodeIndex;
 

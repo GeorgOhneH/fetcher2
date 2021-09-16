@@ -1,5 +1,4 @@
 use proc_macro2::{Ident, TokenStream};
-
 use proc_macro_error::abort;
 use quote::quote;
 use syn::{self, DataEnum, Fields, FieldsUnnamed, LitByteStr, LitStr};

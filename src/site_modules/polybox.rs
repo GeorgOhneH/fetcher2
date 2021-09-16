@@ -1,31 +1,30 @@
-use crate::error::{Result, TErrorFast, TErrorKind};
-use crate::session::Session;
-use crate::task::{Task, TaskBuilder};
-use async_trait::async_trait;
-use druid::{Data, LensExt};
-use soup::prelude::*;
-
-use config::Config;
-use config::ConfigEnum;
-use quick_xml::events::Event;
-use quick_xml::Reader;
-use serde::Serialize;
 use std::path::PathBuf;
-use tokio::sync::mpsc::Sender;
-
-use crate::settings::DownloadSettings;
-use lazy_static::lazy_static;
-use regex::{Regex, RegexBuilder};
-
-use crate::site_modules::utils::save_path;
-use crate::site_modules::ModuleExt;
-use futures::stream::{StreamExt, TryStreamExt};
-use html5ever::rcdom::NodeData;
-use reqwest::header::{HeaderMap, HeaderValue};
-use reqwest::Method;
 use std::str::FromStr;
 use std::sync::Arc;
+
+use async_trait::async_trait;
+use config::Config;
+use config::ConfigEnum;
+use druid::{Data, LensExt};
+use futures::stream::{StreamExt, TryStreamExt};
+use html5ever::rcdom::NodeData;
+use lazy_static::lazy_static;
+use quick_xml::events::Event;
+use quick_xml::Reader;
+use regex::{Regex, RegexBuilder};
+use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::Method;
+use serde::Serialize;
+use soup::prelude::*;
+use tokio::sync::mpsc::Sender;
 use url::Url;
+
+use crate::error::{Result, TErrorFast, TErrorKind};
+use crate::session::Session;
+use crate::settings::DownloadSettings;
+use crate::site_modules::ModuleExt;
+use crate::site_modules::utils::save_path;
+use crate::task::{Task, TaskBuilder};
 
 static PROPFIND_DATA: &'static str = r#"<?xml version="1.0"?>
     <a:propfind xmlns:a="DAV:">

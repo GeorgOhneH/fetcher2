@@ -16,10 +16,10 @@
 
 use std::time::Duration;
 
+use druid::{Point, Rect, theme, TimerToken};
 use druid::kurbo::BezPath;
 use druid::piet::{LinearGradient, RenderContext, UnitPoint};
 use druid::widget::prelude::*;
-use druid::{theme, Point, Rect, TimerToken};
 
 // Delay until stepper starts automatically changing valued when one of the button is held down.
 const STEPPER_REPEAT_DELAY: Duration = Duration::from_millis(500);

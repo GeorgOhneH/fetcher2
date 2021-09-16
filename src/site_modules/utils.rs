@@ -1,5 +1,5 @@
-use crate::error::TErrorKind;
 use crate::{Result, TError};
+use crate::error::TErrorKind;
 
 pub fn unescape(str: &str) -> String {
     let mut r = String::new();

@@ -1,5 +1,6 @@
-use reqwest::header::HeaderMap;
 use std::path::PathBuf;
+
+use reqwest::header::HeaderMap;
 use url::Url;
 
 #[derive(Debug)]

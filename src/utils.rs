@@ -1,14 +1,16 @@
-use crate::controller::SubWindowInfo;
-use crate::TError;
-use druid::widget::{Flex, Label, LineBreaking};
-use druid::{Env, EventCtx, Widget, WidgetExt, WindowConfig, WindowLevel};
-use futures::FutureExt;
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+
+use druid::{Env, EventCtx, Widget, WidgetExt, WindowConfig, WindowLevel};
+use druid::widget::{Flex, Label, LineBreaking};
+use futures::FutureExt;
 use tokio;
 use tokio::task::{JoinError, JoinHandle};
+
+use crate::controller::SubWindowInfo;
+use crate::TError;
 
 pub struct JoinHandleDrop<T>(JoinHandle<T>);
 

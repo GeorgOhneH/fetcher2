@@ -1,11 +1,10 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
-
 use quote::quote;
 use syn::{self, Field, LitStr};
+use syn::spanned::Spanned;
 
 use crate::config_type::{ConfigHashType, ConfigType, ConfigWrapperType};
-use syn::spanned::Spanned;
 
 pub fn gen_set(
     typ: &ConfigType,

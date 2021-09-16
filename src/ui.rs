@@ -1,27 +1,55 @@
-use crate::settings::{DownloadSettings, Settings, Test};
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
-use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
-use futures::StreamExt;
-use log::{debug, error, info, log_enabled, Level};
-use serde::Serialize;
+use std::{io, thread};
+use std::any::Any;
+use std::cmp::max;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
+use std::future::Future;
 use std::ops::{Deref, DerefMut};
+use std::option::Option::Some;
 use std::path::Path;
+use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
-use std::{io, thread};
+
+use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
+use config::CStruct;
+use config::State;
+use druid::{
+    AppDelegate, AppLauncher, Application, Color, Command, commands, Data, DelegateCtx, Env, Event,
+    EventCtx, ExtEventSink, FileInfo, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    LocalizedString, menu, Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector,
+    SingleUse, Size, SysMods, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId,
+    WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel,
+};
+use druid::im::{vector, Vector};
+use druid::lens::{self, InArc, LensExt};
+use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
+use druid::widget::{
+    Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
+    Maybe, Padding, Scroll, SizedBox, Spinner, Split, Switch, TextBox, ViewSwitcher,
+};
+use druid_widget_nursery::WidgetExt as _;
+use flume;
+use futures::future::BoxFuture;
+use futures::StreamExt;
+use log::{debug, error, info, Level, log_enabled};
+use serde::Serialize;
+use tokio::time;
+use tokio::time::Duration;
 
 use crate::controller::{
-    EditController, MainController, Msg, SettingController, TemplateController, MSG_THREAD,
-    OPEN_EDIT,
+    EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController,
+    TemplateController,
 };
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-
 use crate::edit_window::edit_window;
+use crate::settings::{DownloadSettings, Settings, Test};
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
-use crate::template::node_type::site::TaskMsg;
 use crate::template::node_type::NodeTypeData;
+use crate::template::node_type::site::TaskMsg;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
@@ -30,34 +58,6 @@ use crate::widgets::header::Header;
 use crate::widgets::history_tree::History;
 use crate::widgets::tree::Tree;
 use crate::widgets::widget_ext::WidgetExt as _;
-use config::CStruct;
-use config::State;
-use druid::im::{vector, Vector};
-use druid::lens::{self, InArc, LensExt};
-use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
-use druid::widget::{
-    Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
-    Maybe, Padding, Scroll, SizedBox, Spinner, Split, Switch, TextBox, ViewSwitcher,
-};
-use druid::{
-    commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx,
-    Env, Event, EventCtx, ExtEventSink, FileInfo, Handled, LayoutCtx, Lens, LifeCycle,
-    LifeCycleCtx, LocalizedString, Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector,
-    SingleUse, Size, SysMods, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId,
-    WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel,
-};
-use druid_widget_nursery::WidgetExt as _;
-use flume;
-use futures::future::BoxFuture;
-use std::any::Any;
-use std::cmp::max;
-use std::collections::HashMap;
-use std::future::Future;
-use std::option::Option::Some;
-use std::path::PathBuf;
-use std::pin::Pin;
-use tokio::time;
-use tokio::time::Duration;
 
 #[derive(Clone, Copy, Debug, Data, PartialEq)]
 pub enum TemplateInfoSelect {
