@@ -280,7 +280,7 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
                     if let Ok(settings) = ron::from_str::<Settings>(file_str.as_ref()) {
                         ctx.submit_command(
                             MSG_THREAD
-                                .with(SingleUse::new(Msg::NewSettings(settings.downs.clone()))),
+                                .with(SingleUse::new(Msg::NewSettings(settings.download.clone()))),
                         );
                         *data = Some(settings);
                     }
@@ -307,7 +307,7 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
                         move |inner_ctx: &mut EventCtx, old_data, data: &mut Settings| {
                             inner_ctx.submit_command(
                                 MSG_THREAD
-                                    .with(SingleUse::new(Msg::NewSettings(data.downs.clone())))
+                                    .with(SingleUse::new(Msg::NewSettings(data.download.clone())))
                                     .to(main_win_id.clone()),
                             );
                             // TODO not in main thread

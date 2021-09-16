@@ -141,6 +141,10 @@ impl Template {
         self.is_prepared
     }
 
+    pub fn inform_of_cancel(&self) {
+        self.root.inform_of_cancel()
+    }
+
     pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Status {
         // since only one mutable reference is allowed this cant
         // run in parallel and self.is_prepared is always correct
@@ -148,11 +152,11 @@ impl Template {
             return Status::Success;
         }
         let session = Session::new();
-        let r = self.root.prepare(&session, dsettings).await;
-        if let Status::Success = r {
+        let status = self.root.prepare(&session, dsettings).await;
+        if let Status::Success = status {
             self.is_prepared = true;
         }
-        r
+        status
     }
 
     pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) {
@@ -163,10 +167,6 @@ impl Template {
     pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: &HashSet<NodeIndex>) {
         let session = Session::new();
         self.root.run(&session, dsettings, Some(indexes)).await
-    }
-
-    pub fn inform_of_cancel(&self) {
-        self.root.inform_of_cancel()
     }
 
     pub async fn save(&self) -> Result<()> {

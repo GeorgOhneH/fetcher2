@@ -23,7 +23,7 @@ use crate::widgets::tree::NodeIndex;
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawRootNode {
-    #[config(ty = "Vec<Struct>")]
+    #[config(ty = "Vec<struct>")]
     pub children: Vec<RawNode>,
 }
 

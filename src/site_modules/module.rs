@@ -26,10 +26,10 @@ use crate::template::communication::Communication;
 #[login_locks]
 #[derive(ConfigEnum, Serialize, Debug, LoginLock, Data, Clone, Display)]
 pub enum Module {
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     Minimal(Minimal),
 
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     Polybox(Polybox),
 }
 

@@ -10,10 +10,10 @@ use crate::template::node_type::{Site, SiteStorage};
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct SiteEditData {
-    #[config(ty = "Enum")]
+    #[config(ty = "enum")]
     pub module: Module,
 
-    #[config(ty = "_<Struct>")]
+    #[config(ty = "_<struct>")]
     pub download_args: Option<DownloadArgs>,
 
     #[data(ignore)]

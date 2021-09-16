@@ -149,8 +149,8 @@ fn _parse_type(ty: &Type, type_annots: Option<TypeAnnotations>) -> ConfigType {
             ("isize", []) => ConfigType::Integer(path.clone()),
             ("bool", []) => ConfigType::Bool(path.clone()),
             ("PathBuf", []) => ConfigType::Path(path.clone()),
-            ("Struct", []) => ConfigType::Struct(path.clone()),
-            ("Enum", []) => ConfigType::Enum(path.clone()),
+            ("struct", []) => ConfigType::Struct(path.clone()),
+            ("enum", []) => ConfigType::Enum(path.clone()),
             (x, _) => abort!(ty, "{} is not supported", x),
         }
     } else {

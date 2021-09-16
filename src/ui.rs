@@ -232,7 +232,7 @@ fn info_folder() -> impl Widget<AppData> {
             (Some(settings), Some(node)) => node
                 .path
                 .as_ref()
-                .map(|path| settings.downs.save_path.join(path)),
+                .map(|path| settings.download.save_path.join(path)),
             _ => None,
         },
     )

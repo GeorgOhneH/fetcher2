@@ -56,13 +56,13 @@ use crate::utils::spawn_drop;
 
 #[derive(Config, Serialize, Debug)]
 pub struct Site {
-    #[config(ty = "Enum")]
+    #[config(ty = "enum")]
     pub module: Module,
 
-    #[config(ty = "_<Struct>")]
+    #[config(ty = "_<struct>")]
     pub storage: Arc<SiteStorage>,
 
-    #[config(ty = "_<Struct>")]
+    #[config(ty = "_<struct>")]
     pub download_args: Option<DownloadArgs>,
 }
 
@@ -276,7 +276,6 @@ impl Site {
 
         if action == Action::Replace {
             if let Some(mut file_data) = self.storage.files.get_mut(&final_path) {
-                dbg!(&file_data.file_checksum, &file_checksum);
                 if file_data.file_checksum == file_checksum {
                     file_data.etag = etag;
                     file_data.task_checksum = task_checksum;
@@ -415,7 +414,7 @@ pub enum Action {
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct TaskMsg {
-    #[config(ty = "Enum")]
+    #[config(ty = "enum")]
     pub kind: MsgKind,
     #[data(same_fn = "PartialEq::eq")]
     pub path: PathBuf,
@@ -439,7 +438,7 @@ pub enum MsgKind {
 
 #[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct DownloadArgs {
-    #[config(ty = "Struct", name = "Extension Filter")]
+    #[config(ty = "struct", name = "Extension Filter")]
     pub extensions: Extensions,
 
     #[config(default = true, name = "Keep Old Files")]
@@ -448,7 +447,7 @@ pub struct DownloadArgs {
 
 #[derive(Config, Serialize, Debug, Clone, Data)]
 pub struct Extensions {
-    #[config(ty = "Enum", default = "Forbidden", name = "Mode")]
+    #[config(ty = "enum", default = "Forbidden", name = "Mode")]
     pub mode: Mode,
 
     #[config(ty = "Vec", name = "Extension")]
@@ -475,10 +474,10 @@ pub enum Mode {
 
 #[derive(Config, Serialize, Debug)]
 pub struct SiteStorage {
-    #[config(ty = "HashMap<_, Struct>")]
+    #[config(ty = "HashMap<_, struct>")]
     pub files: dashmap::DashMap<PathBuf, FileData>,
 
-    #[config(ty = "_<_<Struct>>")]
+    #[config(ty = "_<_<struct>>")]
     pub history: Mutex<Vec<TaskMsg>>,
 }
 

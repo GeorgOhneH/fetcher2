@@ -17,8 +17,8 @@ pub struct Test {
 
 #[derive(Config, Serialize, Debug, Data, Clone)]
 pub struct Settings {
-    #[config(ty = "Struct", name = "Download")]
-    pub downs: DownloadSettings,
+    #[config(ty = "struct", name = "Download")]
+    pub download: DownloadSettings,
 }
 
 #[derive(Config, Serialize, Debug, Data, Clone)]
@@ -33,7 +33,7 @@ pub struct DownloadSettings {
     #[config(name = "Save Path")]
     pub save_path: PathBuf,
 
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     #[config(name = "Standard Module Setting")]
     pub download_args: DownloadArgs,
 

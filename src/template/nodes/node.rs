@@ -34,11 +34,11 @@ pub enum Status {
 
 #[derive(Config, Serialize, Debug)]
 pub struct RawNode {
-    #[config(ty = "Enum")]
+    #[config(ty = "enum")]
     pub ty: NodeType,
-    #[config(ty = "_<Struct>")]
+    #[config(ty = "_<struct>")]
     pub children: Vec<RawNode>,
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     pub meta_data: MetaData,
 
     pub cached_path_segment: Option<PathBuf>,

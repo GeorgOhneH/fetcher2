@@ -140,7 +140,7 @@ fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> 
                 })
                 .on_activate(move |_ctx, data: &mut AppData, _env| {
                     let node = data.template.node(&idx3);
-                    let save_path = &data.settings.as_ref().unwrap().downs.save_path;
+                    let save_path = &data.settings.as_ref().unwrap().download.save_path;
                     open::that_in_background(save_path.join(node.path.as_ref().unwrap()));
                 }),
         )

@@ -26,9 +26,9 @@ mod utils;
 
 #[derive(ConfigEnum, Serialize, Debug, Clone)]
 pub enum NodeType {
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     Folder(Folder),
-    #[config(ty = "_<Struct>")]
+    #[config(ty = "_<struct>")]
     Site(Arc<Site>),
 }
 
@@ -116,10 +116,10 @@ impl NodeTypeData {
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct NodeTypeEditData {
-    #[config(ty = "Enum")]
+    #[config(ty = "enum")]
     pub kind: NodeTypeEditKindData,
 
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     pub meta_data: MetaData,
 }
 
@@ -131,9 +131,9 @@ impl NodeTypeEditData {
 
 #[derive(Debug, Clone, Data, ConfigEnum)]
 pub enum NodeTypeEditKindData {
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     Folder(FolderEditData),
-    #[config(ty = "Struct")]
+    #[config(ty = "struct")]
     Site(SiteEditData),
 }
 

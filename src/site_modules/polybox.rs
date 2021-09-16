@@ -64,7 +64,7 @@ lazy_static! {
 pub struct Polybox {
     pub id: String,
 
-    #[config(ty = "Enum")]
+    #[config(ty = "enum")]
     pub mode: Mode,
 }
 
