@@ -64,7 +64,7 @@ pub fn gen_type(
                 )
             }
         }
-        ConfigType::Wrapper(path, inner_ty, wrapper_ty) => {
+        ConfigType::Wrapper(path, inner_ty, _wrapper_ty) => {
             let inner = gen_type(inner_ty, config_attrs, span, name);
             let wrapper_name = path.segments[0].ident.to_owned();
             quote_spanned! {span=>

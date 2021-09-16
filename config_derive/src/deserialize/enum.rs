@@ -1,12 +1,8 @@
-use crate::config_attr::parse_config_attributes;
 use proc_macro2::{Ident, TokenStream};
 
 use proc_macro_error::abort;
-use quote::{quote, quote_spanned};
+use quote::quote;
 use syn::{self, DataEnum, Fields, FieldsUnnamed, LitByteStr, LitStr};
-
-use crate::config_type::parse_type;
-use syn::spanned::Spanned;
 
 pub fn gen_de_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
     let enum_name_str = LitStr::new(&enum_name.to_string(), enum_name.span());
@@ -30,7 +26,7 @@ pub fn gen_de_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
         .collect::<Vec<_>>();
     let match_enums = e.variants.iter().map(|var| {
         let name = &var.ident;
-        let name_str = LitStr::new(&name.to_string(), name.span());
+        let _name_str = LitStr::new(&name.to_string(), name.span());
         match &var.fields {
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 quote! {

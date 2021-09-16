@@ -6,7 +6,7 @@ use crate::config_attr::{parse_config_attributes, ConfigAttr};
 use proc_macro2::Span;
 use syn::spanned::Spanned;
 use syn::Type;
-use syn::{self, Attribute, Expr, GenericArgument, Ident, Path, PathArguments, TypePath};
+use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 
 pub enum ConfigHashType {
     String,

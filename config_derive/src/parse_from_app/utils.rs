@@ -75,7 +75,7 @@ pub fn gen_option_arg(
                 _ => panic!("This should never happen"),
             }
         }},
-        ConfigType::Wrapper(path, inner_ty, wrapper_ty) => {
+        ConfigType::Wrapper(path, inner_ty, _wrapper_ty) => {
             let inner_token = gen_arg(inner_ty, quote! {inner}, span, field_name);
             let wrapper_name = path.segments[0].ident.to_owned();
             quote! {{

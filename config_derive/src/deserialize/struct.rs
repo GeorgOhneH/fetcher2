@@ -1,7 +1,6 @@
-use crate::config_attr::parse_config_attributes;
 use proc_macro2::{Ident, TokenStream};
 
-use quote::{quote, quote_spanned};
+use quote::quote;
 use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
 
 use crate::config_type::{parse_type, ConfigType, ConfigWrapperType};
@@ -213,7 +212,7 @@ fn gen_c_setter(
                 cvec.set(new);
             }
         }
-        ConfigType::HashMap(path, key_ty, inner_ty) => {
+        ConfigType::HashMap(_path, _key_ty, inner_ty) => {
             let inner_setter = gen_c_setter(field, *inner_ty, quote! {cvalue}, quote! {value});
             quote! {
                 let value_hint: HashMap<String, _> = #field_name;

@@ -23,7 +23,7 @@ pub fn derive_config_struct(input: &DeriveInput) -> TokenStream {
             fields: Fields::Unit,
             ..
         }) => gen_for_struct(ident, &Punctuated::<Field, Comma>::new(), &input.attrs),
-        Data::Enum(ref e) => abort_call_site!("`#[derive(ConfigEnum)]`"),
+        Data::Enum(ref _e) => abort_call_site!("`#[derive(ConfigEnum)]`"),
         _ => abort_call_site!("`#[derive(Config)]` only supports non-tuple structs and enums"),
     }
 }
