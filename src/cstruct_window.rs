@@ -39,7 +39,7 @@ selectors! {
 pub struct CStructBuffer<T> {
     pub child: WidgetPod<CStruct, Box<dyn Widget<CStruct>>>,
     pub c_struct_data: CStruct,
-    pub on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T)>>,
+    pub on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>>,
 }
 
 impl<T: Config + Data> CStructBuffer<T> {
@@ -55,7 +55,7 @@ impl<T: Config + Data> CStructBuffer<T> {
         }
     }
 
-    pub fn on_change(&mut self, on_change_fn: Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T)>) {
+    pub fn on_change(&mut self, on_change_fn: Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>) {
         self.on_change_fn = Some(on_change_fn)
     }
 }
@@ -67,7 +67,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
                 ctx.set_handled();
                 if let Ok(mut new_data) = T::parse_from_app(&self.c_struct_data) {
                     if let Some(on_change_fn) = &self.on_change_fn {
-                        (on_change_fn)(ctx, data, &mut new_data)
+                        (on_change_fn)(ctx, data, &mut new_data, env)
                     }
                     *data = Some(new_data);
                     ctx.submit_command(CLOSE_WINDOW);
@@ -125,7 +125,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
 
 pub fn c_option_window<T: Config + Data>(
     name: Option<&str>,
-    on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T)>>,
+    on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>>,
 ) -> impl Widget<Option<T>> {
     let child = Flex::column()
         .with_flex_child(CStruct::widget().scroll(), 1.0)

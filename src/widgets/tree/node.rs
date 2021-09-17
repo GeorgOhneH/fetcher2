@@ -4,19 +4,19 @@ use std::marker::PhantomData;
 use std::process::id;
 use std::sync::Arc;
 
-use druid::{Lens, LensExt, Rect, SingleUse, theme};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Label, SizedBox};
+use druid::{theme, Lens, LensExt, Rect, SingleUse};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Label, SizedBox};
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::{Header, HeaderConstrains};
-use crate::widgets::tree::NodeIndex;
 use crate::widgets::tree::opener::Opener;
+use crate::widgets::tree::NodeIndex;
 
 selectors! {
     /// Notification to send from the widget that requires removal
@@ -33,6 +33,34 @@ selectors! {
     /// Notify an opener's widget on click.
     TREE_ACTIVATE_NODE,
 }
+
+macro_rules! impl_simple_tree_node {
+    ($node_name:ident) => {
+        impl TreeNode for $node_name {
+            fn children_count(&self) -> usize {
+                self.children.len()
+            }
+
+            fn get_child(&self, index: usize) -> &Self {
+                &self.children[index]
+            }
+
+            fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Self, usize)) {
+                let mut new_child = self.children[index].to_owned();
+                cb(&mut new_child, index);
+                if !new_child.same(&self.children[index]) {
+                    self.children[index] = new_child;
+                }
+            }
+
+            fn rm_child(&mut self, index: usize) {
+                self.children.remove(index);
+            }
+        }
+    };
+}
+pub(crate) use impl_simple_tree_node;
+
 
 /// A tree node `Data`. This is the data expected by the tree widget.
 ///

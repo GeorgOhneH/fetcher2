@@ -52,10 +52,10 @@ selectors! {
     NEW_TEMPLATE: SingleUse<TemplateData>,
     NEW_EDIT_TEMPLATE: SingleUse<TemplateEditData>,
 
-    MSG_MAIN: SingleUse<MsgMain>,
+    MSG_FROM_THREAD: SingleUse<ThreadMsg>,
 }
 
-pub enum MsgMain {
+pub enum ThreadMsg {
     SettingsRequired,
     TemplateLoadingError(TError),
     TemplateSaveError(TError),
@@ -165,8 +165,8 @@ fn with_settings<'a, T: Future<Output = ()> + Send + 'a>(
         add_new_future(fut(dsettings.clone()), futs, abort_handles);
     } else {
         sink.submit_command(
-            MSG_MAIN,
-            SingleUse::new(MsgMain::SettingsRequired),
+            MSG_FROM_THREAD,
+            SingleUse::new(ThreadMsg::SettingsRequired),
             Target::Global,
         )
         .unwrap()
@@ -202,8 +202,8 @@ async fn replace_template_by_path(
         Ok(new_template) => replace_template(old_template, new_template, dsettings, sink).await,
         Err(err) => sink
             .submit_command(
-                MSG_MAIN,
-                SingleUse::new(MsgMain::TemplateLoadingError(err)),
+                MSG_FROM_THREAD,
+                SingleUse::new(ThreadMsg::TemplateLoadingError(err)),
                 Target::Global,
             )
             .unwrap(),
@@ -233,16 +233,16 @@ async fn replace_template(
     .unwrap();
     if let Err(err) = wl.save().await {
         sink.submit_command(
-            MSG_MAIN,
-            SingleUse::new(MsgMain::TemplateSaveError(err)),
+            MSG_FROM_THREAD,
+            SingleUse::new(ThreadMsg::TemplateSaveError(err)),
             Target::Global,
         )
         .unwrap()
     }
     if let Err(err) = new_template.save().await {
         sink.submit_command(
-            MSG_MAIN,
-            SingleUse::new(MsgMain::TemplateSaveError(err)),
+            MSG_FROM_THREAD,
+            SingleUse::new(ThreadMsg::TemplateSaveError(err)),
             Target::Global,
         )
         .unwrap()

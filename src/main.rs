@@ -5,7 +5,6 @@
 #![feature(type_alias_impl_trait)]
 #![allow(unused_imports)]
 
-use std::{fs, io, thread};
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
@@ -18,17 +17,11 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
+use std::{fs, io, thread};
 
-use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
 use config::CStruct;
 use config::State;
-use druid::{
-    AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
-    ExtEventSink, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
-    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
-    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
-    WindowLevel,
-};
+use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
@@ -36,10 +29,17 @@ use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
     Maybe, Scroll, SizedBox, Spinner, Switch, TextBox,
 };
+use druid::{
+    im, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event,
+    EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
+    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
+};
 use flume;
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use log::{debug, error, info, Level, log_enabled};
+use log::{debug, error, info, log_enabled, Level};
 use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
@@ -47,18 +47,19 @@ use tokio::time::Duration;
 pub use error::{Result, TError};
 
 use crate::background_thread::background_main;
-use crate::controller::{MainController, MainWindowState, WINDOW_STATE_DIR};
+use crate::controller::{AppState, MainController, Msg, WINDOW_STATE_DIR};
 use crate::cstruct_window::CStructBuffer;
 use crate::settings::{DownloadSettings, Settings, Test};
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
-use crate::ui::{AppData, build_ui, make_menu, TemplateInfoSelect};
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
+use crate::ui::{build_ui, make_menu, AppData, TemplateInfoSelect};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
+use std::io::Write;
 
 mod background_thread;
 pub mod controller;
@@ -74,18 +75,50 @@ pub mod ui;
 mod utils;
 pub mod widgets;
 
-// //
+fn load_window_state() -> Result<AppState> {
+    let file_content = &fs::read(WINDOW_STATE_DIR.as_path())?;
+    Ok(ron::de::from_bytes::<AppState>(file_content)?)
+}
+fn save_window_state(app_state: &AppState) -> Result<()> {
+    let serialized = ron::to_string(app_state)?;
+
+    fs::create_dir_all(WINDOW_STATE_DIR.as_path().parent().expect(""))?;
+
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(WINDOW_STATE_DIR.as_path())?;
+    f.write_all(&serialized.as_bytes())?;
+    Ok(())
+}
+
+fn build_window(
+    app_state: Arc<RwLock<AppState>>,
+    load_err: Option<TError>,
+    tx: flume::Sender<Msg>,
+) -> WindowDesc<AppData> {
+    let mut main_window = WindowDesc::new(build_ui().controller(MainController::new(
+        app_state.clone(),
+        load_err,
+        tx,
+    )))
+    .menu(make_menu)
+    .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
+    if let Some(win_state) = &app_state.read().unwrap().main_window {
+        main_window = main_window
+            .set_position(win_state.pos)
+            .window_size(win_state.size);
+    }
+    main_window
+}
+
 pub fn main() {
-    let win_state = if let Ok(file_content) = &fs::read(WINDOW_STATE_DIR.as_path()) {
-        let file_str = String::from_utf8_lossy(file_content);
-        if let Ok(win_state) = ron::from_str::<MainWindowState>(&file_str) {
-            win_state
-        } else {
-            MainWindowState::default()
-        }
-    } else {
-        MainWindowState::default()
+    let (raw_app_state, load_err) = match load_window_state() {
+        Ok(win_state) => (win_state, None),
+        Err(err) => (AppState::default(), Some(err)),
     };
+    let app_state = Arc::new(RwLock::new(raw_app_state));
 
     let (tx, rx) = flume::unbounded();
     let (s, r) = crossbeam_channel::bounded(5);
@@ -93,22 +126,12 @@ pub fn main() {
         background_main(rx, r);
     });
 
-    let pos = win_state.win_pos;
-    let size = win_state.win_size;
-    let mut main_window =
-        WindowDesc::new(build_ui().controller(MainController::new(win_state, tx)))
-            .menu(make_menu)
-            .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
-    if let Some(pos) = pos {
-        main_window = main_window.set_position(pos);
-    }
-    if let Some(size) = size {
-        main_window = main_window.window_size(size);
-    }
+    let main_window = build_window(app_state.clone(), load_err, tx.clone());
 
     let app_launcher = AppLauncher::with_window(main_window);
 
-    s.send(app_launcher.get_external_handle()).unwrap();
+    let sink = app_launcher.get_external_handle();
+    s.send(sink).unwrap();
 
     let data = AppData {
         template: TemplateData::new(),
@@ -138,7 +161,9 @@ pub fn main() {
         .launch(data)
         .expect("launch failed");
 
-    handle.join().unwrap();
+    tx.send(Msg::ExitAndSave).expect("");
+    let _ = save_window_state(&app_state.read().unwrap());
+    handle.join().expect("thread panicked");
 }
 
 //

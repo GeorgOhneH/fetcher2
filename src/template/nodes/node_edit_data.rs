@@ -21,7 +21,7 @@ use crate::template::MetaData;
 use crate::template::node_type::{NodeTypeData, NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node::{NodeEvent, PathEvent, RawNode};
 use crate::template::nodes::node_data::NodeData;
-use crate::widgets::tree::node::TreeNode;
+use crate::widgets::tree::node::{TreeNode, impl_simple_tree_node};
 use crate::widgets::tree::NodeIndex;
 
 #[derive(Data, Clone, Debug, Lens)]
@@ -30,6 +30,8 @@ pub struct NodeEditData {
     pub ty: Option<NodeTypeEditData>,
     pub children: Vector<NodeEditData>,
 }
+
+impl_simple_tree_node!{NodeEditData}
 
 impl NodeEditData {
     pub fn new(expanded: bool) -> Self {
@@ -103,27 +105,5 @@ impl NodeEditData {
             0 => self.children.push_front(NodeEditData::new(true)),
             _ => self.children[idx[0]].insert_child(&idx[1..]),
         }
-    }
-}
-
-impl TreeNode for NodeEditData {
-    fn children_count(&self) -> usize {
-        self.children.len()
-    }
-
-    fn get_child(&self, index: usize) -> &Self {
-        &self.children[index]
-    }
-
-    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Self, usize)) {
-        let mut new_child = self.children[index].to_owned();
-        cb(&mut new_child, index);
-        if !new_child.same(&self.children[index]) {
-            self.children[index] = new_child;
-        }
-    }
-
-    fn rm_child(&mut self, index: usize) {
-        self.children.remove(index);
     }
 }

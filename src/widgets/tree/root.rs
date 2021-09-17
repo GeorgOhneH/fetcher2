@@ -5,22 +5,49 @@ use std::process::id;
 use std::sync::Arc;
 use std::time::Instant;
 
-use druid::{Lens, LensExt, Rect, SingleUse, theme};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::Label;
+use druid::{theme, Lens, LensExt, Rect, SingleUse};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::Label;
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::{Header, HeaderConstrains};
 use crate::widgets::tree::node::{
-    OpenerFactory, TREE_CHILD_REMOVE_INTERNAL, TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
-    TreeItemFactory, TreeNode, TreeNodeWidget,
+    OpenerFactory, TreeItemFactory, TreeNode, TreeNodeWidget, TREE_CHILD_REMOVE_INTERNAL,
+    TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
 };
 use crate::widgets::tree::NodeIndex;
+
+macro_rules! impl_simple_tree_root {
+    ($root_name:ident, $node_name:ident) => {
+        impl TreeNodeRoot<$node_name> for $root_name {
+            fn children_count(&self) -> usize {
+                self.children.len()
+            }
+
+            fn get_child(&self, index: usize) -> &$node_name {
+                &self.children[index]
+            }
+
+            fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut $node_name, usize)) {
+                let mut new_child = self.children[index].to_owned();
+                cb(&mut new_child, index);
+                if !new_child.same(&self.children[index]) {
+                    self.children[index] = new_child;
+                }
+            }
+
+            fn rm_child(&mut self, index: usize) {
+                self.children.remove(index);
+            }
+        }
+    };
+}
+pub(crate) use impl_simple_tree_root;
 
 pub trait TreeNodeRoot<T: TreeNode>
 where

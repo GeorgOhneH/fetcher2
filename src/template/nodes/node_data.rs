@@ -4,26 +4,26 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use druid::{Menu, MenuItem, theme, WidgetExt, WidgetId};
-use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod,
-};
 use druid::im::{HashSet, Vector};
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
+use druid::{theme, Menu, MenuItem, WidgetExt, WidgetId};
+use druid::{
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
+    Point, UpdateCtx, Widget, WidgetPod,
+};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 
-use crate::{AppData, TError};
 use crate::template::communication::NODE_EVENT;
-use crate::template::MetaData;
-use crate::template::node_type::NodeTypeData;
 use crate::template::node_type::site_data::SiteState;
+use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
-use crate::widgets::tree::node::TreeNode;
+use crate::template::MetaData;
+use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::NodeIndex;
+use crate::{AppData, TError};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {
@@ -39,6 +39,8 @@ pub struct NodeData {
 
     pub state: NodeState,
 }
+
+impl_simple_tree_node! {NodeData}
 
 impl NodeData {
     pub fn node(&self, idx: &[usize]) -> &NodeData {
@@ -160,28 +162,6 @@ impl NodeData {
                 }
             }
         }
-    }
-}
-
-impl TreeNode for NodeData {
-    fn children_count(&self) -> usize {
-        self.children.len()
-    }
-
-    fn get_child(&self, index: usize) -> &Self {
-        &self.children[index]
-    }
-
-    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Self, usize)) {
-        let mut new_child = self.children[index].to_owned();
-        cb(&mut new_child, index);
-        if !new_child.same(&self.children[index]) {
-            self.children[index] = new_child;
-        }
-    }
-
-    fn rm_child(&mut self, index: usize) {
-        self.children.remove(index);
     }
 }
 

@@ -18,13 +18,15 @@ use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::DataNodeIndex;
-use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::root::{TreeNodeRoot, impl_simple_tree_root};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeData {
     pub children: Vector<NodeData>,
     pub selected: Vector<DataNodeIndex>,
 }
+
+impl_simple_tree_root!{RootNodeData, NodeData}
 
 impl RootNodeData {
     pub fn new() -> Self {
@@ -50,24 +52,3 @@ impl RootNodeData {
     }
 }
 
-impl TreeNodeRoot<NodeData> for RootNodeData {
-    fn children_count(&self) -> usize {
-        self.children.len()
-    }
-
-    fn get_child(&self, index: usize) -> &NodeData {
-        &self.children[index]
-    }
-
-    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut NodeData, usize)) {
-        let mut new_child = self.children[index].to_owned();
-        cb(&mut new_child, index);
-        if !new_child.same(&self.children[index]) {
-            self.children[index] = new_child;
-        }
-    }
-
-    fn rm_child(&mut self, index: usize) {
-        self.children.remove(index);
-    }
-}

@@ -1,27 +1,27 @@
-use std::{fs, io};
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use std::{fs, io};
 
 use crossbeam_channel::{Receiver, Select, Sender};
+use druid::im::Vector;
+use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid::im::Vector;
-use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
-use crate::Result;
+use crate::widgets::tree::node::{TreeNode, impl_simple_tree_node};
+use crate::widgets::tree::root::{TreeNodeRoot, impl_simple_tree_root};
 use crate::widgets::tree::{DataNodeIndex, Tree};
-use crate::widgets::tree::node::TreeNode;
-use crate::widgets::tree::root::TreeNodeRoot;
+use crate::Result;
 
 selectors! {
     NEW_ROOT: SingleUse<io::Result<EntryRoot>>
@@ -40,6 +40,8 @@ pub struct Entry {
     ty: Type,
     expanded: bool,
 }
+
+impl_simple_tree_node!{Entry}
 
 impl Entry {
     pub fn new(entry: fs::DirEntry) -> io::Result<Self> {
@@ -66,33 +68,14 @@ impl Entry {
     }
 }
 
-impl TreeNode for Entry {
-    fn children_count(&self) -> usize {
-        self.children.len()
-    }
-
-    fn get_child(&self, index: usize) -> &Entry {
-        &self.children[index]
-    }
-
-    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Entry, usize)) {
-        let mut new_child = self.children[index].to_owned();
-        cb(&mut new_child, index);
-        if !new_child.same(&self.children[index]) {
-            self.children[index] = new_child;
-        }
-    }
-
-    fn rm_child(&mut self, index: usize) {
-        self.children.remove(index);
-    }
-}
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct EntryRoot {
     children: Vector<Entry>,
     selected: Vector<DataNodeIndex>,
 }
+
+impl_simple_tree_root!{EntryRoot, Entry}
 
 impl EntryRoot {
     pub fn empty() -> Self {
@@ -113,27 +96,6 @@ impl EntryRoot {
     }
 }
 
-impl TreeNodeRoot<Entry> for EntryRoot {
-    fn children_count(&self) -> usize {
-        self.children.len()
-    }
-
-    fn get_child(&self, index: usize) -> &Entry {
-        &self.children[index]
-    }
-
-    fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Entry, usize)) {
-        let mut new_child = self.children[index].to_owned();
-        cb(&mut new_child, index);
-        if !new_child.same(&self.children[index]) {
-            self.children[index] = new_child;
-        }
-    }
-
-    fn rm_child(&mut self, index: usize) {
-        self.children.remove(index);
-    }
-}
 
 #[derive(Debug)]
 enum Msg {
