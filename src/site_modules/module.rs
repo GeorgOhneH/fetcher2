@@ -24,7 +24,7 @@ use crate::template::communication::Communication;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[derive(ConfigEnum, Serialize, Debug, LoginLock, Data, Clone, Display)]
+#[derive(ConfigEnum, Debug, LoginLock, Data, Clone, Display)]
 pub enum Module {
     #[config(ty = "struct")]
     Minimal(Minimal),

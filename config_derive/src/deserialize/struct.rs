@@ -1,34 +1,14 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{self, Field, LitStr, punctuated::Punctuated, token::Comma};
 use syn::spanned::Spanned;
+use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr, Generics};
 
-use crate::config_type::{ConfigType, ConfigWrapperType, parse_type};
+use crate::config_type::{parse_type, ConfigType, ConfigWrapperType};
+use crate::utils::{gen_field_name_strs, gen_field_names};
 
 pub fn gen_field(fields: &Punctuated<Field, Comma>) -> TokenStream {
-    let field_names = fields
-        .iter()
-        .filter_map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-            if let ConfigType::Skip(_) = typ {
-                None
-            } else {
-                Some(gen_field_name(field))
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let field_name_strings = fields
-        .iter()
-        .filter_map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-            if let ConfigType::Skip(_) = typ {
-                None
-            } else {
-                Some(gen_field_name_string(field))
-            }
-        })
-        .collect::<Vec<_>>();
+    let field_names = gen_field_names(fields);
+    let field_name_strings = gen_field_name_strs(fields);
 
     quote! {
         const FIELDS: &'static [&'static str] = &[#(#field_name_strings,)*];
@@ -65,42 +45,10 @@ pub fn gen_field(fields: &Punctuated<Field, Comma>) -> TokenStream {
     }
 }
 
-fn gen_field_name(field: &Field) -> TokenStream {
-    let field_name = field.ident.as_ref().expect("Unreachable");
-    quote! { #field_name }
-}
-
-fn gen_field_name_string(field: &Field) -> TokenStream {
-    let field_name = field.ident.as_ref().expect("Unreachable");
-    let name = LitStr::new(&field_name.to_string(), field.span());
-    quote! { #name }
-}
-
-pub fn gen_visitor(fields: &Punctuated<Field, Comma>, name: &Ident) -> TokenStream {
+pub fn gen_visitor(fields: &Punctuated<Field, Comma>, name: &Ident, name_generics: &Generics) -> TokenStream {
     let name_str = LitStr::new(&name.to_string(), name.span());
-    let field_names = fields
-        .iter()
-        .filter_map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-            if let ConfigType::Skip(_) = typ {
-                None
-            } else {
-                Some(gen_field_name(field))
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let field_name_strings = fields
-        .iter()
-        .filter_map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-            if let ConfigType::Skip(_) = typ {
-                None
-            } else {
-                Some(gen_field_name_string(field))
-            }
-        })
-        .collect::<Vec<_>>();
+    let field_names = gen_field_names(fields);
+    let field_name_strings = gen_field_name_strs(fields);
 
     let c_struct_setter = fields
         .iter()

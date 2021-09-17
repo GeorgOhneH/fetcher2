@@ -8,20 +8,20 @@ use serde::Serialize;
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
 
-#[derive(Config, Serialize, Debug, Data, Clone)]
+#[derive(Config, Debug, Data, Clone)]
 pub struct Test {
     #[config(default = false)]
     #[config(name = "Force Download")]
     pub force: bool,
 }
 
-#[derive(Config, Serialize, Debug, Data, Clone)]
+#[derive(Config, Debug, Data, Clone)]
 pub struct Settings {
     #[config(ty = "struct", name = "Download")]
     pub download: DownloadSettings,
 }
 
-#[derive(Config, Serialize, Debug, Data, Clone)]
+#[derive(Config, Debug, Data, Clone)]
 pub struct DownloadSettings {
     #[config(name = "Username")]
     pub username: Option<String>,

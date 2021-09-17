@@ -23,7 +23,7 @@ use crate::TError;
 use crate::utils::spawn_drop;
 use crate::widgets::tree::NodeIndex;
 
-#[derive(Config, Clone, Serialize, Debug, Data)]
+#[derive(Config, Clone, Debug, Data)]
 pub struct MetaData {}
 
 #[derive(Debug, PartialEq)]
@@ -32,7 +32,7 @@ pub enum Status {
     Failure,
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Debug)]
 pub struct RawNode {
     #[config(ty = "enum")]
     pub ty: NodeType,

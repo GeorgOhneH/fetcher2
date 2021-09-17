@@ -54,7 +54,7 @@ use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Debug)]
 pub struct Site {
     #[config(ty = "enum")]
     pub module: Module,
@@ -412,7 +412,7 @@ pub enum Action {
     Replace,
 }
 
-#[derive(Config, Serialize, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data)]
 pub struct TaskMsg {
     #[config(ty = "enum")]
     pub kind: MsgKind,
@@ -426,7 +426,7 @@ impl TaskMsg {
     }
 }
 
-#[derive(ConfigEnum, Serialize, Debug, Clone, Data, PartialEq)]
+#[derive(ConfigEnum, Debug, Clone, Data, PartialEq)]
 pub enum MsgKind {
     AddedFile,
     ReplacedFile(#[data(same_fn = "PartialEq::eq")] PathBuf),
@@ -436,7 +436,7 @@ pub enum MsgKind {
     ForbiddenExtension(Option<String>),
 }
 
-#[derive(Config, Serialize, Debug, Data, Clone)]
+#[derive(Config, Debug, Data, Clone)]
 pub struct DownloadArgs {
     #[config(ty = "struct", name = "Extension Filter")]
     pub extensions: Extensions,
@@ -445,7 +445,7 @@ pub struct DownloadArgs {
     pub keep_old_files: bool,
 }
 
-#[derive(Config, Serialize, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data)]
 pub struct Extensions {
     #[config(ty = "enum", default = "Forbidden", name = "Mode")]
     pub mode: Mode,
@@ -466,13 +466,13 @@ impl Extensions {
     }
 }
 
-#[derive(ConfigEnum, Serialize, Debug, Clone, Data, PartialEq)]
+#[derive(ConfigEnum, Debug, Clone, Data, PartialEq)]
 pub enum Mode {
     Forbidden,
     Allowed,
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Debug)]
 pub struct SiteStorage {
     #[config(ty = "HashMap<_, struct>")]
     pub files: dashmap::DashMap<PathBuf, FileData>,
@@ -490,7 +490,7 @@ impl SiteStorage {
     }
 }
 
-#[derive(Config, Serialize, Debug)]
+#[derive(Config, Debug)]
 pub struct FileData {
     pub task_checksum: Option<String>,
     pub file_checksum: String,

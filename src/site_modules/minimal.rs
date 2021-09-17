@@ -16,7 +16,7 @@ use crate::settings::DownloadSettings;
 use crate::site_modules::module::ModuleExt;
 use crate::task::{Task, TaskBuilder};
 
-#[derive(Config, Serialize, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data)]
 pub struct Minimal {
     pub parameters: Option<String>,
 }

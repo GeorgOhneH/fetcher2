@@ -14,6 +14,8 @@ mod derives;
 mod deserialize;
 mod parse_from_app;
 mod update_app;
+mod serialize;
+mod utils;
 
 #[proc_macro_derive(Config, attributes(config))]
 #[proc_macro_error]

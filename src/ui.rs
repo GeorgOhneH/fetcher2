@@ -39,12 +39,9 @@ use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
 
-use crate::controller::{
-    EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController,
-    TemplateController,
-};
+use crate::controller::{EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController, WindowState, SubWindowInfo};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-use crate::edit_window::edit_window;
+use crate::edit_window::{edit_window, EditWindowState};
 use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
@@ -58,8 +55,9 @@ use crate::widgets::header::Header;
 use crate::widgets::history_tree::History;
 use crate::widgets::tree::Tree;
 use crate::widgets::widget_ext::WidgetExt as _;
+use config::ConfigEnum;
 
-#[derive(Clone, Copy, Debug, Data, PartialEq)]
+#[derive(Clone, Copy, Debug, Data, PartialEq, ConfigEnum)]
 pub enum TemplateInfoSelect {
     Nothing,
     General,
@@ -67,13 +65,25 @@ pub enum TemplateInfoSelect {
     History,
 }
 
-#[derive(Clone, Lens, Debug, Data)]
+#[derive(Clone, Lens, Debug, Data, Config)]
 pub struct AppData {
+    #[config(skip = TemplateData::new())]
     pub template: TemplateData,
+
     #[data(eq)]
+    #[config(ty = "Vec<_>")]
     pub recent_templates: Vector<PathBuf>,
-    pub settings: Option<Settings>,
+
+    #[config(ty = "struct<_<struct>>")]
+    pub settings_window: SubWindowInfo<Option<Settings>>,
+
+    #[config(ty = "enum")]
     pub template_info_select: TemplateInfoSelect,
+
+    #[data(ignore)]
+    #[config(ty = "_<struct>")]
+    pub main_window: Option<WindowState>,
+    pub edit_window: SubWindowInfo<EditWindowState>,
 }
 
 impl AppData {

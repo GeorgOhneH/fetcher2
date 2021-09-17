@@ -25,7 +25,6 @@ pub fn gen_de_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
         .collect::<Vec<_>>();
     let match_enums = e.variants.iter().map(|var| {
         let name = &var.ident;
-        let _name_str = LitStr::new(&name.to_string(), name.span());
         match &var.fields {
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 quote! {

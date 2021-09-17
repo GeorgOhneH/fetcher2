@@ -60,7 +60,7 @@ lazy_static! {
     };
 }
 
-#[derive(Config, Serialize, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data)]
 pub struct Polybox {
     pub id: String,
 
@@ -68,7 +68,7 @@ pub struct Polybox {
     pub mode: Mode,
 }
 
-#[derive(ConfigEnum, Serialize, Debug, Clone, Data)]
+#[derive(ConfigEnum, Debug, Clone, Data)]
 pub enum Mode {
     Shared(Option<String>),
     Private,

@@ -429,14 +429,17 @@ impl<W: Widget<()>> Controller<(), W> for EditController {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-#[serde(default)]
-pub struct SubWindowInfo<T: Clone + Default + Debug + Serialize> {
+#[derive(Config, Debug, Clone, Data)]
+pub struct SubWindowInfo<T> {
+    #[config(ty = "struct")]
     data_state: T,
+
+    #[config(ty = "_<struct>")]
+    #[data(ignore)]
     win_state: Option<WindowState>,
 }
 
-impl<T: Clone + Default + Debug + Serialize> SubWindowInfo<T> {
+impl<T: Clone + Debug + Config> SubWindowInfo<T> {
     pub fn new(data_state: T) -> Self {
         Self {
             data_state,
@@ -465,8 +468,7 @@ impl<T: Clone + Default + Debug + Serialize> SubWindowInfo<T> {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-#[serde(default)]
+#[derive(Config, Debug, Clone)]
 pub struct WindowState {
     pub size: Size,
     pub pos: Point,
