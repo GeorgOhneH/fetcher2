@@ -48,7 +48,6 @@ pub enum NodePosition {
 #[derive(Config, Debug, Data, Clone, Lens)]
 pub struct EditWindowData {
     #[config(ty = "_<struct>")]
-    #[data(ignore)]
     pub node_win_state: Option<WindowState>,
 
     #[config(skip = TemplateEditData::new())]
@@ -368,6 +367,25 @@ fn node_window(idx: &NodeIndex) -> impl Widget<EditWindowData> {
         EditWindowData::edit_template
             .then(TemplateEditData::root.then(NodeLens::new(idx.clone()).then(NodeEditData::ty))),
     )
+    .controller(NodeWindowSaveController)
+}
+
+struct NodeWindowSaveController;
+
+impl<W: Widget<EditWindowData>> Controller<EditWindowData, W> for NodeWindowSaveController {
+    fn event(
+        &mut self,
+        child: &mut W,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut EditWindowData,
+        env: &Env,
+    ) {
+        if let Event::WindowCloseRequested = event {
+            data.node_win_state = Some(WindowState::from_win(ctx.window()));
+        }
+        child.event(ctx, event, data, env)
+    }
 }
 
 struct NodeLens {

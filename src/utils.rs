@@ -11,6 +11,7 @@ use tokio::task::{JoinError, JoinHandle};
 
 use crate::controller::{SubWindowInfo, WindowState};
 use crate::TError;
+use crate::ui::AppData;
 
 pub struct JoinHandleDrop<T>(JoinHandle<T>);
 
@@ -36,7 +37,7 @@ where
     JoinHandleDrop(tokio::spawn(future))
 }
 
-pub fn show_err(ctx: &mut EventCtx, env: &Env, err: TError, title: &str) {
+pub fn show_err(ctx: &mut EventCtx, data: &AppData, env: &Env, err: TError, title: &str) {
     let (size, pos) = WindowState::default_size_pos(ctx.window());
     ctx.new_sub_window(
         WindowConfig::default()
@@ -45,12 +46,12 @@ pub fn show_err(ctx: &mut EventCtx, env: &Env, err: TError, title: &str) {
             .window_size(size)
             .set_level(WindowLevel::Modal),
         err_widget(err, title),
-        (),
+        data.clone(),
         env.clone(),
     );
 }
 
-fn err_widget(err: TError, title: &str) -> impl Widget<()> {
+fn err_widget(err: TError, title: &str) -> impl Widget<AppData> {
     Flex::column()
         .with_child(Label::new(title))
         .with_child(

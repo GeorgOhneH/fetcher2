@@ -1,6 +1,6 @@
-use druid::{WidgetPod, Widget, Point};
+use druid::{WidgetPod, Widget, Point, Lens};
 use druid::widget::prelude::*;
-use crate::controller::SubWindowInfo;
+use crate::controller::{SubWindowInfo, WindowState};
 
 pub struct SubWindow<T> {
     child: WidgetPod<T, Box<dyn Widget<T>>>
@@ -16,6 +16,9 @@ impl<T> SubWindow<T>  {
 
 impl<T: Data> Widget<SubWindowInfo<T>> for SubWindow<T> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut SubWindowInfo<T>, env: &Env) {
+        if let Event::WindowCloseRequested = event {
+            data.win_state = Some(WindowState::from_win(ctx.window()));
+        }
         self.child.event(ctx, event, &mut data.data, env)
     }
 

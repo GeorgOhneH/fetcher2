@@ -18,7 +18,7 @@ use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
 use druid::{
     commands, theme, Command, ExtEventSink, HasRawWindowHandle, Menu, MenuItem, RawWindowHandle,
-    Rect, Selector, SingleUse, Target, WidgetExt, WidgetId, WindowConfig, WindowHandle,
+    Rect, Scalable, Selector, SingleUse, Target, WidgetExt, WidgetId, WindowConfig, WindowHandle,
     WindowLevel,
 };
 use druid::{
@@ -49,6 +49,7 @@ use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{AppData, Result, TError};
+use std::time::Duration;
 
 selectors! {
     MSG_THREAD: SingleUse<Msg>
@@ -91,13 +92,15 @@ impl MainController {
 }
 
 impl MainController {
-    fn handle_thread_msg(ctx: &mut EventCtx, env: &Env, thread_msg: ThreadMsg) {
+    fn handle_thread_msg(ctx: &mut EventCtx, data: &AppData, env: &Env, thread_msg: ThreadMsg) {
         match thread_msg {
             ThreadMsg::SettingsRequired => ctx.submit_command(commands::SHOW_PREFERENCES),
             ThreadMsg::TemplateLoadingError(err) => {
-                show_err(ctx, env, err, "Could not load template")
+                show_err(ctx, data, env, err, "Could not load template")
             }
-            ThreadMsg::TemplateSaveError(err) => show_err(ctx, env, err, "Could not save template"),
+            ThreadMsg::TemplateSaveError(err) => {
+                show_err(ctx, data, env, err, "Could not save template")
+            }
         };
     }
 }
@@ -121,7 +124,7 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
             Event::Command(cmd) if cmd.is(MSG_FROM_THREAD) => {
                 ctx.set_handled();
                 let thread_msg = cmd.get_unchecked(MSG_FROM_THREAD).take().expect("");
-                Self::handle_thread_msg(ctx, env, thread_msg)
+                Self::handle_thread_msg(ctx, data, env, thread_msg)
             }
             Event::Command(cmd) if cmd.is(commands::OPEN_FILE) => {
                 ctx.set_handled();
@@ -132,8 +135,11 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
                 return;
             }
             Event::WindowConnected => {
+                ctx.request_timer(Duration::from_millis(100));
+            }
+            Event::Timer(_) => {
                 if let Some(err) = self.load_err.take() {
-                    show_err(ctx, env, err, "Could not load window state");
+                    show_err(ctx, data, env, err, "Could not load window state");
                 }
             }
             Event::WindowCloseRequested => {
@@ -198,25 +204,6 @@ impl SettingController {
         Self {}
     }
 
-    fn load_settings() -> Result<Settings> {
-        let file_content = fs::read(SETTINGS_DIR.as_path())?;
-        Ok(ron::de::from_bytes(&file_content)?)
-    }
-
-    fn save_settings(settings: &Settings) -> Result<()> {
-        let serialized = ron::to_string(&settings).unwrap();
-
-        fs::create_dir_all(SETTINGS_DIR.as_path().parent().expect(""))?;
-
-        let mut f = fs::OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(SETTINGS_DIR.as_path())?;
-        f.write_all(&serialized.as_bytes())?;
-        Ok(())
-    }
-
     fn show_settings(&self, ctx: &mut EventCtx, data: &SubWindowInfo<OptionSettings>, env: &Env) {
         let (size, pos) = data.get_size_pos(ctx.window());
         let main_win_id = ctx.window_id();
@@ -229,9 +216,6 @@ impl SettingController {
                             .with(SingleUse::new(Msg::NewSettings(data.download.clone())))
                             .to(main_win_id.clone()),
                     );
-                    if let Err(err) = Self::save_settings(data) {
-                        show_err(inner_ctx, env, err, "Could not save settings");
-                    }
                 },
             )),
         )
@@ -362,7 +346,6 @@ pub struct SubWindowInfo<T> {
     pub data: T,
 
     #[config(ty = "_<struct>")]
-    #[data(ignore)]
     pub win_state: Option<WindowState>,
 }
 
@@ -388,7 +371,7 @@ impl<T: Clone + Debug + Config> SubWindowInfo<T> {
     }
 }
 
-#[derive(Config, Debug, Clone)]
+#[derive(Config, Debug, Clone, Data)]
 pub struct WindowState {
     // TODO
     #[config(skip = Size::ZERO)]
@@ -403,16 +386,17 @@ impl WindowState {
     }
 
     pub fn from_win(handle: &WindowHandle) -> Self {
+        // TODO not panic
+        let scale = handle.get_scale().unwrap();
         Self {
-            size: handle.get_size(),
+            size: handle.get_size().to_dp(scale),
             pos: handle.get_position(),
         }
     }
     pub fn default_size_pos(win_handle: &WindowHandle) -> (Size, Point) {
-        let win_pos = win_handle.get_position();
         let (win_size_w, win_size_h) = win_handle.get_size().into();
         let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-        let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-        (Size::new(size_w, size_h), pos)
+        let pos = ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+        (Size::new(size_w, size_h), pos.into())
     }
 }

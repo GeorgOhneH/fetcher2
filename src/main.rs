@@ -94,9 +94,13 @@ fn save_window_state(app_state: &AppData) -> Result<()> {
 }
 
 fn build_window(load_err: Option<TError>, tx: flume::Sender<Msg>) -> WindowDesc<AppData> {
-    let mut main_window = WindowDesc::new(build_ui().controller(MainController::new(load_err, tx)))
-        .menu(make_menu)
-        .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
+    let mut main_window = WindowDesc::new(
+        build_ui()
+            .controller(MainController::new(load_err, tx))
+            .padding(0.),
+    )
+    .menu(make_menu)
+    .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
     main_window
 }
 
