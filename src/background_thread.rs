@@ -46,6 +46,7 @@ use crate::template::nodes::node::Status;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
 use crate::widgets::tree::NodeIndex;
+use crate::data::settings::DownloadSettings;
 
 selectors! {
     NEW_TEMPLATE: SingleUse<TemplateData>,

@@ -14,6 +14,7 @@ use crate::error::Result;
 use crate::session::Session;
 use crate::site_modules::module::ModuleExt;
 use crate::task::{Task, TaskBuilder};
+use crate::data::settings::DownloadSettings;
 
 #[derive(Config, Debug, Clone, Data)]
 pub struct Minimal {

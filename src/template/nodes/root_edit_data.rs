@@ -21,7 +21,7 @@ use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root::RawRootNode;
 use crate::widgets::tree::DataNodeIndex;
-use crate::widgets::tree::root::{TreeNodeRoot, impl_simple_tree_root};
+use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeEditData {

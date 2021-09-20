@@ -15,13 +15,13 @@ use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 
-use crate::{TError};
+use crate::TError;
 use crate::template::communication::NODE_EVENT;
 use crate::template::MetaData;
 use crate::template::node_type::{NodeTypeData, NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node::{NodeEvent, PathEvent, RawNode};
 use crate::template::nodes::node_data::NodeData;
-use crate::widgets::tree::node::{TreeNode, impl_simple_tree_node};
+use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::NodeIndex;
 
 #[derive(Data, Clone, Debug, Lens)]

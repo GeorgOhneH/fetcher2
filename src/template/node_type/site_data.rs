@@ -36,9 +36,9 @@ use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinError;
 use url::Url;
 
+use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError, TErrorKind};
 use crate::session::Session;
-use crate::data::settings::DownloadSettings;
 use crate::site_modules::Module;
 use crate::site_modules::ModuleExt;
 use crate::task::Task;

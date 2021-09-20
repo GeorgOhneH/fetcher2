@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
 use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
+use config::ConfigEnum;
 use config::CStruct;
 use config::State;
 use druid::{
@@ -41,7 +42,7 @@ use tokio::time::Duration;
 
 use crate::controller::{EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-use crate::edit_window::{edit_window};
+use crate::edit_window::edit_window;
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::NodeTypeData;
@@ -54,9 +55,8 @@ use crate::widgets::header::Header;
 use crate::widgets::history_tree::History;
 use crate::widgets::tree::Tree;
 use crate::widgets::widget_ext::WidgetExt as _;
-use config::ConfigEnum;
-use crate::data::template_info::TemplateInfoSelect;
 use crate::data::AppData;
+use crate::data::template_info::TemplateInfoSelect;
 
 pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> {
     let mut base = Menu::empty();

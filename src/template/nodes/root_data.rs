@@ -18,7 +18,7 @@ use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::DataNodeIndex;
-use crate::widgets::tree::root::{TreeNodeRoot, impl_simple_tree_root};
+use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeData {

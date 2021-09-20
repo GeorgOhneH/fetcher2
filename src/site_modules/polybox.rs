@@ -24,6 +24,7 @@ use crate::session::Session;
 use crate::site_modules::ModuleExt;
 use crate::site_modules::utils::save_path;
 use crate::task::{Task, TaskBuilder};
+use crate::data::settings::DownloadSettings;
 
 static PROPFIND_DATA: &'static str = r#"<?xml version="1.0"?>
     <a:propfind xmlns:a="DAV:">

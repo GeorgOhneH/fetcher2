@@ -1,11 +1,12 @@
-use once_cell::sync::Lazy;
 use proc_macro::TokenStream;
-use quote::{quote};
 use std::sync::Mutex;
-use syn::parse::Parser;
+
 use convert_case::{Case, Casing};
-use syn::{self, parse_macro_input, DeriveInput, Field, Fields, Item};
+use once_cell::sync::Lazy;
 use proc_macro2::{Ident, Span};
+use quote::quote;
+use syn::{self, DeriveInput, Field, Fields, Item, parse_macro_input};
+use syn::parse::Parser;
 
 static ENUM_DEFS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 

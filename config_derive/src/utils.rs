@@ -1,18 +1,19 @@
-use crate::config_type::{parse_type, ConfigType};
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use proc_macro_error::abort_call_site;
 use quote::quote;
-use syn::spanned::Spanned;
-use syn::GenericParam;
-use syn::LitStr;
-use syn::TraitBoundModifier;
 use syn::{
-    self, punctuated::Punctuated, token::Comma, AngleBracketedGenericArguments, Attribute, Data,
-    DataStruct, DeriveInput, Field, Fields, GenericArgument, Generics, Ident, Lifetime, Path,
-    TraitBound, TypeParamBound, PathArguments,
+    self, AngleBracketedGenericArguments, Attribute, Data, DataStruct, DeriveInput,
+    Field, Fields, GenericArgument, Generics, Ident, Lifetime, Path, PathArguments, punctuated::Punctuated,
+    token::Comma, TraitBound, TypeParamBound,
 };
 use syn::{DataEnum, LifetimeDef, PathSegment};
+use syn::GenericParam;
+use syn::LitStr;
+use syn::spanned::Spanned;
+use syn::TraitBoundModifier;
+
+use crate::config_type::{ConfigType, parse_type};
 
 pub fn gen_field_names(fields: &Punctuated<Field, Comma>) -> Vec<TokenStream> {
     fields

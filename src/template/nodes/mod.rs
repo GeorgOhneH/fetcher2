@@ -10,9 +10,9 @@ use futures::prelude::*;
 use serde::Serialize;
 use sha1::Digest;
 
+use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
-use crate::data::settings::DownloadSettings;
 use crate::template::node_type::{NodeType, NodeTypeData};
 
 pub mod node;

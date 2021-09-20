@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
-use syn::spanned::Spanned;
 use syn::{self, Field, LitStr};
+use syn::spanned::Spanned;
 
 use crate::config_type::{ConfigHashType, ConfigType, ConfigWrapperType};
 

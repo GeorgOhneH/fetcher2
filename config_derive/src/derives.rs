@@ -1,17 +1,17 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort_call_site;
 use quote::quote;
-use syn::GenericParam;
-use syn::TraitBoundModifier;
 use syn::{
-    self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
-    Fields, Generics, Ident, Lifetime, Path, TraitBound, TypeParamBound,
+    self, Attribute, Data, DataStruct, DeriveInput, Field, Fields, Generics,
+    Ident, Lifetime, Path, punctuated::Punctuated, token::Comma, TraitBound, TypeParamBound,
 };
 use syn::{DataEnum, LifetimeDef, PathSegment};
+use syn::GenericParam;
+use syn::spanned::Spanned;
+use syn::TraitBoundModifier;
 
 use crate::build_app::{gen_enum_build_app_fn, gen_struct_build_app_fn};
 use crate::utils::{bound_generics, create_path, lifetime_generics};
-use syn::spanned::Spanned;
 
 pub fn derive_config_struct(input: &DeriveInput) -> TokenStream {
     let ident = &input.ident;

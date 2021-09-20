@@ -1,5 +1,6 @@
-use druid::{WidgetPod, Widget, Point, Lens};
+use druid::{Lens, Point, Widget, WidgetPod};
 use druid::widget::prelude::*;
+
 use crate::data::win::{SubWindowInfo, WindowState};
 
 pub struct SubWindow<T> {

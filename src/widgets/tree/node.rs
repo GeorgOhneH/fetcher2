@@ -4,19 +4,19 @@ use std::marker::PhantomData;
 use std::process::id;
 use std::sync::Arc;
 
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Label, SizedBox};
-use druid::{theme, Lens, LensExt, Rect, SingleUse};
+use druid::{Lens, LensExt, Rect, SingleUse, theme};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Label, SizedBox};
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::{Header, HeaderConstrains};
-use crate::widgets::tree::opener::Opener;
 use crate::widgets::tree::NodeIndex;
+use crate::widgets::tree::opener::Opener;
 
 selectors! {
     /// Notification to send from the widget that requires removal
@@ -60,8 +60,6 @@ macro_rules! impl_simple_tree_node {
     };
 }
 pub(crate) use impl_simple_tree_node;
-
-
 /// A tree node `Data`. This is the data expected by the tree widget.
 ///
 /// Implementors of this trait must know the number of children of each node

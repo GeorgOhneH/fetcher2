@@ -1,9 +1,10 @@
+use std::path::PathBuf;
 
-use druid::{Lens, Data};
 use config::Config;
+use druid::{Data, Lens};
+
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
-use std::path::PathBuf;
 
 #[derive(Clone, Lens, Debug, Data, Config)]
 pub struct OptionSettings {

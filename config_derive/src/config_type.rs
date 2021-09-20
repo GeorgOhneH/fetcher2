@@ -2,11 +2,11 @@ use lazy_static::lazy_static;
 use proc_macro2::Span;
 use proc_macro_error::abort;
 use regex::Regex;
+use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 use syn::spanned::Spanned;
 use syn::Type;
-use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 
-use crate::config_attr::{parse_config_attributes, ConfigAttr};
+use crate::config_attr::{ConfigAttr, parse_config_attributes};
 
 pub enum ConfigHashType {
     String,

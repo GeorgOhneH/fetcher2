@@ -16,7 +16,7 @@ use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 
-use crate::{AppData, Result};
+use crate::{Result};
 use crate::background_thread::NEW_TEMPLATE;
 use crate::controller::{Msg, MSG_THREAD};
 use crate::template::communication::NODE_EVENT;
@@ -24,8 +24,8 @@ use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::Template;
-use crate::ui::TemplateInfoSelect;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::data::AppData;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {

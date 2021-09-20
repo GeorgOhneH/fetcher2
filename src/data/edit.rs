@@ -1,8 +1,8 @@
-use crate::template::widget_edit_data::TemplateEditData;
-use crate::data::win::WindowState;
-
-use druid::{Lens, Data};
 use config::Config;
+use druid::{Data, Lens};
+
+use crate::data::win::WindowState;
+use crate::template::widget_edit_data::TemplateEditData;
 
 #[derive(Config, Debug, Data, Clone, Lens)]
 pub struct EditWindowData {

@@ -1,27 +1,27 @@
+use std::{fs, io};
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
-use std::{fs, io};
 
 use crossbeam_channel::{Receiver, Select, Sender};
-use druid::im::Vector;
-use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
+use druid::im::Vector;
+use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
-use crate::widgets::tree::node::{TreeNode, impl_simple_tree_node};
-use crate::widgets::tree::root::{TreeNodeRoot, impl_simple_tree_root};
-use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::Result;
+use crate::widgets::tree::{DataNodeIndex, Tree};
+use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
+use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 
 selectors! {
     NEW_ROOT: SingleUse<io::Result<EntryRoot>>

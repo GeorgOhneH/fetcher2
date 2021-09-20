@@ -10,9 +10,9 @@ use druid::widget::prelude::*;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
+use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError};
 use crate::session::Session;
-use crate::data::settings::DownloadSettings;
 use crate::site_modules::{Minimal, Polybox};
 use crate::site_modules::Mode as PolyboxMode;
 use crate::site_modules::Module;
@@ -25,7 +25,6 @@ use crate::template::nodes::root::{RawRootNode, RootNode};
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::ui::TemplateInfoSelect;
 use crate::widgets::tree::NodeIndex;
 
 pub mod communication;
