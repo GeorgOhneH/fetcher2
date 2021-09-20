@@ -248,7 +248,7 @@ impl<W: Widget<EditWindowData>> Controller<EditWindowData, W> for NodeWindowCont
                 let idx = cmd.get_unchecked(OPEN_NODE);
 
                 let (size, pos) = if let Some(win_state) = &data.node_win_state {
-                    (win_state.size, win_state.pos)
+                    (win_state.get_size(), win_state.get_pos())
                 } else {
                     WindowState::default_size_pos(ctx.window())
                 };

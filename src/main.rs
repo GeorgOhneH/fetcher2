@@ -47,7 +47,7 @@ use tokio::time::Duration;
 pub use error::{Result, TError};
 
 use crate::background_thread::background_main;
-use crate::controller::{MainController, Msg, WINDOW_STATE_DIR};
+use crate::controller::{MainController, Msg, WindowState, WINDOW_STATE_DIR};
 use crate::cstruct_window::CStructBuffer;
 use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::communication::RawCommunication;
@@ -79,29 +79,26 @@ fn load_window_state() -> Result<AppData> {
     let file_content = &fs::read(WINDOW_STATE_DIR.as_path())?;
     Ok(ron::de::from_bytes::<AppData>(file_content)?)
 }
-fn save_window_state(app_state: &AppData) -> Result<()> {
-    let serialized = ron::to_string(app_state)?;
 
-    fs::create_dir_all(WINDOW_STATE_DIR.as_path().parent().expect(""))?;
-
-    let mut f = fs::OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .create(true)
-        .open(WINDOW_STATE_DIR.as_path())?;
-    f.write_all(&serialized.as_bytes())?;
-    Ok(())
-}
-
-fn build_window(load_err: Option<TError>, tx: flume::Sender<Msg>) -> WindowDesc<AppData> {
-    let mut main_window = WindowDesc::new(
+fn build_window(
+    load_err: Option<TError>,
+    tx: flume::Sender<Msg>,
+    win_state: &Option<WindowState>,
+) -> WindowDesc<AppData> {
+    let main_window = WindowDesc::new(
         build_ui()
             .controller(MainController::new(load_err, tx))
             .padding(0.),
     )
     .menu(make_menu)
     .title(LocalizedString::new("list-demo-window-title").with_placeholder("List Demo"));
-    main_window
+    if let Some(win_state) = win_state {
+        main_window
+            .window_size(win_state.get_size())
+            .set_position(win_state.get_pos())
+    } else {
+        main_window
+    }
 }
 
 pub fn main() {
@@ -120,7 +117,7 @@ pub fn main() {
             Some(err),
         ),
     };
-    let main_window = build_window(load_err, tx.clone());
+    let main_window = build_window(load_err, tx.clone(), &app_data.main_window);
 
     let app_launcher = AppLauncher::with_window(main_window);
 
@@ -148,8 +145,7 @@ pub fn main() {
         .launch(app_data)
         .expect("launch failed");
 
-    tx.send(Msg::ExitAndSave).expect("");
-    // let _ = save_window_state(&app_state.read().unwrap());
+    let _ = tx.send(Msg::ExitAndSave);
     handle.join().expect("thread panicked");
 }
 //

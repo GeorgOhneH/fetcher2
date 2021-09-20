@@ -103,6 +103,20 @@ impl MainController {
             }
         };
     }
+
+    fn save_window_state(app_state: &AppData) -> Result<()> {
+        let serialized = ron::to_string(app_state)?;
+
+        fs::create_dir_all(WINDOW_STATE_DIR.as_path().parent().expect(""))?;
+
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(WINDOW_STATE_DIR.as_path())?;
+        f.write_all(&serialized.as_bytes())?;
+        Ok(())
+    }
 }
 
 impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
@@ -143,7 +157,11 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
                 }
             }
             Event::WindowCloseRequested => {
-                //TODO
+                data.main_window = Some(WindowState::from_win(ctx.window()));
+            }
+            Event::WindowDisconnected => {
+                self.tx.send(Msg::ExitAndSave).expect("");
+                Self::save_window_state(data).expect("Could not save AppData")
             }
             _ => (),
         }
@@ -194,6 +212,24 @@ impl<W: Widget<AppData>> Controller<AppData, W> for TemplateController {
             _ => (),
         }
         child.event(ctx, event, data, env)
+    }
+
+    fn lifecycle(
+        &mut self,
+        child: &mut W,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &AppData,
+        env: &Env,
+    ) {
+        if let LifeCycle::WidgetAdded = event {
+            if let Some(last) = data.recent_templates.iter().next() {
+                ctx.submit_command(
+                    MSG_THREAD.with(SingleUse::new(Msg::NewTemplateByPath(last.clone()))),
+                )
+            }
+        }
+        child.lifecycle(ctx, event, data, env)
     }
 }
 
@@ -275,13 +311,11 @@ impl<W: Widget<SubWindowInfo<OptionSettings>>> Controller<SubWindowInfo<OptionSe
 }
 
 pub struct EditController {
-    current_data: TemplateEditData,
 }
 
 impl EditController {
     pub fn new() -> Self {
         Self {
-            current_data: TemplateEditData::new(),
         }
     }
     fn make_sub_window(
@@ -321,7 +355,7 @@ impl<W: Widget<SubWindowInfo<EditWindowData>>> Controller<SubWindowInfo<EditWind
             Event::Command(cmd) if cmd.is(NEW_EDIT_TEMPLATE) => {
                 ctx.set_handled();
                 let edit_data = cmd.get_unchecked(NEW_EDIT_TEMPLATE).take().unwrap();
-                self.current_data = edit_data;
+                data.data.edit_template = edit_data;
                 return;
             }
             Event::Command(cmd) if cmd.is(OPEN_EDIT) => {
@@ -365,7 +399,7 @@ impl<T: Clone + Debug + Config> SubWindowInfo<T> {
 
     pub fn get_size_pos(&self, win_handle: &WindowHandle) -> (Size, Point) {
         if let Some(win_state) = &self.win_state {
-            return (win_state.size, win_state.pos);
+            return (win_state.get_size(), win_state.get_pos());
         }
         WindowState::default_size_pos(win_handle)
     }
@@ -374,24 +408,35 @@ impl<T: Clone + Debug + Config> SubWindowInfo<T> {
 #[derive(Config, Debug, Clone, Data)]
 pub struct WindowState {
     // TODO
-    #[config(skip = Size::ZERO)]
-    pub size: Size,
-    #[config(skip = Point::ZERO)]
-    pub pos: Point,
+    size_w: isize,
+    size_h: isize,
+
+    pos_x: isize,
+    pos_y: isize,
 }
 
 impl WindowState {
     pub fn new(size: Size, pos: Point) -> Self {
-        Self { size, pos }
+        Self {
+            size_w: size.width as isize,
+            size_h: size.height as isize,
+            pos_x: pos.x as isize,
+            pos_y: pos.y as isize,
+        }
+    }
+
+    pub fn get_size(&self) -> Size {
+        Size::new(self.size_w as f64, self.size_h as f64)
+    }
+
+    pub fn get_pos(&self) -> Point {
+        Point::new(self.pos_x as f64, self.pos_y as f64)
     }
 
     pub fn from_win(handle: &WindowHandle) -> Self {
         // TODO not panic
         let scale = handle.get_scale().unwrap();
-        Self {
-            size: handle.get_size().to_dp(scale),
-            pos: handle.get_position(),
-        }
+        Self::new(handle.get_size().to_dp(scale), handle.get_position())
     }
     pub fn default_size_pos(win_handle: &WindowHandle) -> (Size, Point) {
         let (win_size_w, win_size_h) = win_handle.get_size().into();
