@@ -40,7 +40,6 @@ use tokio::time::Duration;
 
 use crate::controller::Msg;
 use crate::error::{Result, TError};
-use crate::settings::DownloadSettings;
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node::Status;

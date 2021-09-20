@@ -47,33 +47,44 @@ use tokio::time::Duration;
 pub use error::{Result, TError};
 
 use crate::background_thread::background_main;
-use crate::controller::{MainController, Msg, WindowState, WINDOW_STATE_DIR};
+use crate::controller::{MainController, Msg};
 use crate::cstruct_window::CStructBuffer;
-use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
-use crate::ui::{build_ui, make_menu, AppData, TemplateInfoSelect};
+use crate::ui::{build_ui, make_menu};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 use std::io::Write;
+use lazy_static::lazy_static;
+use crate::data::win::WindowState;
 
 mod background_thread;
-pub mod controller;
 mod cstruct_window;
 pub mod edit_window;
 mod error;
 mod session;
-mod settings;
 mod site_modules;
 mod task;
 mod template;
 pub mod ui;
 mod utils;
 pub mod widgets;
+pub mod controller;
+pub mod data;
+
+lazy_static! {
+    pub static ref CONFIG_DIR: PathBuf = directories::ProjectDirs::from("ch", "fetcher2", "fetcher2")
+        .expect("Could not find a place to store the config files")
+        .config_dir()
+        .to_owned();
+    pub static ref SETTINGS_DIR: PathBuf = Path::join(CONFIG_DIR.as_path(), "settings.json");
+    pub static ref WINDOW_STATE_DIR: PathBuf =
+        Path::join(CONFIG_DIR.as_path(), "window_state.json");
+}
 
 fn load_window_state() -> Result<AppData> {
     let file_content = &fs::read(WINDOW_STATE_DIR.as_path())?;

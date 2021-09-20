@@ -9,9 +9,9 @@ use futures::FutureExt;
 use tokio;
 use tokio::task::{JoinError, JoinHandle};
 
-use crate::controller::{SubWindowInfo, WindowState};
 use crate::TError;
-use crate::ui::AppData;
+use crate::data::win::WindowState;
+use crate::data::AppData;
 
 pub struct JoinHandleDrop<T>(JoinHandle<T>);
 

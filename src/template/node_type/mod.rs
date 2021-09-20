@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use crate::error::Result;
 use crate::session::Session;
-use crate::settings::DownloadSettings;
+use crate::data::settings::DownloadSettings;
 use crate::template::node_type::folder::{FolderData, FolderEditData};
 pub use crate::template::node_type::folder::Folder;
 pub use crate::template::node_type::site::{DownloadArgs, Extensions};

@@ -1,19 +1,16 @@
-use std::path::PathBuf;
 
+use druid::{Lens, Data};
 use config::Config;
-use druid::Data;
-use druid::im::Vector;
-use serde::Serialize;
-
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
+use std::path::PathBuf;
 
-#[derive(Config, Debug, Data, Clone)]
-pub struct Test {
-    #[config(default = false)]
-    #[config(name = "Force Download")]
-    pub force: bool,
+#[derive(Clone, Lens, Debug, Data, Config)]
+pub struct OptionSettings {
+    #[config(ty = "_<struct>")]
+    pub settings: Option<Settings>,
 }
+
 
 #[derive(Config, Debug, Data, Clone)]
 pub struct Settings {

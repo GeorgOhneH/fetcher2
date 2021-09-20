@@ -17,7 +17,7 @@ use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, Win
 use druid_widget_nursery::selectors;
 use serde::{Deserialize, Serialize};
 
-use crate::controller::{Msg, SubWindowInfo, WindowState, MSG_THREAD};
+use crate::controller::{Msg, MSG_THREAD};
 use crate::cstruct_window::{c_option_window, APPLY};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
@@ -27,6 +27,7 @@ use crate::template::widget_edit_data::TemplateEditData;
 use crate::template::Template;
 use crate::ui::AppData;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::data::win::WindowState;
 
 selectors! {
     SAVE_EDIT,
@@ -43,15 +44,6 @@ pub enum NodePosition {
     Above,
     Below,
     Child,
-}
-
-#[derive(Config, Debug, Data, Clone, Lens)]
-pub struct EditWindowData {
-    #[config(ty = "_<struct>")]
-    pub node_win_state: Option<WindowState>,
-
-    #[config(skip = TemplateEditData::new())]
-    pub edit_template: TemplateEditData,
 }
 
 pub struct DataBuffer {

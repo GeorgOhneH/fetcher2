@@ -5,7 +5,6 @@ use url::Url;
 
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
-use crate::settings::DownloadSettings;
 use crate::site_modules::utils::unescape;
 
 const SSO_URL: &str = "https://aai-logon.ethz.ch/idp/profile/SAML2/Redirect/SSO";

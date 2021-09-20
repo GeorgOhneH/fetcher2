@@ -12,7 +12,7 @@ use tokio::io::AsyncWriteExt;
 
 use crate::error::{Result, TError};
 use crate::session::Session;
-use crate::settings::DownloadSettings;
+use crate::data::settings::DownloadSettings;
 use crate::site_modules::{Minimal, Polybox};
 use crate::site_modules::Mode as PolyboxMode;
 use crate::site_modules::Module;

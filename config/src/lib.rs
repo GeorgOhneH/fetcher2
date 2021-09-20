@@ -29,14 +29,3 @@ pub trait ConfigEnum: Sized + Send {
     fn update_app(self, app: &mut CEnum) -> Result<(), InvalidError>;
 }
 
-impl Config for () {
-    fn parse_from_app(app: &CStruct) -> Result<Self, RequiredError> {
-        Ok(())
-    }
-    fn builder() -> CStructBuilder {
-        CStructBuilder::new()
-    }
-    fn update_app(self, app: &mut CStruct) -> Result<(), InvalidError> {
-        Ok(())
-    }
-}

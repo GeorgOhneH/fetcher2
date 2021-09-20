@@ -15,7 +15,7 @@ use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 
-use crate::{AppData, TError};
+use crate::{TError};
 use crate::template::communication::NODE_EVENT;
 use crate::template::MetaData;
 use crate::template::node_type::{NodeTypeData, NodeTypeEditData, NodeTypeEditKindData};

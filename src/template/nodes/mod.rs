@@ -12,7 +12,7 @@ use sha1::Digest;
 
 use crate::error::Result;
 use crate::session::Session;
-use crate::settings::DownloadSettings;
+use crate::data::settings::DownloadSettings;
 use crate::template::node_type::{NodeType, NodeTypeData};
 
 pub mod node;

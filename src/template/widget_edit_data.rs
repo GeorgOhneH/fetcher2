@@ -16,14 +16,13 @@ use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 
-use crate::{AppData, Result};
+use crate::Result;
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::template::Template;
-use crate::ui::TemplateInfoSelect;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 
 #[derive(Debug, Clone, Data, Lens)]

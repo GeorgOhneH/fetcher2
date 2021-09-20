@@ -39,10 +39,9 @@ use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
 
-use crate::controller::{EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController, WindowState, SubWindowInfo};
+use crate::controller::{EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-use crate::edit_window::{edit_window, EditWindowData};
-use crate::settings::{DownloadSettings, Settings, Test};
+use crate::edit_window::{edit_window};
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::NodeTypeData;
@@ -56,67 +55,8 @@ use crate::widgets::history_tree::History;
 use crate::widgets::tree::Tree;
 use crate::widgets::widget_ext::WidgetExt as _;
 use config::ConfigEnum;
-
-#[derive(Clone, Copy, Debug, Data, PartialEq, ConfigEnum)]
-pub enum TemplateInfoSelect {
-    Nothing,
-    General,
-    Folder,
-    History,
-}
-
-#[derive(Clone, Lens, Debug, Data, Config)]
-pub struct AppData {
-    #[config(skip = TemplateData::new())]
-    pub template: TemplateData,
-
-    #[data(eq)]
-    #[config(ty = "Vec<_>")]
-    pub recent_templates: Vector<PathBuf>,
-
-    #[config(ty = "struct")]
-    pub settings_window: SubWindowInfo<OptionSettings>,
-
-    #[config(ty = "enum", default = "Nothing")]
-    pub template_info_select: TemplateInfoSelect,
-
-    #[data(ignore)]
-    #[config(ty = "_<struct>")]
-    pub main_window: Option<WindowState>,
-
-    #[config(ty = "struct")]
-    pub edit_window: SubWindowInfo<EditWindowData>,
-}
-
-#[derive(Clone, Lens, Debug, Data, Config)]
-pub struct OptionSettings {
-    #[config(ty = "_<struct>")]
-    pub settings: Option<Settings>,
-}
-
-impl AppData {
-    pub fn get_settings(&self) -> Option<&Settings> {
-        self.settings_window.data.settings.as_ref()
-    }
-    pub fn get_selected_node(&self) -> Option<&NodeData> {
-        if self.template.root.selected.len() > 0 {
-            let data_idx = &self.template.root.selected[0];
-            let idx = data_idx.clone().into_iter().collect::<Vec<_>>();
-            Some(self.template.node(&idx))
-        } else {
-            None
-        }
-    }
-
-    pub fn get_selected_history(&self) -> Option<Vector<TaskMsg>> {
-        self.get_selected_node()
-            .map(|node| match &node.ty {
-                NodeTypeData::Folder(_) => None,
-                NodeTypeData::Site(site) => Some(site.history.clone()),
-            })
-            .flatten()
-    }
-}
+use crate::data::template_info::TemplateInfoSelect;
+use crate::data::AppData;
 
 pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> {
     let mut base = Menu::empty();

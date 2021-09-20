@@ -1,6 +1,6 @@
 use druid::{WidgetPod, Widget, Point, Lens};
 use druid::widget::prelude::*;
-use crate::controller::{SubWindowInfo, WindowState};
+use crate::data::win::{SubWindowInfo, WindowState};
 
 pub struct SubWindow<T> {
     child: WidgetPod<T, Box<dyn Widget<T>>>

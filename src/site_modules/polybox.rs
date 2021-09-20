@@ -21,7 +21,6 @@ use url::Url;
 
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
-use crate::settings::DownloadSettings;
 use crate::site_modules::ModuleExt;
 use crate::site_modules::utils::save_path;
 use crate::task::{Task, TaskBuilder};

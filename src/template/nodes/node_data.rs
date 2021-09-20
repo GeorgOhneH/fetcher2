@@ -23,7 +23,7 @@ use crate::template::nodes::node::{NodeEvent, PathEvent};
 use crate::template::MetaData;
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::NodeIndex;
-use crate::{AppData, TError};
+use crate::{TError};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {

@@ -16,7 +16,6 @@ use fetcher2_macro::{login_locks, LoginLock};
 
 use crate::error::{Result, TErrorKind};
 use crate::session::Session;
-use crate::settings::DownloadSettings;
 use crate::site_modules::minimal::Minimal;
 use crate::site_modules::polybox::Polybox;
 use crate::task::Task;
