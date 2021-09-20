@@ -10,6 +10,7 @@ use syn::{
 use syn::{DataEnum, LifetimeDef, PathSegment};
 
 use crate::build_app::{gen_enum_build_app_fn, gen_struct_build_app_fn};
+use crate::utils::{bound_generics, create_path, lifetime_generics};
 use syn::spanned::Spanned;
 
 pub fn derive_config_struct(input: &DeriveInput) -> TokenStream {
@@ -51,45 +52,43 @@ pub fn derive_config_enum(input: &DeriveInput) -> TokenStream {
     }
 }
 
-fn bound_generics(mut generics: Generics) -> Generics {
-    let span = generics.span();
-    for param in generics.params.iter_mut() {
-        match param {
-            GenericParam::Type(ty_param) => {
-                let mut path = Path::from(Ident::new("config", span));
-                path.segments.push(Ident::new("Config", span).into());
-                let bound = TraitBound {
-                    paren_token: None,
-                    modifier: TraitBoundModifier::None,
-                    lifetimes: None,
-                    path,
-                };
-                ty_param.bounds.push(TypeParamBound::Trait(bound))
-            }
-            _ => (),
-        }
-    }
-    generics
-}
-fn lifetime_generics(mut generics: Generics) -> Generics {
-    let de_lifetime = GenericParam::Lifetime(LifetimeDef {
-        attrs: vec![],
-        lifetime: Lifetime::new("'de", generics.span()),
-        colon_token: None,
-        bounds: Default::default(),
-    });
-    generics.params.push(de_lifetime);
-    generics
-}
-
 fn gen_for_struct(
     name: &Ident,
     name_generics: &Generics,
     fields: &Punctuated<Field, Comma>,
     _attrs: &[Attribute],
 ) -> TokenStream {
-    let bounded_generics = bound_generics(name_generics.clone());
-    let lifetime_generics = lifetime_generics(name_generics.clone());
+    let config_path = create_path(&[("config", None), ("Config", None)], name.span());
+    let config_bound = TraitBound {
+        paren_token: None,
+        modifier: TraitBoundModifier::None,
+        lifetimes: None,
+        path: config_path,
+    };
+    let se_path = create_path(&[("serde", None), ("Serialize", None)], name.span());
+    let se_bound = TraitBound {
+        paren_token: None,
+        modifier: TraitBoundModifier::None,
+        lifetimes: None,
+        path: se_path,
+    };
+    let bounded_config_generics = bound_generics(name_generics.clone(), config_bound.clone());
+    let bounded_se_generics = bound_generics(name_generics.clone(), se_bound.clone());
+    let de_generics = lifetime_generics(name_generics.clone(), "'de");
+    let de_generics = bound_generics(de_generics, config_bound);
+    let de_path = create_path(
+        &[("serde", None), (&"Deserilize", Some("'de"))],
+        name_generics.span(),
+    );
+    let de_bound = TraitBound {
+        paren_token: None,
+        modifier: TraitBoundModifier::None,
+        lifetimes: None,
+        path: de_path,
+    };
+    let de_generics = bound_generics(de_generics, de_bound);
+
+
     let build_app_fn = gen_struct_build_app_fn(fields);
     let parse_fn = crate::parse_from_app::gen_struct_parse_fn(fields);
     let update_app_fn = crate::update_app::gen_struct_update_app_fn(fields);
@@ -99,14 +98,14 @@ fn gen_for_struct(
     let se_impl = crate::serialize::r#struct::gen_se(fields, name);
 
     quote! {
-        impl #bounded_generics ::config::Config for #name #name_generics {
+        impl #bounded_config_generics ::config::Config for #name #name_generics {
             #build_app_fn
             #parse_fn
             #update_app_fn
         }
 
 
-        impl #name_generics serde::Serialize for #name #name_generics {
+        impl #bounded_se_generics serde::Serialize for #name #name_generics {
             fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
             where
                 S: serde::Serializer,
@@ -115,7 +114,7 @@ fn gen_for_struct(
             }
         }
 
-        impl #lifetime_generics serde::Deserialize<'de> for #name #name_generics {
+        impl #de_generics serde::Deserialize<'de> for #name #name_generics {
             fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,

@@ -4,3 +4,4 @@ pub mod history_tree;
 pub mod on_command;
 pub mod tree;
 pub mod widget_ext;
+pub mod sub_window_widget;

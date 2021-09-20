@@ -2,9 +2,9 @@ use proc_macro2::Span;
 use proc_macro_error::{abort, ResultExt};
 use syn::{
     self,
-    Attribute,
-    Expr,
-    Ident, LitStr, parse::{Parse, ParseStream}, punctuated::Punctuated,
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
+    Attribute, Expr, Ident, LitStr,
 };
 use syn::{MetaNameValue, Token};
 

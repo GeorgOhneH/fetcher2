@@ -144,9 +144,9 @@ impl CEnumBuilder {
         self
     }
 
-    pub fn default(mut self, name: String) -> Self {
+    pub fn default<T: Into<String>>(mut self, name: T) -> Self {
         self.inner
-            .set_selected(&name)
+            .set_selected(&name.into())
             .expect("Default for EnumConfig doesn't exist");
         self
     }

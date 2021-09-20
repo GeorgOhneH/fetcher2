@@ -2,11 +2,11 @@ use lazy_static::lazy_static;
 use proc_macro2::Span;
 use proc_macro_error::abort;
 use regex::Regex;
-use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 use syn::spanned::Spanned;
 use syn::Type;
+use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 
-use crate::config_attr::{ConfigAttr, parse_config_attributes};
+use crate::config_attr::{parse_config_attributes, ConfigAttr};
 
 pub enum ConfigHashType {
     String,
@@ -149,7 +149,7 @@ fn _parse_type(ty: &Type, type_annots: Option<TypeAnnotations>) -> ConfigType {
             ("isize", []) => ConfigType::Integer(path.clone()),
             ("bool", []) => ConfigType::Bool(path.clone()),
             ("PathBuf", []) => ConfigType::Path(path.clone()),
-            ("struct", []) => ConfigType::Struct(path.clone()),
+            ("struct", inner) => ConfigType::Struct(path.clone()),
             ("enum", []) => ConfigType::Enum(path.clone()),
             (x, _) => abort!(ty, "{} is not supported", x),
         }

@@ -4,4 +4,3 @@ pub use crate::parse_from_app::r#struct::gen_struct_parse_fn;
 mod r#enum;
 mod r#struct;
 mod utils;
-

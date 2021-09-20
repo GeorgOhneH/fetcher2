@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
-use syn::LitStr;
+use syn::{LitStr, PathArguments};
 
 use crate::config_attr::ConfigAttr;
 use crate::config_type::{ConfigHashType, ConfigType};
@@ -85,20 +85,32 @@ pub fn gen_type(
             }
         }
         ConfigType::Struct(path) => {
+            let segment = &path.segments.iter().next().unwrap();
+            let generics =  match &segment.arguments {
+                PathArguments::AngleBracketed(inner) => quote! {::#inner},
+                _ => quote! {},
+            };
+            let name = &segment.ident;
             quote_spanned! {span=>
-                ::config::CType::CStruct(
-                    #path::builder()
+                    ::config::CType::CStruct(
+                    #name #generics::builder()
                     #gui_fn
                     #args
                     .build()
-                )
+                    )
             }
         }
         ConfigType::CheckableStruct(path) => {
+            let segment = &path.segments.iter().next().unwrap();
+            let generics =  match &segment.arguments {
+                PathArguments::AngleBracketed(inner) => quote! {::#inner},
+                _ => quote! {},
+            };
+            let name = &segment.ident;
             quote_spanned! {span=>
                 ::config::CType::CheckableStruct(
                     ::config::CCheckableStructBuilder::new(
-                        #path::builder()
+                        #name #generics::builder()
                     )
                     #gui_fn
                     #args

@@ -1,10 +1,15 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr, Generics};
+use syn::{
+    self, punctuated::Punctuated, token::Comma, AngleBracketedGenericArguments, BoundLifetimes,
+    Field, GenericArgument, GenericParam, Generics, Lifetime, LifetimeDef, LitStr, Path,
+    PathArguments, PathSegment, TraitBound, TraitBoundModifier,
+};
 
 use crate::config_type::{parse_type, ConfigType, ConfigWrapperType};
-use crate::utils::{gen_field_name_strs, gen_field_names};
+use crate::utils::{bound_generics, lifetime_generics};
+use crate::utils::{create_path, gen_field_name_strs, gen_field_names};
 
 pub fn gen_field(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let field_names = gen_field_names(fields);
@@ -45,10 +50,49 @@ pub fn gen_field(fields: &Punctuated<Field, Comma>) -> TokenStream {
     }
 }
 
-pub fn gen_visitor(fields: &Punctuated<Field, Comma>, name: &Ident, name_generics: &Generics) -> TokenStream {
+pub fn gen_visitor(
+    fields: &Punctuated<Field, Comma>,
+    name: &Ident,
+    name_generics: &Generics,
+) -> TokenStream {
     let name_str = LitStr::new(&name.to_string(), name.span());
     let field_names = gen_field_names(fields);
     let field_name_strings = gen_field_name_strs(fields);
+
+    let bound_names: Vec<_> = name_generics
+        .params
+        .iter()
+        .filter_map(|param| match param {
+            GenericParam::Type(ty_param) => Some(ty_param.ident.clone()),
+            _ => None,
+        })
+        .collect();
+    let bound_name_strs: Vec<_> = bound_names
+        .iter()
+        .map(|name| LitStr::new(&name.to_string(), name.span()))
+        .collect();
+    let visit_generics = lifetime_generics(name_generics.clone(), "'de");
+
+    let config_path = create_path(&[("config", None), ("Config", None)], name_generics.span());
+    let config_bound = TraitBound {
+        paren_token: None,
+        modifier: TraitBoundModifier::None,
+        lifetimes: None,
+        path: config_path,
+    };
+    let de_path = create_path(
+        &[("serde", None), (&"Deserilize", Some("'inner_de"))],
+        name_generics.span(),
+    );
+    let de_bound = TraitBound {
+        paren_token: None,
+        modifier: TraitBoundModifier::None,
+        lifetimes: None,
+        path: de_path,
+    };
+    let visit_generics = bound_generics(name_generics.clone(), config_bound);
+    let visit_generics = bound_generics(visit_generics, de_bound);
+    let visit_generics = lifetime_generics(visit_generics, "'inner_de");
 
     let c_struct_setter = fields
         .iter()
@@ -70,10 +114,12 @@ pub fn gen_visitor(fields: &Punctuated<Field, Comma>, name: &Ident, name_generic
         .collect::<Vec<_>>();
 
     quote! {
-        struct DurationVisitor;
+        struct DurationVisitor #name_generics {
+            #(#bound_names: std::marker::PhantomData< #bound_names>,)*
+        }
 
-        impl<'de> serde::de::Visitor<'de> for DurationVisitor {
-            type Value = #name;
+        impl #visit_generics serde::de::Visitor<'inner_de> for DurationVisitor #name_generics {
+            type Value = #name #name_generics;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("struct #name")
@@ -81,9 +127,9 @@ pub fn gen_visitor(fields: &Punctuated<Field, Comma>, name: &Ident, name_generic
 
             fn visit_map<V>(self, mut map: V) -> std::result::Result<Self::Value, V::Error>
                 where
-                    V: serde::de::MapAccess<'de>,
+                    V: serde::de::MapAccess<'inner_de>,
             {
-                let mut cstruct: config::CStruct = #name::builder().build();
+                let mut cstruct: config::CStruct = Self::Value::builder().build();
                 #(let mut #field_names = None;)*
                 while let Ok(Some(key)) = map.next_key() {
                     match key {
@@ -111,7 +157,9 @@ pub fn gen_visitor(fields: &Punctuated<Field, Comma>, name: &Ident, name_generic
             }
         }
 
-        deserializer.deserialize_struct(#name_str, FIELDS, DurationVisitor)
+        deserializer.deserialize_struct(#name_str, FIELDS, DurationVisitor {
+            #(#bound_names: std::marker::PhantomData,)*
+        })
     }
 }
 

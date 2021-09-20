@@ -2,32 +2,29 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use config::{CEnum, ConfigEnum};
-use config::Config;
 use config::CStruct;
+use config::Config;
+use config::{CEnum, ConfigEnum};
+use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
+use druid::im::Vector;
+use druid::widget::prelude::*;
+use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
 use druid::{
-    Command, commands, FileDialogOptions, lens, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
+    commands, lens, Command, FileDialogOptions, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
 };
 use druid::{InternalEvent, LensExt};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
-use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
-use druid::im::Vector;
-use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
-use druid::widget::prelude::*;
 use druid_widget_nursery::selectors;
 use serde::{Deserialize, Serialize};
 
-use crate::controller::{
-    INIT_EDIT_WINDOW_STATE, Msg, MSG_THREAD, NEW_WIN_INFO, SAVE_EDIT_WINDOW_STATE, SubStateController,
-    SubWindowInfo,
-};
-use crate::cstruct_window::{APPLY, c_option_window};
+use crate::controller::{Msg, SubWindowInfo, WindowState, MSG_THREAD};
+use crate::cstruct_window::{c_option_window, APPLY};
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::Template;
 use crate::template::widget_edit_data::TemplateEditData;
+use crate::template::Template;
 use crate::ui::AppData;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 
@@ -48,28 +45,28 @@ pub enum NodePosition {
     Child,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-#[serde(default)]
-pub struct EditWindowState {
-    node_win_info: SubWindowInfo<()>,
+#[derive(Config, Debug, Data, Clone, Lens)]
+pub struct EditWindowData {
+    #[config(ty = "_<struct>")]
+    #[data(ignore)]
+    pub node_win_state: Option<WindowState>,
+
+    #[config(skip = TemplateEditData::new())]
+    pub edit_template: TemplateEditData,
 }
 
 pub struct DataBuffer {
-    pub child: WidgetPod<TemplateEditData, Box<dyn Widget<TemplateEditData>>>,
-    pub edit_data: TemplateEditData,
+    pub child: WidgetPod<EditWindowData, Box<dyn Widget<EditWindowData>>>,
+    pub data: Option<EditWindowData>,
+    new: bool,
 }
 
 impl DataBuffer {
-    pub fn new(
-        child: impl Widget<TemplateEditData> + 'static,
-        mut edit_data: TemplateEditData,
-    ) -> Self {
-        if edit_data.root.children.len() == 0 {
-            edit_data.root.children.push_back(NodeEditData::new(true))
-        }
+    pub fn new(child: impl Widget<EditWindowData> + 'static, new: bool) -> Self {
         Self {
-            child: WidgetPod::new(child.boxed()),
-            edit_data,
+            child: WidgetPod::new(Box::new(child)),
+            data: None,
+            new,
         }
     }
 
@@ -83,64 +80,104 @@ impl DataBuffer {
             Target::Global,
         ));
     }
+
+    fn get_template(&self) -> &TemplateEditData {
+        &self
+            .data
+            .as_ref()
+            .expect("Called before widget Added event")
+            .edit_template
+    }
 }
 
-impl<T: Data> Widget<T> for DataBuffer {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
+impl Widget<EditWindowData> for DataBuffer {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut EditWindowData, env: &Env) {
         match event {
             Event::Command(command) if command.is(SAVE_EDIT) => {
                 ctx.set_handled();
-                if let Some(save_path) = &self.edit_data.save_path {
-                    Self::send_update_msg(ctx, self.edit_data.root.clone(), save_path.clone());
+                if let Some(save_path) = &self.get_template().save_path {
+                    Self::send_update_msg(ctx, self.get_template().root.clone(), save_path.clone());
+                    *data = self.data.as_ref().unwrap().clone();
                     ctx.submit_command(CLOSE_WINDOW);
                 }
             }
             Event::Command(command) if command.is(SAVE_FILE_AS) => {
                 ctx.set_handled();
                 let save_path = command.get_unchecked(SAVE_FILE_AS);
-                Self::send_update_msg(ctx, self.edit_data.root.clone(), save_path.path.clone());
+                Self::send_update_msg(
+                    ctx,
+                    self.get_template().root.clone(),
+                    save_path.path.clone(),
+                );
+                *data = self.data.as_ref().unwrap().clone();
                 ctx.submit_command(CLOSE_WINDOW);
             }
             _ => (),
         }
 
-        let old_data = self.edit_data.clone();
-        self.child.event(ctx, event, &mut self.edit_data, env);
-        if !old_data.same(&self.edit_data) {
+        let old_data = self.data.clone();
+        self.child
+            .event(ctx, event, self.data.as_mut().unwrap(), env);
+        if !old_data.same(&self.data) {
             dbg!("CHANGEF");
             ctx.request_update()
         }
     }
 
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
-        self.child.lifecycle(ctx, event, &self.edit_data, env)
-    }
-
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
-        self.child.update(ctx, &self.edit_data, env)
-    }
-
-    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
-        let size = self.child.layout(ctx, bc, &self.edit_data, env);
+    fn lifecycle(
+        &mut self,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &EditWindowData,
+        env: &Env,
+    ) {
+        if let LifeCycle::WidgetAdded = event {
+            let new_data = if self.new {
+                let mut n_data = data.clone();
+                n_data.edit_template = TemplateEditData::new();
+                n_data
+            } else {
+                data.clone()
+            };
+            self.data = Some(new_data)
+        }
         self.child
-            .set_origin(ctx, &self.edit_data, env, Point::ORIGIN);
+            .lifecycle(ctx, event, self.data.as_ref().unwrap(), env)
+    }
+
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        old_data: &EditWindowData,
+        data: &EditWindowData,
+        env: &Env,
+    ) {
+        self.child.update(ctx, self.data.as_ref().unwrap(), env)
+    }
+
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &EditWindowData,
+        env: &Env,
+    ) -> Size {
+        let size = self.child.layout(ctx, bc, self.data.as_ref().unwrap(), env);
+        self.child
+            .set_origin(ctx, self.data.as_ref().unwrap(), env, Point::ORIGIN);
         size
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
-        self.child.paint(ctx, &self.edit_data, env)
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &EditWindowData, env: &Env) {
+        self.child.paint(ctx, self.data.as_ref().unwrap(), env)
     }
 }
 
-pub struct NodeController {
-    win_info: SubWindowInfo<()>,
-}
+pub struct NodeController {}
 
 impl NodeController {
     pub fn new() -> Self {
-        Self {
-            win_info: SubWindowInfo::new(()),
-        }
+        Self {}
     }
 }
 
@@ -159,38 +196,16 @@ where
         env: &Env,
     ) {
         match event {
-            Event::Command(cmd) if cmd.is(NEW_WIN_INFO) => {
-                self.win_info = cmd.get_unchecked(NEW_WIN_INFO).take().unwrap();
-            }
-            Event::Command(cmd) if cmd.is(INIT_EDIT_WINDOW_STATE) => {
-                let win_data = cmd.get_unchecked(INIT_EDIT_WINDOW_STATE);
-                self.win_info = win_data.node_win_info.clone()
-            }
-            Event::Command(cmd) if cmd.is(SAVE_EDIT_WINDOW_STATE) => {
-                let edit_state = cmd.get_unchecked(SAVE_EDIT_WINDOW_STATE);
-                edit_state.write().unwrap().node_win_info = self.win_info.clone();
+            Event::WindowConnected => {
+                if data.children.len() == 0 {
+                    data.children.push_back(NodeEditData::new(true))
+                }
             }
             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
                 if let Some(idx) = child.node_at(mouse.pos) {
                     ctx.show_context_menu(make_node_menu(idx), mouse.window_pos);
                     return;
                 }
-            }
-            Event::Command(cmd) if cmd.is(OPEN_NODE) => {
-                ctx.set_handled();
-                let idx = cmd.get_unchecked(OPEN_NODE);
-                let (size, pos) = self.win_info.get_size_pos(ctx.window());
-                ctx.new_sub_window(
-                    WindowConfig::default()
-                        .show_titlebar(true)
-                        .window_size(size)
-                        .set_position(pos)
-                        .set_level(WindowLevel::Modal),
-                    node_window(idx).controller(SubStateController::new((), ctx.widget_id())),
-                    data.clone(),
-                    env.clone(),
-                );
-                return;
             }
             Event::Command(cmd) if cmd.is(DELETE_NODE) => {
                 ctx.set_handled();
@@ -209,6 +224,45 @@ where
                 data.insert_node(idx, *pos);
                 ctx.request_update();
                 ctx.request_paint();
+                return;
+            }
+            _ => (),
+        }
+        child.event(ctx, event, data, env)
+    }
+}
+
+struct NodeWindowController;
+
+impl<W: Widget<EditWindowData>> Controller<EditWindowData, W> for NodeWindowController {
+    fn event(
+        &mut self,
+        child: &mut W,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut EditWindowData,
+        env: &Env,
+    ) {
+        match event {
+            Event::Command(cmd) if cmd.is(OPEN_NODE) => {
+                ctx.set_handled();
+                let idx = cmd.get_unchecked(OPEN_NODE);
+
+                let (size, pos) = if let Some(win_state) = &data.node_win_state {
+                    (win_state.size, win_state.pos)
+                } else {
+                    WindowState::default_size_pos(ctx.window())
+                };
+                ctx.new_sub_window(
+                    WindowConfig::default()
+                        .show_titlebar(true)
+                        .window_size(size)
+                        .set_position(pos)
+                        .set_level(WindowLevel::Modal),
+                    node_window(idx),
+                    data.clone(),
+                    env.clone(),
+                );
                 return;
             }
             _ => (),
@@ -252,11 +306,11 @@ fn make_node_menu(idx: NodeIndex) -> Menu<AppData> {
         ))
 }
 
-pub fn edit_window(data: TemplateEditData) -> impl Widget<()> {
-    DataBuffer::new(_edit_window(), data)
+pub fn edit_window(new: bool) -> impl Widget<EditWindowData> {
+    DataBuffer::new(_edit_window(), new)
 }
 
-fn _edit_window() -> impl Widget<TemplateEditData> {
+fn _edit_window() -> impl Widget<EditWindowData> {
     let tree = Tree::new(
         [Label::new("Hello")],
         [Arc::new(|| {
@@ -269,36 +323,37 @@ fn _edit_window() -> impl Widget<TemplateEditData> {
         ctx.submit_command(OPEN_NODE.with(idx.clone()));
     })
     .controller(NodeController::new())
-    .padding(0.)
-    .lens(TemplateEditData::root);
-
+    .lens(EditWindowData::edit_template.then(TemplateEditData::root))
+    .controller(NodeWindowController);
     Flex::column()
         .with_flex_child(tree.expand(), 1.0)
         .with_child(
             Flex::row()
                 .with_child(
                     Button::new("Save")
-                        .on_click(|ctx, data: &mut TemplateEditData, env| {
+                        .on_click(|ctx, data: &mut EditWindowData, env| {
                             ctx.submit_command(SAVE_EDIT.to(Target::Window(ctx.window_id())));
                         })
-                        .disabled_if(|data: &TemplateEditData, env| data.save_path.is_none()),
+                        .disabled_if(|data: &EditWindowData, env| {
+                            data.edit_template.save_path.is_none()
+                        }),
                 )
                 .with_child(Button::new("Save as").on_click(
-                    |ctx, data: &mut TemplateEditData, env| {
+                    |ctx, data: &mut EditWindowData, env| {
                         ctx.submit_command(
                             commands::SHOW_SAVE_PANEL.with(FileDialogOptions::default()),
                         );
                     },
                 ))
                 .with_child(Button::new("Cancel").on_click(
-                    |ctx, data: &mut TemplateEditData, env| {
+                    |ctx, data: &mut EditWindowData, env| {
                         ctx.submit_command(CLOSE_WINDOW);
                     },
                 )),
         )
 }
 
-fn node_window(idx: &NodeIndex) -> impl Widget<RootNodeEditData> {
+fn node_window(idx: &NodeIndex) -> impl Widget<EditWindowData> {
     c_option_window(
         Some("Node"),
         Some(Box::new(|ctx, old_data, data: &mut NodeTypeEditData, _| {
@@ -309,7 +364,10 @@ fn node_window(idx: &NodeIndex) -> impl Widget<RootNodeEditData> {
             }
         })),
     )
-    .lens(NodeLens::new(idx.clone()).then(NodeEditData::ty))
+    .lens(
+        EditWindowData::edit_template
+            .then(TemplateEditData::root.then(NodeLens::new(idx.clone()).then(NodeEditData::ty))),
+    )
 }
 
 struct NodeLens {

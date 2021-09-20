@@ -41,7 +41,7 @@ use tokio::time::Duration;
 
 use crate::controller::{EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController, WindowState, SubWindowInfo};
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-use crate::edit_window::{edit_window, EditWindowState};
+use crate::edit_window::{edit_window, EditWindowData};
 use crate::settings::{DownloadSettings, Settings, Test};
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
@@ -74,19 +74,30 @@ pub struct AppData {
     #[config(ty = "Vec<_>")]
     pub recent_templates: Vector<PathBuf>,
 
-    #[config(ty = "struct<_<struct>>")]
-    pub settings_window: SubWindowInfo<Option<Settings>>,
+    #[config(ty = "struct")]
+    pub settings_window: SubWindowInfo<OptionSettings>,
 
-    #[config(ty = "enum")]
+    #[config(ty = "enum", default = "Nothing")]
     pub template_info_select: TemplateInfoSelect,
 
     #[data(ignore)]
     #[config(ty = "_<struct>")]
     pub main_window: Option<WindowState>,
-    pub edit_window: SubWindowInfo<EditWindowState>,
+
+    #[config(ty = "struct")]
+    pub edit_window: SubWindowInfo<EditWindowData>,
+}
+
+#[derive(Clone, Lens, Debug, Data, Config)]
+pub struct OptionSettings {
+    #[config(ty = "_<struct>")]
+    pub settings: Option<Settings>,
 }
 
 impl AppData {
+    pub fn get_settings(&self) -> Option<&Settings> {
+        self.settings_window.data.settings.as_ref()
+    }
     pub fn get_selected_node(&self) -> Option<&NodeData> {
         if self.template.root.selected.len() > 0 {
             let data_idx = &self.template.root.selected[0];
@@ -186,13 +197,13 @@ pub fn build_ui() -> impl Widget<AppData> {
             SizedBox::empty()
                 .controller(SettingController::new())
                 .padding(0.)
-                .lens(AppData::settings),
+                .lens(AppData::settings_window),
         )
         .with_child(
             SizedBox::empty()
                 .controller(EditController::new())
                 .padding(0.)
-                .lens(lens::Unit),
+                .lens(AppData::edit_window),
         )
         .with_child(tool_bar())
         .with_flex_child(template_ui(), 1.)
@@ -238,7 +249,7 @@ fn info_general() -> impl Widget<AppData> {
 
 fn info_folder() -> impl Widget<AppData> {
     FileWatcher::new(
-        |data: &AppData| match (&data.settings, data.get_selected_node()) {
+        |data: &AppData| match (data.get_settings(), data.get_selected_node()) {
             (Some(settings), Some(node)) => node
                 .path
                 .as_ref()

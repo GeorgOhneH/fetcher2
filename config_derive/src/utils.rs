@@ -1,8 +1,18 @@
 use crate::config_type::{parse_type, ConfigType};
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::Span;
+use proc_macro2::TokenStream;
+use proc_macro_error::abort_call_site;
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
+use syn::GenericParam;
+use syn::LitStr;
+use syn::TraitBoundModifier;
+use syn::{
+    self, punctuated::Punctuated, token::Comma, AngleBracketedGenericArguments, Attribute, Data,
+    DataStruct, DeriveInput, Field, Fields, GenericArgument, Generics, Ident, Lifetime, Path,
+    TraitBound, TypeParamBound, PathArguments,
+};
+use syn::{DataEnum, LifetimeDef, PathSegment};
 
 pub fn gen_field_names(fields: &Punctuated<Field, Comma>) -> Vec<TokenStream> {
     fields
@@ -41,4 +51,57 @@ pub fn gen_field_name_string(field: &Field) -> TokenStream {
     let field_name = field.ident.as_ref().expect("Unreachable");
     let name = LitStr::new(&field_name.to_string(), field.span());
     quote! { #name }
+}
+
+pub fn bound_generics(mut generics: Generics, bound: TraitBound) -> Generics {
+    let span = generics.span();
+    for param in generics.params.iter_mut() {
+        match param {
+            GenericParam::Type(ty_param) => {
+                ty_param.bounds.push(TypeParamBound::Trait(bound.clone()))
+            }
+            _ => (),
+        }
+    }
+    generics
+}
+
+pub fn create_path(parts: &[(&str, Option<&str>)], span: Span) -> Path {
+    let mut path = Path {
+        leading_colon: None,
+        segments: Default::default(),
+    };
+    for (part, lifetime) in parts {
+        let segment = if let Some(lifetime) = lifetime {
+            let lifetime =
+                GenericArgument::Lifetime(Lifetime::new(lifetime, span));
+            let mut p = Punctuated::new();
+            p.push(lifetime);
+            let x = AngleBracketedGenericArguments {
+                colon2_token: None,
+                lt_token: Default::default(),
+                args: p,
+                gt_token: Default::default(),
+            };
+            PathSegment {
+                ident: Ident::new("Deserialize", span),
+                arguments: PathArguments::AngleBracketed(x),
+            }
+        } else {
+            Ident::new(part, span).into()
+        };
+        path.segments.push(segment);
+    }
+    path
+}
+
+pub fn lifetime_generics(mut generics: Generics, symbol: &str) -> Generics {
+    let de_lifetime = GenericParam::Lifetime(LifetimeDef {
+        attrs: vec![],
+        lifetime: Lifetime::new(symbol, generics.span()),
+        colon_token: None,
+        bounds: Default::default(),
+    });
+    generics.params.push(de_lifetime);
+    generics
 }

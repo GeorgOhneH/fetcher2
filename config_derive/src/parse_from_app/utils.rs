@@ -130,10 +130,10 @@ pub fn gen_option_arg(
             }}
         }
         ConfigType::Struct(path) => {
-            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), span);
+            let name = &path.segments.iter().next().unwrap().ident;
             quote! {{
                 match #match_arg {
-                    ::config::CType::CStruct(config_struct) => match #path::parse_from_app(config_struct) {
+                    ::config::CType::CStruct(config_struct) => match #name::parse_from_app(config_struct) {
                         Ok(value) => Ok(Some(value)),
                         Err(err) => Err(err),
                     },
@@ -142,14 +142,14 @@ pub fn gen_option_arg(
             }}
         }
         ConfigType::CheckableStruct(path) => {
-            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), span);
+            let name = &path.segments.iter().next().unwrap().ident;
             quote! {{
                 match #match_arg {
                     ::config::CType::CheckableStruct(config_check_struct) => {
                         if !config_check_struct.is_checked() {
                             Ok(None)
                         } else {
-                            match #path::parse_from_app(config_check_struct.get_inner()) {
+                            match #name::parse_from_app(config_check_struct.get_inner()) {
                                 Ok(value) => Ok(Some(value)),
                                 Err(err) => Err(err),
                             }

@@ -136,11 +136,11 @@ fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> 
             MenuItem::new("Open Folder")
                 .enabled_if(move |data: &AppData, _env| {
                     let node = data.template.node(&idx2);
-                    node.path.is_some() && data.settings.is_some()
+                    node.path.is_some() && data.get_settings().is_some()
                 })
                 .on_activate(move |_ctx, data: &mut AppData, _env| {
                     let node = data.template.node(&idx3);
-                    let save_path = &data.settings.as_ref().unwrap().download.save_path;
+                    let save_path = &data.get_settings().as_ref().unwrap().download.save_path;
                     open::that_in_background(save_path.join(node.path.as_ref().unwrap()));
                 }),
         )

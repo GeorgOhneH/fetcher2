@@ -14,7 +14,7 @@ mod ctypes;
 mod errors;
 mod widgets;
 
-pub trait Config: Sized + Send + Debug {
+pub trait Config: Sized + Send {
     fn parse_from_app(app: &CStruct) -> Result<Self, RequiredError>;
     fn builder() -> CStructBuilder;
     fn update_app(self, app: &mut CStruct) -> Result<(), InvalidError>;
@@ -23,8 +23,20 @@ pub trait Config: Sized + Send + Debug {
     }
 }
 
-pub trait ConfigEnum: Sized + Send + Debug {
+pub trait ConfigEnum: Sized + Send {
     fn parse_from_app(app: &CEnum) -> Result<Option<Self>, RequiredError>;
     fn builder() -> CEnumBuilder;
     fn update_app(self, app: &mut CEnum) -> Result<(), InvalidError>;
+}
+
+impl Config for () {
+    fn parse_from_app(app: &CStruct) -> Result<Self, RequiredError> {
+        Ok(())
+    }
+    fn builder() -> CStructBuilder {
+        CStructBuilder::new()
+    }
+    fn update_app(self, app: &mut CStruct) -> Result<(), InvalidError> {
+        Ok(())
+    }
 }

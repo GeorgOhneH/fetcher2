@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{self, Field, LitStr};
 use syn::spanned::Spanned;
+use syn::{self, Field, LitStr};
 
 use crate::config_type::{ConfigHashType, ConfigType, ConfigWrapperType};
 
@@ -170,25 +170,25 @@ pub fn gen_set(
             }}
         }
         ConfigType::Struct(path) => {
-            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
+            let name = &path.segments.iter().next().unwrap().ident;
             quote! {{
                 match #match_arg {
                     ::config::CType::CStruct(ref mut config_struct) => {
-                        #path::update_app(#set_arg, config_struct)
+                        #name::update_app(#set_arg, config_struct)
                     },
                     _ => panic!("This should never happen"),
                 }
             }}
         }
         ConfigType::CheckableStruct(path) => {
-            let _struct_name_str = LitStr::new(&quote! {#path}.to_string(), field.span());
+            let name = &path.segments.iter().next().unwrap().ident;
             quote! {{
                 match #match_arg {
                     ::config::CType::CheckableStruct(ref mut config_check_struct) => {
                         match #set_arg {
                             Some(arg) => {
                                 config_check_struct.set_checked(true);
-                                #path::update_app(arg, config_check_struct.get_inner_mut())
+                                #name::update_app(arg, config_check_struct.get_inner_mut())
                             },
                             None => {
                                 config_check_struct.set_checked(false);

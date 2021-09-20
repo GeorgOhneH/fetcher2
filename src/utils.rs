@@ -9,7 +9,7 @@ use futures::FutureExt;
 use tokio;
 use tokio::task::{JoinError, JoinHandle};
 
-use crate::controller::SubWindowInfo;
+use crate::controller::{SubWindowInfo, WindowState};
 use crate::TError;
 
 pub struct JoinHandleDrop<T>(JoinHandle<T>);
@@ -37,7 +37,7 @@ where
 }
 
 pub fn show_err(ctx: &mut EventCtx, env: &Env, err: TError, title: &str) {
-    let (size, pos) = SubWindowInfo::<()>::size_pos(ctx.window());
+    let (size, pos) = WindowState::default_size_pos(ctx.window());
     ctx.new_sub_window(
         WindowConfig::default()
             .show_titlebar(true)

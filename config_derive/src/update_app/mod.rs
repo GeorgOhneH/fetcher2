@@ -4,4 +4,3 @@ pub use crate::update_app::r#struct::gen_struct_update_app_fn;
 mod r#enum;
 mod r#struct;
 mod utils;
-

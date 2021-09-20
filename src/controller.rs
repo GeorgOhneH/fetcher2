@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::{fs, thread};
 
-use config::Config;
+use config::{Config, InvalidError, RequiredError};
 use directories::{BaseDirs, ProjectDirs, UserDirs};
 use druid::commands::{CLOSE_WINDOW, QUIT_APP};
 use druid::im::Vector;
@@ -35,7 +35,7 @@ use crate::background_thread::{
     background_main, ThreadMsg, MSG_FROM_THREAD, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
 };
 use crate::cstruct_window::c_option_window;
-use crate::edit_window::{edit_window, EditWindowState};
+use crate::edit_window::{edit_window, EditWindowData};
 use crate::settings::{DownloadSettings, Settings};
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
@@ -44,8 +44,9 @@ use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
 use crate::template::Template;
-use crate::ui::TemplateInfoSelect;
+use crate::ui::{OptionSettings, TemplateInfoSelect};
 use crate::utils::show_err;
+use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{AppData, Result, TError};
 
@@ -57,18 +58,6 @@ selectors! {
     OPEN_EDIT
 }
 
-selectors! {
-    INIT_MAIN_WINDOW_STATE: Arc<RwLock<AppState >>,
-    SAVE_MAIN_WINDOW_STATE: Arc<RwLock<AppState >>,
-
-    INIT_EDIT_WINDOW_STATE: EditWindowState,
-    SAVE_EDIT_WINDOW_STATE: Arc<RwLock<EditWindowState>>,
-    PARENT_UPDATE_EDIT_WINDOW: SingleUse<SubWindowInfo<EditWindowState >>,
-}
-
-selectors! {
-    NEW_WIN_INFO: SingleUse<SubWindowInfo<()>>,
-}
 lazy_static! {
     pub static ref CONFIG_DIR: PathBuf = ProjectDirs::from("ch", "fetcher2", "fetcher2")
         .expect("Could not find a place to store the config files")
@@ -90,35 +79,14 @@ pub enum Msg {
     ExitAndSave,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct AppState {
-    pub main_window: Option<WindowState>,
-    pub settings_window: SubWindowInfo<()>,
-    pub edit_window: SubWindowInfo<EditWindowState>,
-
-    pub recent_templates: Vec<PathBuf>,
-}
-
 pub struct MainController {
     tx: flume::Sender<Msg>,
-    saved: bool,
     load_err: Option<TError>,
-    win_state: Arc<RwLock<AppState>>,
 }
 
 impl MainController {
-    pub fn new(
-        win_state: Arc<RwLock<AppState>>,
-        load_err: Option<TError>,
-        tx: flume::Sender<Msg>,
-    ) -> Self {
-        Self {
-            tx,
-            saved: false,
-            load_err,
-            win_state,
-        }
+    pub fn new(load_err: Option<TError>, tx: flume::Sender<Msg>) -> Self {
+        Self { tx, load_err }
     }
 }
 
@@ -164,22 +132,12 @@ impl<W: Widget<AppData>> Controller<AppData, W> for MainController {
                 return;
             }
             Event::WindowConnected => {
-                ctx.submit_command(INIT_MAIN_WINDOW_STATE.with(self.win_state.clone()));
                 if let Some(err) = self.load_err.take() {
                     show_err(ctx, env, err, "Could not load window state");
                 }
             }
-            Event::WindowCloseRequested if !self.saved => {
-                ctx.set_handled();
-                self.saved = true;
-                self.win_state.write().unwrap().main_window =
-                    Some(WindowState::from_win(ctx.window()));
-                ctx.submit_command(Command::new(
-                    SAVE_MAIN_WINDOW_STATE,
-                    self.win_state.clone(),
-                    Target::Window(ctx.window_id()),
-                ));
-                ctx.submit_command(CLOSE_WINDOW)
+            Event::WindowCloseRequested => {
+                //TODO
             }
             _ => (),
         }
@@ -227,35 +185,17 @@ impl<W: Widget<AppData>> Controller<AppData, W> for TemplateController {
                 ctx.request_update();
                 return;
             }
-            Event::Command(cmd) if cmd.is(INIT_MAIN_WINDOW_STATE) => {
-                let main_state = cmd.get_unchecked(INIT_MAIN_WINDOW_STATE);
-                data.recent_templates = main_state.read().unwrap().recent_templates.clone().into();
-                if let Some(path) = data.recent_templates.iter().next() {
-                    ctx.submit_command(
-                        MSG_THREAD.with(SingleUse::new(Msg::NewTemplateByPath(path.clone()))),
-                    )
-                }
-            }
-            Event::Command(cmd) if cmd.is(SAVE_MAIN_WINDOW_STATE) => {
-                let main_state = cmd.get_unchecked(SAVE_MAIN_WINDOW_STATE);
-                main_state.write().unwrap().recent_templates =
-                    data.recent_templates.iter().map(|x| x.clone()).collect();
-            }
             _ => (),
         }
         child.event(ctx, event, data, env)
     }
 }
 
-pub struct SettingController {
-    win_info: SubWindowInfo<()>,
-}
+pub struct SettingController {}
 
 impl SettingController {
     pub fn new() -> Self {
-        Self {
-            win_info: SubWindowInfo::new(()),
-        }
+        Self {}
     }
 
     fn load_settings() -> Result<Settings> {
@@ -277,8 +217,8 @@ impl SettingController {
         Ok(())
     }
 
-    fn show_settings(&self, ctx: &mut EventCtx, data: &Option<Settings>, env: &Env) {
-        let (size, pos) = self.win_info.get_size_pos(ctx.window());
+    fn show_settings(&self, ctx: &mut EventCtx, data: &SubWindowInfo<OptionSettings>, env: &Env) {
+        let (size, pos) = data.get_size_pos(ctx.window());
         let main_win_id = ctx.window_id();
         let c_window = c_option_window(
             Some("Settings"),
@@ -295,51 +235,32 @@ impl SettingController {
                 },
             )),
         )
-        .controller(SubStateController::new((), ctx.widget_id()));
+        .lens(OptionSettings::settings);
         ctx.new_sub_window(
             WindowConfig::default()
                 .show_titlebar(true)
                 .window_size(size)
                 .set_position(pos)
                 .set_level(WindowLevel::Modal),
-            c_window,
+            SubWindow::new(c_window),
             data.clone(),
             env.clone(),
         );
     }
 }
 
-impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingController {
+impl<W: Widget<SubWindowInfo<OptionSettings>>> Controller<SubWindowInfo<OptionSettings>, W>
+    for SettingController
+{
     fn event(
         &mut self,
         child: &mut W,
         ctx: &mut EventCtx,
         event: &Event,
-        data: &mut Option<Settings>,
+        data: &mut SubWindowInfo<OptionSettings>,
         env: &Env,
     ) {
         match event {
-            Event::WindowConnected => match Self::load_settings() {
-                Ok(settings) => {
-                    ctx.submit_command(
-                        MSG_THREAD
-                            .with(SingleUse::new(Msg::NewSettings(settings.download.clone()))),
-                    );
-                    *data = Some(settings);
-                }
-                Err(err) => show_err(ctx, env, err, "Could not load settings"),
-            },
-            Event::Command(cmd) if cmd.is(INIT_MAIN_WINDOW_STATE) => {
-                let main_state = cmd.get_unchecked(INIT_MAIN_WINDOW_STATE);
-                self.win_info = main_state.read().unwrap().settings_window.clone();
-            }
-            Event::Command(cmd) if cmd.is(SAVE_MAIN_WINDOW_STATE) => {
-                let main_state = cmd.get_unchecked(SAVE_MAIN_WINDOW_STATE);
-                main_state.write().unwrap().settings_window = self.win_info.clone();
-            }
-            Event::Command(cmd) if cmd.is(NEW_WIN_INFO) => {
-                self.win_info = cmd.get_unchecked(NEW_WIN_INFO).take().unwrap();
-            }
             Event::Command(cmd) if cmd.is(commands::SHOW_PREFERENCES) => {
                 ctx.set_handled();
                 self.show_settings(ctx, data, env);
@@ -349,57 +270,70 @@ impl<W: Widget<Option<Settings>>> Controller<Option<Settings>, W> for SettingCon
         }
         child.event(ctx, event, data, env)
     }
+
+    fn lifecycle(
+        &mut self,
+        child: &mut W,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &SubWindowInfo<OptionSettings>,
+        env: &Env,
+    ) {
+        if let LifeCycle::WidgetAdded = event {
+            if let Some(settings) = &data.data.settings {
+                ctx.submit_command(
+                    MSG_THREAD.with(SingleUse::new(Msg::NewSettings(settings.download.clone()))),
+                );
+            }
+        }
+        child.lifecycle(ctx, event, data, env)
+    }
 }
 
 pub struct EditController {
     current_data: TemplateEditData,
-    win_info: SubWindowInfo<EditWindowState>,
 }
 
 impl EditController {
     pub fn new() -> Self {
         Self {
             current_data: TemplateEditData::new(),
-            win_info: SubWindowInfo::new(Default::default()),
         }
     }
-    fn make_sub_window(&self, ctx: &mut EventCtx, env: &Env, edit_data: TemplateEditData) {
-        let (size, pos) = self.win_info.get_size_pos(ctx.window());
-        let window = edit_window(edit_data).controller(SubStateController::new(
-            self.win_info.data_state.clone(),
-            ctx.widget_id(),
-        ));
+    fn make_sub_window(
+        &self,
+        ctx: &mut EventCtx,
+        env: &Env,
+        data: &SubWindowInfo<EditWindowData>,
+        new: bool,
+    ) {
+        let (size, pos) = data.get_size_pos(ctx.window());
+        let window = edit_window(new);
         ctx.new_sub_window(
             WindowConfig::default()
                 .show_titlebar(true)
                 .window_size(size)
                 .set_position(pos)
                 .set_level(WindowLevel::Modal),
-            window,
-            (),
+            SubWindow::new(window),
+            data.clone(),
             env.clone(),
         );
     }
 }
 
-impl<W: Widget<()>> Controller<(), W> for EditController {
+impl<W: Widget<SubWindowInfo<EditWindowData>>> Controller<SubWindowInfo<EditWindowData>, W>
+    for EditController
+{
     fn event(
         &mut self,
         child: &mut W,
         ctx: &mut EventCtx,
         event: &Event,
-        data: &mut (),
+        data: &mut SubWindowInfo<EditWindowData>,
         env: &Env,
     ) {
         match event {
-            Event::Command(cmd) if cmd.is(INIT_MAIN_WINDOW_STATE) => {
-                let main_state = cmd.get_unchecked(INIT_MAIN_WINDOW_STATE);
-                self.win_info = main_state.read().unwrap().edit_window.clone();
-            }
-            Event::Command(cmd) if cmd.is(SAVE_MAIN_WINDOW_STATE) => {
-                let main_state = cmd.get_unchecked(SAVE_MAIN_WINDOW_STATE);
-                main_state.write().unwrap().edit_window = self.win_info.clone();
-            }
             Event::Command(cmd) if cmd.is(NEW_EDIT_TEMPLATE) => {
                 ctx.set_handled();
                 let edit_data = cmd.get_unchecked(NEW_EDIT_TEMPLATE).take().unwrap();
@@ -408,19 +342,12 @@ impl<W: Widget<()>> Controller<(), W> for EditController {
             }
             Event::Command(cmd) if cmd.is(OPEN_EDIT) => {
                 ctx.set_handled();
-                self.make_sub_window(ctx, env, self.current_data.clone());
+                self.make_sub_window(ctx, env, &data, false);
                 return;
             }
             Event::Command(cmd) if cmd.is(commands::NEW_FILE) => {
                 ctx.set_handled();
-                let edit_data = TemplateEditData::new();
-                self.make_sub_window(ctx, env, edit_data);
-                return;
-            }
-            Event::Command(cmd) if cmd.is(PARENT_UPDATE_EDIT_WINDOW) => {
-                ctx.set_handled();
-                let new_win_state = cmd.get_unchecked(PARENT_UPDATE_EDIT_WINDOW).take().unwrap();
-                self.win_info = new_win_state;
+                self.make_sub_window(ctx, env, &data, true);
                 return;
             }
             _ => (),
@@ -432,23 +359,23 @@ impl<W: Widget<()>> Controller<(), W> for EditController {
 #[derive(Config, Debug, Clone, Data)]
 pub struct SubWindowInfo<T> {
     #[config(ty = "struct")]
-    data_state: T,
+    pub data: T,
 
     #[config(ty = "_<struct>")]
     #[data(ignore)]
-    win_state: Option<WindowState>,
+    pub win_state: Option<WindowState>,
 }
 
 impl<T: Clone + Debug + Config> SubWindowInfo<T> {
     pub fn new(data_state: T) -> Self {
         Self {
-            data_state,
+            data: data_state,
             win_state: None,
         }
     }
     pub fn with_win_state(data_state: T, size: Size, pos: Point) -> Self {
         Self {
-            data_state,
+            data: data_state,
             win_state: Some(WindowState::new(size, pos)),
         }
     }
@@ -457,20 +384,16 @@ impl<T: Clone + Debug + Config> SubWindowInfo<T> {
         if let Some(win_state) = &self.win_state {
             return (win_state.size, win_state.pos);
         }
-        Self::size_pos(win_handle)
-    }
-    pub fn size_pos(win_handle: &WindowHandle) -> (Size, Point) {
-        let win_pos = win_handle.get_position();
-        let (win_size_w, win_size_h) = win_handle.get_size().into();
-        let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
-        let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
-        (Size::new(size_w, size_h), pos)
+        WindowState::default_size_pos(win_handle)
     }
 }
 
 #[derive(Config, Debug, Clone)]
 pub struct WindowState {
+    // TODO
+    #[config(skip = Size::ZERO)]
     pub size: Size,
+    #[config(skip = Point::ZERO)]
     pub pos: Point,
 }
 
@@ -485,73 +408,11 @@ impl WindowState {
             pos: handle.get_position(),
         }
     }
-}
-
-pub struct SubStateController<T> {
-    win_state: Arc<RwLock<T>>,
-    saved: bool,
-    parent_id: WidgetId,
-}
-
-impl<T> SubStateController<T> {
-    pub fn new(win_state: T, parent_id: WidgetId) -> Self {
-        Self {
-            win_state: Arc::new(RwLock::new(win_state)),
-            saved: false,
-            parent_id,
-        }
-    }
-}
-
-impl<T: Data, W: Widget<T>> Controller<T, W> for SubStateController<EditWindowState> {
-    fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
-        match event {
-            Event::WindowConnected => ctx.submit_command(
-                INIT_EDIT_WINDOW_STATE.with(self.win_state.read().unwrap().clone()),
-            ),
-            Event::WindowCloseRequested => {
-                if !self.saved {
-                    ctx.set_handled();
-                    self.saved = true;
-                    ctx.submit_command(Command::new(
-                        SAVE_EDIT_WINDOW_STATE,
-                        self.win_state.clone(),
-                        Target::Window(ctx.window_id()),
-                    ));
-                    ctx.submit_command(CLOSE_WINDOW)
-                } else {
-                    let win_info = SubWindowInfo::with_win_state(
-                        self.win_state.read().unwrap().clone(),
-                        ctx.window().get_size(),
-                        ctx.window().get_position(),
-                    );
-                    ctx.submit_command(
-                        PARENT_UPDATE_EDIT_WINDOW
-                            .with(SingleUse::new(win_info))
-                            .to(self.parent_id),
-                    )
-                }
-            }
-            _ => (),
-        }
-        child.event(ctx, event, data, env)
-    }
-}
-
-impl<T: Data, W: Widget<T>> Controller<T, W> for SubStateController<()> {
-    fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
-        if let Event::WindowCloseRequested = event {
-            let win_info = SubWindowInfo::with_win_state(
-                self.win_state.read().unwrap().clone(),
-                ctx.window().get_size(),
-                ctx.window().get_position(),
-            );
-            ctx.submit_command(
-                NEW_WIN_INFO
-                    .with(SingleUse::new(win_info))
-                    .to(self.parent_id),
-            )
-        }
-        child.event(ctx, event, data, env)
+    pub fn default_size_pos(win_handle: &WindowHandle) -> (Size, Point) {
+        let win_pos = win_handle.get_position();
+        let (win_size_w, win_size_h) = win_handle.get_size().into();
+        let (size_w, size_h) = (f64::min(600., win_size_w), f64::min(600., win_size_h));
+        let pos = win_pos + ((win_size_w - size_w) / 2., (win_size_h - size_h) / 2.);
+        (Size::new(size_w, size_h), pos)
     }
 }
