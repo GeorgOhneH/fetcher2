@@ -28,18 +28,14 @@ pub fn gen_de_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
         match &var.fields {
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 quote! {
-                    Ok((Field::#name, var)) => {
-                        if let Ok(inner) = var.newtype_variant() {
-                            Some(#enum_name::#name(inner))
-                        } else {
-                            None
-                        }
+                    (Field::#name, var) => {
+                        Some(#enum_name::#name(var.newtype_variant()?))
                     }
                 }
             }
             Fields::Unit => {
                 quote! {
-                    Ok((Field::#name, _)) => Some(#enum_name::#name),
+                    (Field::#name, _) => Some(#enum_name::#name),
                 }
             }
             _ => abort!(var.fields, "Only Unit and Single Tuple Enums are allowed"),
@@ -124,10 +120,9 @@ pub fn gen_de_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
                         A: serde::de::EnumAccess<'de>,
                     {
                         let mut cenum: config::CEnum = #enum_name::builder().build();
-                        let current_enum = match data.variant() {
+                        let current_enum = match data.variant()? {
                             #(#match_enums)*
-                            Ok((Field::__Nothing, _)) => None,
-                            Err(_) => None,
+                            (Field::__Nothing, _) => None,
                         };
 
                         if let Some(current_enum) = current_enum {

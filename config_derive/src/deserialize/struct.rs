@@ -44,7 +44,7 @@ pub fn gen_field(fields: &Punctuated<Field, Comma>) -> TokenStream {
                     }
                 }
 
-                deserializer.deserialize_identifier(FieldVisitor)
+                deserializer.deserialize_str(FieldVisitor)
             }
         }
     }
@@ -131,20 +131,18 @@ pub fn gen_visitor(
             {
                 let mut cstruct: config::CStruct = Self::Value::builder().build();
                 #(let mut #field_names = None;)*
-                while let Ok(Some(key)) = map.next_key() {
+                while let Some(key) = map.next_key()? {
                     match key {
                         #(
                             Field::#field_names => {
                                 if #field_names.is_some() {
                                     return Err(serde::de::Error::duplicate_field(#field_name_strings));
                                 }
-                                if let Ok(value) = map.next_value() {
-                                    #field_names = Some(value);
-                                }
+                                #field_names = Some(map.next_value()?);
                             }
                         )*
                             Field::__Nothing => {
-                                let _: std::result::Result<(),_> = map.next_value();
+                                map.next_value()?;
                             }
                     }
                 }
@@ -157,7 +155,7 @@ pub fn gen_visitor(
             }
         }
 
-        deserializer.deserialize_struct(#name_str, FIELDS, DurationVisitor {
+        deserializer.deserialize_map(DurationVisitor {
             #(#bound_names: std::marker::PhantomData,)*
         })
     }
@@ -207,10 +205,10 @@ fn gen_c_setter(
                 cvec.set(new);
             }
         }
-        ConfigType::HashMap(_path, _key_ty, inner_ty) => {
+        ConfigType::HashMap(path, _key_ty, inner_ty) => {
             let inner_setter = gen_c_setter(field, *inner_ty, quote! {cvalue}, quote! {value});
             quote! {
-                let value_hint: HashMap<String, _> = #field_name;
+                let value_hint: #path = #field_name;
                 let cmap = #ctype.map_mut().unwrap();
                 let new = value_hint.into_iter().map(|(key, value)| {
                     let mut ckey = cmap.get_key();
@@ -262,21 +260,20 @@ fn gen_c_setter(
         ConfigType::Wrapper(path, inner_ty, wrapper_ty) => {
             let inner_setter =
                 gen_c_setter(field, *inner_ty, quote! {c_inner}, quote! {inner_value});
-            let inner_value_quote = match wrapper_ty {
-                ConfigWrapperType::Arc => quote! {
-                    Arc::try_unwrap(value_hint).unwrap()
-                },
-                ConfigWrapperType::Mutex => quote! {
-                    value_hint.into_inner().unwrap()
-                },
-                ConfigWrapperType::RwLock => quote! {
-                    value_hint.into_inner().unwrap()
-                },
-            };
+            // let inner_value_quote = match wrapper_ty {
+            //     ConfigWrapperType::Arc => quote! {
+            //         Arc::try_unwrap(value_hint).unwrap()
+            //     },
+            //     ConfigWrapperType::Mutex => quote! {
+            //         value_hint.into_inner().unwrap()
+            //     },
+            //     ConfigWrapperType::RwLock => quote! {
+            //         value_hint.into_inner().unwrap()
+            //     },
+            // };
             quote! {
-                let value_hint: #path = #field_name;
                 let c_inner = #ctype.wrapper_mut().unwrap().inner_mut();
-                let inner_value = #inner_value_quote;
+                let inner_value = #field_name;
                 #inner_setter
             }
         }

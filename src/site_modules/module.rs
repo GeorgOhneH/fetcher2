@@ -23,7 +23,7 @@ use crate::data::settings::DownloadSettings;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[derive(ConfigEnum, Debug, LoginLock, Data, Clone, Display)]
+#[derive(ConfigEnum, Debug, LoginLock, Data, Clone, Display, PartialEq)]
 pub enum Module {
     #[config(ty = "struct")]
     Minimal(Minimal),
@@ -54,10 +54,9 @@ impl Module {
         &self,
         session: Session,
         sender: Sender<Task>,
-        base_path: PathBuf,
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
-        self.fetch_urls_impl(session, sender, base_path, dsettings)
+        self.fetch_urls_impl(session, sender, dsettings)
             .await
     }
 
@@ -105,7 +104,6 @@ pub trait ModuleExt {
         &self,
         session: Session,
         sender: Sender<Task>,
-        base_path: PathBuf,
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()>;
 

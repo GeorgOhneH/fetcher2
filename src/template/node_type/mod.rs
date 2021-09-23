@@ -24,7 +24,7 @@ pub mod site_data;
 pub mod site_edit_data;
 mod utils;
 
-#[derive(ConfigEnum, Debug, Clone)]
+#[derive(ConfigEnum, Debug, Clone, PartialEq)]
 pub enum NodeType {
     #[config(ty = "struct")]
     Folder(Folder),

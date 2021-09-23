@@ -1,29 +1,29 @@
-use std::{fs, io};
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use std::{fs, io};
 
 use crossbeam_channel::{Receiver, Select, Sender};
+use druid::im::Vector;
+use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid::im::Vector;
-use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
-use crate::Result;
+use crate::data::AppData;
 use crate::template::node_type::site::{MsgKind, TaskMsg};
-use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
-use crate::data::AppData;
+use crate::widgets::tree::{DataNodeIndex, Tree};
+use crate::Result;
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Type {
@@ -38,12 +38,13 @@ pub enum Type {
 }
 
 impl Type {
-    fn from_msg(msg_kind: MsgKind) -> (Self, Vector<Entry>) {
+    fn from_msg(msg_kind: MsgKind, parent_path: &String) -> (Self, Vector<Entry>) {
         match msg_kind {
             MsgKind::AddedFile => (Type::AddedFile, Vector::new()),
-            MsgKind::ReplacedFile(path) => {
-                (Type::ReplacedFile, vec![Entry::inner_replaced(path)].into())
-            }
+            MsgKind::ReplacedFile(path) => (
+                Type::ReplacedFile,
+                vec![Entry::inner_replaced(path, parent_path.clone())].into(),
+            ),
             MsgKind::NotModified => (Type::NotModified, Vector::new()),
             MsgKind::FileChecksumSame => (Type::FileChecksumSame, Vector::new()),
             MsgKind::AlreadyExist => (Type::AlreadyExist, Vector::new()),
@@ -52,14 +53,28 @@ impl Type {
             }
         }
     }
+
+    fn to_string(&self) -> String {
+        match self {
+            Self::AddedFile => "New File".to_string(),
+            Self::ReplacedFile => "Replaced File".to_string(),
+            Self::NotModified => "Not Modified".to_string(),
+            Self::FileChecksumSame => "Same File Already on Disk".to_string(),
+            Self::AlreadyExist => "Cached Checksum didn't Change".to_string(),
+            Self::ForbiddenExtension(_) => "Extension is Forbidden".to_string(),
+            Self::InnerReplaced => "Old File".to_string(),
+        }
+    }
 }
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct Entry {
     children: Vector<Entry>,
     ty: Type,
+    name: String,
+    parent_path: String,
     #[data(eq)]
-    path: PathBuf,
+    full_path: PathBuf,
     expanded: bool,
 }
 
@@ -67,19 +82,44 @@ impl_simple_tree_node! {Entry}
 
 impl Entry {
     pub fn new(task_msg: TaskMsg) -> Self {
-        let (ty, children) = Type::from_msg(task_msg.kind);
+        let rel_path = task_msg
+            .rel_path
+            .parent()
+            .map(|path| {
+                let r = path.to_string_lossy().to_string();
+                if r.is_empty() {
+                    String::from("/")
+                } else {
+                    r
+                }
+            })
+            .unwrap_or(String::from("/"));
+        let (ty, children) = Type::from_msg(task_msg.kind, &rel_path);
+        let name = task_msg
+            .full_path
+            .file_name()
+            .map(|os_str| os_str.to_string_lossy().to_string())
+            .unwrap_or("".to_owned());
         Self {
             expanded: false,
-            path: task_msg.path,
+            full_path: task_msg.full_path,
+            parent_path: rel_path,
             ty,
+            name,
             children,
         }
     }
 
-    fn inner_replaced(path: PathBuf) -> Self {
+    fn inner_replaced(path: PathBuf, parent_path: String) -> Self {
+        let name = path
+            .file_name()
+            .map(|os_str| os_str.to_string_lossy().to_string())
+            .unwrap_or("".to_owned());
         Self {
             expanded: false,
-            path,
+            name,
+            full_path: path,
+            parent_path,
             ty: Type::InnerReplaced,
             children: Vector::new(),
         }
@@ -105,8 +145,10 @@ impl EntryRoot {
     pub fn new(history: Vector<TaskMsg>) -> Self {
         let children = history
             .iter()
+            .rev()
             .map(|task_msg| Entry::new(task_msg.clone()))
             .collect();
+
         Self {
             children,
             selected: Vector::new(),
@@ -122,7 +164,7 @@ pub struct History {
             Entry,
             entry_derived_lenses::expanded,
             entry_root_derived_lenses::selected,
-            1,
+            3,
         >,
     >,
     root: EntryRoot,
@@ -131,20 +173,16 @@ pub struct History {
 impl History {
     pub fn new() -> Self {
         let tree = Tree::new(
-            [Label::new("Name")],
-            [Arc::new(|| {
-                Label::dynamic(|data: &Entry, _env| {
-                    data.path
-                        .file_name()
-                        .map(|os_str| os_str.to_string_lossy().to_string())
-                        .unwrap_or("".to_owned())
-                })
-                .boxed()
-            })],
+            [Label::new("Name"), Label::new("Path"), Label::new("Note")],
+            [
+                Arc::new(|| Label::dynamic(|data: &Entry, _env| data.name.clone()).boxed()),
+                Arc::new(|| Label::dynamic(|data: &Entry, _env| data.parent_path.clone()).boxed()),
+                Arc::new(|| Label::dynamic(|data: &Entry, _env| data.ty.to_string()).boxed()),
+            ],
             Entry::expanded,
             EntryRoot::selected,
         )
-        .set_sizes([400.]);
+        .set_sizes([400., 400., 400.]);
         Self {
             tree: WidgetPod::new(tree),
             root: EntryRoot::empty(),

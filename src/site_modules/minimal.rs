@@ -16,9 +16,10 @@ use crate::site_modules::module::ModuleExt;
 use crate::task::{Task, TaskBuilder};
 use crate::data::settings::DownloadSettings;
 
-#[derive(Config, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data, PartialEq)]
 pub struct Minimal {
     pub parameters: Option<String>,
+    pub parameters2: Option<String>,
 }
 
 #[async_trait]
@@ -27,13 +28,12 @@ impl ModuleExt for Minimal {
         &self,
         session: Session,
         sender: Sender<Task>,
-        base_path: PathBuf,
         _dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
         println!("Retirevinbg Urls");
         //tokio::time::sleep(Duration::from_secs(3)).await;
         let task = TaskBuilder::new(
-            base_path.join("hello.hello"),
+            PathBuf::from("hello.hello"),
             Url::parse("https://www.google.com/").unwrap(),
         )
         .build();
@@ -46,20 +46,20 @@ impl ModuleExt for Minimal {
         let resp = session.get("https://www.google.com/").send().await?;
         println!("3{}", resp.status());
         let task = TaskBuilder::new(
-            base_path.join("hello2.hello"),
+            PathBuf::from("hello2.hello"),
             Url::parse("https://www.google.com/").unwrap(),
         )
         .extension(false)
         .build();
         sender.send(task).await?;
         let task = TaskBuilder::new(
-            base_path.join("rsgdrf.pdf"),
+            PathBuf::from("rsgdrf.pdf"),
             Url::parse("http://www.orimi.com/pdf-test.pdf/").unwrap(),
         )
         .build();
         sender.send(task).await.unwrap();
         let task = TaskBuilder::new(
-            base_path.join("rs.gdrf"),
+            PathBuf::from("rs.gdrf"),
             Url::parse("http://www.orimi.com/pdf-test.pdf/").unwrap(),
         )
         .extension(false)
@@ -68,7 +68,7 @@ impl ModuleExt for Minimal {
 
         for x in 0..10 {
             let task = TaskBuilder::new(
-                base_path.join(format!("hello.hello{}", x)),
+                PathBuf::from(format!("hello.hello{}", x)),
                 Url::parse("https://www.google.com/").unwrap(),
             )
             .build();

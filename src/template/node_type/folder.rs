@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use crate::error::Result;
 
-#[derive(Config, Debug, Clone)]
+#[derive(Config, Debug, Clone, PartialEq)]
 pub struct Folder {
     name: String,
 }

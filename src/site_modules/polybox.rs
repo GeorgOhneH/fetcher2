@@ -60,7 +60,7 @@ lazy_static! {
     };
 }
 
-#[derive(Config, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data, PartialEq)]
 pub struct Polybox {
     pub id: String,
 
@@ -68,7 +68,7 @@ pub struct Polybox {
     pub mode: Mode,
 }
 
-#[derive(ConfigEnum, Debug, Clone, Data)]
+#[derive(ConfigEnum, Debug, Clone, Data, PartialEq)]
 pub enum Mode {
     Shared(Option<String>),
     Private,
@@ -129,7 +129,6 @@ impl ModuleExt for Polybox {
         &self,
         session: Session,
         sender: Sender<Task>,
-        base_path: PathBuf,
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
         match &self.mode {
@@ -148,7 +147,7 @@ impl ModuleExt for Polybox {
 
                 let xml = response.text().await?;
                 XmlReader::new(&xml)
-                    .parse(sender, base_path, &self.id, password.as_ref(), 3)
+                    .parse(sender, &self.id, password.as_ref(), 3)
                     .await?;
             }
             Mode::Private => {
@@ -176,7 +175,6 @@ impl ModuleExt for Polybox {
                 XmlReader::new(&xml)
                     .parse(
                         sender,
-                        base_path,
                         dsettings.try_username()?,
                         Some(dsettings.try_password()?),
                         n_skip,
@@ -280,7 +278,6 @@ impl<'a> XmlReader<'a> {
     async fn parse(
         &mut self,
         sender: Sender<Task>,
-        base_path: PathBuf,
         username: &String,
         password: Option<&String>,
         n_skip: usize,
@@ -294,14 +291,13 @@ impl<'a> XmlReader<'a> {
                             continue;
                         }
 
-                        let sub_path = r
+                        let path = r
                             .href
                             .split("/")
                             .skip(n_skip)
                             .map(|part| save_path(part))
                             .collect::<Result<PathBuf>>()?;
 
-                        let path = base_path.join(sub_path);
                         let url = BASE_URL.join(&r.href)?;
 
                         let task = TaskBuilder::new(path, url)

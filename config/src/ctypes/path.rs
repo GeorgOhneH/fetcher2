@@ -23,6 +23,9 @@ pub struct CPath {
     ty: CPathTypes,
     #[data(ignore)]
     name: Option<String>,
+    #[data(ignore)]
+    must_exist: bool,
+    must_absolute: bool,
 }
 
 impl CPath {
@@ -31,14 +34,16 @@ impl CPath {
             value: None,
             ty: CPathTypes::Any,
             name: None,
+            must_exist: true,
+            must_absolute: true,
         }
     }
 
     pub fn is_valid(&self, path: &PathBuf) -> Result<(), InvalidError> {
-        if path.is_relative() {
+        if self.must_absolute && path.is_relative() {
             return Err(InvalidError::new("Path must be absolute"));
         }
-        if !path.exists() {
+        if self.must_absolute && self.must_exist && !path.exists() {
             return Err(InvalidError::new("Path must exist"));
         }
         match &self.ty {
@@ -188,6 +193,16 @@ impl CPathBuilder {
 
     pub fn name(mut self, name: String) -> Self {
         self.inner.name = Some(name);
+        self
+    }
+
+    pub fn must_exist(mut self, must_exist: bool) -> Self {
+        self.inner.must_exist = must_exist;
+        self
+    }
+
+    pub fn must_absolute(mut self, must_absolute: bool) -> Self {
+        self.inner.must_absolute = must_absolute;
         self
     }
 

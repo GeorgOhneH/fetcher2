@@ -14,9 +14,9 @@ pub fn gen_se(fields: &Punctuated<Field, Comma>, name: &Ident) -> TokenStream {
     let num_fields = field_names.len();
 
     quote! {
-        use serde::ser::SerializeStruct as _;
-        let mut state = serializer.serialize_struct(#name_str, #num_fields)?;
-        #(state.serialize_field(#field_name_strings, &self.#field_names)?;)*
+        use serde::ser::SerializeMap as _;
+        let mut state = serializer.serialize_map(Some(#num_fields))?;
+        #(state.serialize_entry(#field_name_strings, &self.#field_names)?;)*
         state.end()
     }
 }

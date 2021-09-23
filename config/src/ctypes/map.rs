@@ -14,10 +14,10 @@ pub enum HashKey {
 }
 
 impl HashKey {
-    pub fn set(&mut self, name: String) {
+    pub fn set<T: Into<PathBuf>>(&mut self, name: T) {
         match self {
-            Self::String(str) => *str = name,
-            Self::Path(path) => *path = PathBuf::from(name),
+            Self::String(str) => *str = name.into().to_string_lossy().to_string(),
+            Self::Path(path) => *path = name.into(),
         }
     }
 

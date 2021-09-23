@@ -3,32 +3,32 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Mutex, RwLock};
 use std::sync::Arc;
+use std::sync::{Mutex, RwLock};
 use std::task::Context;
 use std::time::Duration;
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
-use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
-use druid::{Data, ExtEventSink, im, Widget};
+use dashmap::DashMap;
 use druid::im::Vector;
+use druid::{im, Data, ExtEventSink, Widget};
 use enum_dispatch::enum_dispatch;
+use futures::future::try_join_all;
+use futures::prelude::*;
+use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
+use futures::task::Poll;
 use futures::{
     future::{Fuse, FusedFuture, FutureExt},
     pin_mut, select,
     stream::{FusedStream, Stream, StreamExt},
 };
-use futures::future::try_join_all;
-use futures::prelude::*;
-use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
-use futures::task::Poll;
 use lazy_static::lazy_static;
 use regex::Regex;
-use reqwest::{Request, RequestBuilder};
 use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{Request, RequestBuilder};
 use serde::Serialize;
 use sha1::{Digest, Sha1};
 use tokio::io::AsyncReadExt;
@@ -54,7 +54,7 @@ use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
 
-#[derive(Config, Debug)]
+#[derive(Config, Debug, PartialEq)]
 pub struct Site {
     #[config(ty = "enum")]
     pub module: Module,
@@ -94,17 +94,18 @@ impl Site {
                 let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 
                 let task_stream = UrlFetchEvent::wrapper(
-                    self.module.fetch_urls(
-                        session.clone(),
-                        sender,
-                        base_path,
-                        Arc::clone(&dsettings),
-                    ),
+                    self.module
+                        .fetch_urls(session.clone(), sender, Arc::clone(&dsettings)),
                     &comm,
                 );
 
-                let consumers =
-                    Arc::clone(&self).handle_receiver(session, receiver, dsettings, comm.clone());
+                let consumers = Arc::clone(&self).handle_receiver(
+                    session,
+                    receiver,
+                    Arc::new(base_path),
+                    dsettings,
+                    comm.clone(),
+                );
 
                 join!(task_stream, consumers);
             },
@@ -117,6 +118,7 @@ impl Site {
         self: Arc<Self>,
         session: Session,
         mut receiver: Receiver<Task>,
+        base_path: Arc<PathBuf>,
         dsettings: Arc<DownloadSettings>,
         comm: Communication,
     ) {
@@ -136,6 +138,7 @@ impl Site {
                             self_clone.consume_task(
                                 session.clone(),
                                 task,
+                                Arc::clone(&base_path),
                                 Arc::clone(&dsettings),
                             ),
                             comm.clone(),
@@ -154,6 +157,7 @@ impl Site {
         self: Arc<Self>,
         session: Session,
         task: Task,
+        base_path: Arc<PathBuf>,
         dsettings: Arc<DownloadSettings>,
     ) -> Result<TaskMsg> {
         let download_args = self
@@ -172,6 +176,7 @@ impl Site {
         } = task;
 
         assert!(task_path.is_relative());
+        assert!(base_path.is_relative());
         assert!(dsettings.save_path.is_absolute());
 
         if !task_has_extension {
@@ -186,7 +191,7 @@ impl Site {
             }
         }
 
-        let final_path: PathBuf = dsettings.save_path.join(&task_path).into();
+        let final_path: PathBuf = dsettings.save_path.join(base_path.as_ref()).join(&task_path).into();
         // TODO use real temp file
         let temp_path = add_to_file_stem(&final_path, "-temp");
         let old_path = add_to_file_stem(&final_path, "-old");
@@ -198,6 +203,7 @@ impl Site {
             println!("{:?}", final_path);
             return Ok(TaskMsg::new(
                 final_path,
+                task_path,
                 MsgKind::ForbiddenExtension(extension),
             ));
         }
@@ -222,7 +228,7 @@ impl Site {
         };
 
         if action == Action::Replace && is_task_checksum_same && !dsettings.force {
-            return Ok(TaskMsg::new(final_path, MsgKind::AlreadyExist));
+            return Ok(TaskMsg::new(final_path, task_path, MsgKind::AlreadyExist));
         }
 
         let request = self.build_request(
@@ -240,7 +246,7 @@ impl Site {
                 .files
                 .get_mut(&final_path)
                 .map(|mut file_data| file_data.task_checksum = task_checksum);
-            return Ok(TaskMsg::new(final_path, MsgKind::NotModified));
+            return Ok(TaskMsg::new(final_path, task_path, MsgKind::NotModified));
         }
 
         tokio::fs::create_dir_all(final_path.parent().unwrap()).await?;
@@ -279,7 +285,11 @@ impl Site {
                 if file_data.file_checksum == file_checksum {
                     file_data.etag = etag;
                     file_data.task_checksum = task_checksum;
-                    return Ok(TaskMsg::new(final_path, MsgKind::FileChecksumSame));
+                    return Ok(TaskMsg::new(
+                        final_path,
+                        task_path,
+                        MsgKind::FileChecksumSame,
+                    ));
                 }
             } else {
                 let current_file_checksum =
@@ -290,14 +300,22 @@ impl Site {
                         if file_data.file_checksum == file_checksum {
                             file_data.etag = etag;
                             file_data.task_checksum = task_checksum;
-                            return Ok(TaskMsg::new(final_path, MsgKind::FileChecksumSame));
+                            return Ok(TaskMsg::new(
+                                final_path,
+                                task_path,
+                                MsgKind::FileChecksumSame,
+                            ));
                         }
                     }
                     Entry::Vacant(entry) => {
                         if current_file_checksum == file_checksum {
                             let data = FileData::new(file_checksum, etag, task_checksum);
                             entry.insert(data);
-                            return Ok(TaskMsg::new(final_path, MsgKind::FileChecksumSame));
+                            return Ok(TaskMsg::new(
+                                final_path,
+                                task_path,
+                                MsgKind::FileChecksumSame,
+                            ));
                         }
                     }
                 }
@@ -324,8 +342,12 @@ impl Site {
         }
 
         match action {
-            Action::AddNew => Ok(TaskMsg::new(final_path, MsgKind::AddedFile)),
-            Action::Replace => Ok(TaskMsg::new(final_path, MsgKind::ReplacedFile(old_path))),
+            Action::AddNew => Ok(TaskMsg::new(final_path, task_path, MsgKind::AddedFile)),
+            Action::Replace => Ok(TaskMsg::new(
+                final_path,
+                task_path,
+                MsgKind::ReplacedFile(old_path),
+            )),
         }
     }
 
@@ -412,17 +434,25 @@ pub enum Action {
     Replace,
 }
 
-#[derive(Config, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data, PartialEq)]
 pub struct TaskMsg {
     #[config(ty = "enum")]
     pub kind: MsgKind,
     #[data(same_fn = "PartialEq::eq")]
-    pub path: PathBuf,
+    #[config(must_absolute = false, must_exist = false)]
+    pub full_path: PathBuf,
+    #[config(must_absolute = false, must_exist = false)]
+    #[data(same_fn = "PartialEq::eq")]
+    pub rel_path: PathBuf,
 }
 
 impl TaskMsg {
-    pub fn new(path: PathBuf, kind: MsgKind) -> Self {
-        Self { path, kind }
+    pub fn new(full_path: PathBuf, rel_path: PathBuf, kind: MsgKind) -> Self {
+        Self {
+            full_path,
+            rel_path,
+            kind,
+        }
     }
 }
 
@@ -436,7 +466,7 @@ pub enum MsgKind {
     ForbiddenExtension(Option<String>),
 }
 
-#[derive(Config, Debug, Data, Clone)]
+#[derive(Config, Debug, Data, Clone, PartialEq)]
 pub struct DownloadArgs {
     #[config(ty = "struct", name = "Extension Filter")]
     pub extensions: Extensions,
@@ -445,7 +475,7 @@ pub struct DownloadArgs {
     pub keep_old_files: bool,
 }
 
-#[derive(Config, Debug, Clone, Data)]
+#[derive(Config, Debug, Clone, Data, PartialEq)]
 pub struct Extensions {
     #[config(ty = "enum", default = "Forbidden", name = "Mode")]
     pub mode: Mode,
@@ -481,6 +511,13 @@ pub struct SiteStorage {
     pub history: Mutex<Vec<TaskMsg>>,
 }
 
+// TODO remove
+impl PartialEq for SiteStorage {
+    fn eq(&self, other: &Self) -> bool {
+        return true;
+    }
+}
+
 impl SiteStorage {
     pub fn new() -> Self {
         Self {
@@ -490,7 +527,7 @@ impl SiteStorage {
     }
 }
 
-#[derive(Config, Debug)]
+#[derive(Config, Debug, PartialEq)]
 pub struct FileData {
     pub task_checksum: Option<String>,
     pub file_checksum: String,

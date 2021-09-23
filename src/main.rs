@@ -62,6 +62,7 @@ use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 use crate::data::AppData;
+use crate::template::nodes::root::RawRootNode;
 
 mod background_thread;
 mod cstruct_window;
@@ -148,7 +149,7 @@ pub fn main() {
     tracing_subscriber::registry()
         .with(filter_layer)
         .with(fmt_layer)
-        .with(filter)
+        // .with(filter)
         .init();
 
     app_launcher
@@ -159,7 +160,20 @@ pub fn main() {
     let _ = tx.send(Msg::ExitAndSave);
     handle.join().expect("thread panicked");
 }
+
+// pub fn main() {
+//     let a = AppLauncher::<()>::with_window(WindowDesc::new(Label::new("efef")));
+//     let t = Template::test(RawCommunication::new(a.get_external_handle()));
+//     let raw_root = t.root.clone().raw();
+//     let template_str = ron::ser::to_string_pretty(&raw_root, Default::default()).unwrap();
+//     println!("{}", template_str);
+//     let test_raw_root: RawRootNode = ron::from_str(&template_str).unwrap();
+//     assert_eq!(raw_root, test_raw_root);
+// }
+
 //
+
+
 // use config::{CStruct, Config, ConfigEnum};
 // use ron::ser::PrettyConfig;
 // use ron::{Map, Value};
@@ -172,7 +186,7 @@ pub fn main() {
 //
 // //
 // fn main() {
-//     #[derive(Debug, Config, PartialEq, Clone)]
+//     #[derive(Debug, Config)]
 //     struct Hello {
 //         bool: bool,
 //         bool_option: Option<bool>,
@@ -208,6 +222,12 @@ pub fn main() {
 //
 //         #[config(ty = "_<struct>")]
 //         tstruct_option: Option<TStruct<NestedStruct>>,
+//
+//         #[config(ty = "_<struct>")]
+//         mutex: Mutex<NestedStruct>,
+//
+//         #[config(ty = "HashMap<_, _>")]
+//         dashmap: dashmap::DashMap<String, String>,
 //     }
 //
 //     #[derive(Debug, ConfigEnum, PartialEq, Clone)]
@@ -215,7 +235,7 @@ pub fn main() {
 //         Unit,
 //         #[config(ty = "struct")]
 //         Struct(NestedStruct),
-//         With(String),
+//         With(Option<PathBuf>),
 //     }
 //
 //     #[derive(Debug, Config, PartialEq, Clone)]
@@ -229,6 +249,8 @@ pub fn main() {
 //     let mut map2 = HashMap::new();
 //     map2.insert(PathBuf::from("Hello"), NestedStruct { x: 42 });
 //
+//     let mut map3 = dashmap::DashMap::new();
+//     map3.insert(String::from("Hello"), String::from("Hello"));
 //     let init = Hello {
 //         bool: true,
 //         bool_option: Some(false),
@@ -237,7 +259,7 @@ pub fn main() {
 //         str: "".to_string(),
 //         normal_map: map,
 //         path_map: map2,
-//         vec: vec![],
+//         vec: vec![0, 1, 2, 3, 4],
 //         path: PathBuf::from("C:\\msys64"),
 //         nested_option: Some(NestedStruct { x: 44 }),
 //         test_enum: HelloEnum::Struct(NestedStruct { x: 88 }),
@@ -245,7 +267,7 @@ pub fn main() {
 //         wrapper: Arc::new("efg".to_string()),
 //         str_option: None,
 //         path_option: Some(PathBuf::from("C:\\msys64")),
-//         vec_nested: vec![],
+//         vec_nested: vec![NestedStruct { x: 0 }, NestedStruct { x: 1 }],
 //         nested: NestedStruct { x: 400 },
 //         tstruct: TStruct {
 //             t: NestedStruct { x: 34 },
@@ -253,15 +275,15 @@ pub fn main() {
 //         tstruct_option: Some(TStruct {
 //             t: NestedStruct { x: 34 },
 //         }),
+//         mutex: Mutex::new(NestedStruct { x: 34 }),
+//         dashmap: map3,
 //     };
-//
-//     let init2 = init.clone();
 //
 //     let x = ron::to_string(&init).unwrap();
 //     println!("{}", &x);
 //     let y: Hello = ron::from_str(&x).unwrap();
 //     dbg!(&y);
-//     assert_eq!(&init, &y);
+//     // assert_eq!(&init, &y);
 //
 //     #[derive(Debug, Config, PartialEq, Clone)]
 //     struct TStruct<T> {
@@ -276,4 +298,17 @@ pub fn main() {
 //         #[config(ty = "_<struct>")]
 //         tstruct2: Option<TStruct<NestedStruct>>,
 //     }
+//
+//     #[derive(Config, Debug)]
+//     struct Hello3 {
+//         hello: String,
+//     }
+//     let b = Hello3 {
+//         hello: "f".to_string()
+//     };
+//
+//     let x = ron::to_string(&b).unwrap();
+//     println!("{}", x);
+//     let y: Hello3 = ron::from_str(&x).unwrap();
+//     dbg!(y);
 // }

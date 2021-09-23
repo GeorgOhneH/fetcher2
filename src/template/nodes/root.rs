@@ -21,7 +21,7 @@ use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::widgets::tree::NodeIndex;
 
-#[derive(Config, Debug)]
+#[derive(Config, Debug, PartialEq)]
 pub struct RawRootNode {
     #[config(ty = "Vec<struct>")]
     pub children: Vec<RawNode>,
