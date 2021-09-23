@@ -4,19 +4,19 @@ use std::marker::PhantomData;
 use std::process::id;
 use std::sync::Arc;
 
-use druid::{Lens, LensExt, Rect, SingleUse, theme};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Label, SizedBox};
+use druid::{theme, Lens, LensExt, Rect, SingleUse};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Label, SizedBox};
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::{Header, HeaderConstrains};
-use crate::widgets::tree::NodeIndex;
 use crate::widgets::tree::opener::Opener;
+use crate::widgets::tree::NodeIndex;
 
 selectors! {
     /// Notification to send from the widget that requires removal
@@ -45,12 +45,13 @@ macro_rules! impl_simple_tree_node {
                 &self.children[index]
             }
 
-            fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut Self, usize)) {
+            fn for_child_mut<V>(&mut self, index: usize, cb: impl FnOnce(&mut Self, usize) -> V) -> V {
                 let mut new_child = self.children[index].to_owned();
-                cb(&mut new_child, index);
+                let v = cb(&mut new_child, index);
                 if !new_child.same(&self.children[index]) {
                     self.children[index] = new_child;
                 }
+                v
             }
 
             fn rm_child(&mut self, index: usize) {
@@ -79,7 +80,7 @@ where
     fn get_child(&self, index: usize) -> &Self;
 
     /// Returns a mutable reference to the node's child at the given index
-    fn for_child_mut(&mut self, index: usize, cb: impl FnMut(&mut Self, usize));
+    fn for_child_mut<V>(&mut self, index: usize, cb: impl FnOnce(&mut Self, usize) -> V) -> V;
 
     /// `is_branch` must return `true` if the data is considered as a branch.
     /// The default implementation returns `true` when `children_count()` is
@@ -90,6 +91,22 @@ where
 
     /// Remove the child at `index`
     fn rm_child(&mut self, index: usize);
+
+    fn node(&self, idx: &[usize]) -> &Self {
+        if idx.len() == 0 {
+            self
+        } else {
+            self.get_child(idx[0]).node(&idx[1..])
+        }
+    }
+
+    fn node_mut<V>(&mut self, idx: &[usize], cb: impl FnOnce(&mut Self, usize) -> V) -> V {
+        match idx.len() {
+            0 => unreachable!(),
+            1 => self.for_child_mut(idx[0], cb),
+            _ => self.for_child_mut(idx[0], move |child, _| child.node_mut(&idx[1..], cb)),
+        }
+    }
 }
 
 pub type TreeItemFactory<T, const N: usize> = [Arc<dyn Fn() -> Box<dyn Widget<T>>>; N];

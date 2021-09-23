@@ -80,8 +80,7 @@ impl<W: Widget<AppData>> Controller<AppData, W> for TemplateController {
             Event::Command(cmd) if cmd.is(NODE_EVENT) => {
                 ctx.set_handled();
                 let (node_event, idx) = cmd.get_unchecked(NODE_EVENT).take().unwrap();
-                let node = data.template.node_mut(&idx);
-                node.update_node(node_event);
+                data.template.node_mut(&idx, |node, _| node.update_node(node_event));
                 return;
             }
             Event::Command(cmd) if cmd.is(NEW_TEMPLATE) => {

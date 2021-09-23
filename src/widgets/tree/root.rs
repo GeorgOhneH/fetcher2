@@ -33,12 +33,13 @@ macro_rules! impl_simple_tree_root {
                 &self.children[index]
             }
 
-            fn for_child_mut(&mut self, index: usize, mut cb: impl FnMut(&mut $node_name, usize)) {
+            fn for_child_mut<V>(&mut self, index: usize, cb: impl FnOnce(&mut $node_name, usize) -> V) -> V {
                 let mut new_child = self.children[index].to_owned();
-                cb(&mut new_child, index);
+                let v = cb(&mut new_child, index);
                 if !new_child.same(&self.children[index]) {
                     self.children[index] = new_child;
                 }
+                v
             }
 
             fn rm_child(&mut self, index: usize) {
@@ -48,6 +49,7 @@ macro_rules! impl_simple_tree_root {
     };
 }
 pub(crate) use impl_simple_tree_root;
+
 
 pub trait TreeNodeRoot<T: TreeNode>
 where
@@ -60,10 +62,26 @@ where
     fn get_child(&self, index: usize) -> &T;
 
     /// Returns a mutable reference to the node's child at the given index
-    fn for_child_mut(&mut self, index: usize, cb: impl FnMut(&mut T, usize));
+    fn for_child_mut<V>(&mut self, index: usize, cb: impl FnOnce(&mut T, usize) -> V) -> V;
 
     /// Remove the child at `index`
     fn rm_child(&mut self, index: usize);
+
+    fn node(&self, idx: &[usize]) -> &T {
+        if idx.len() == 0 {
+            panic!("Can't access root node")
+        } else {
+            self.get_child(idx[0]).node(&idx[1..])
+        }
+    }
+
+    fn node_mut<V>(&mut self, idx: &[usize], cb: impl FnOnce(&mut T, usize) -> V) -> V {
+        match idx.len() {
+            0 => panic!("can't access root"),
+            1 => self.for_child_mut(idx[0], cb),
+            _ => self.for_child_mut(idx[0], move |child, _| child.node_mut(&idx[1..], cb)),
+        }
+    }
 }
 
 pub struct TreeNodeRootWidget<R, T, L, const N: usize>

@@ -26,6 +26,7 @@ use crate::template::nodes::root_data::RootNodeData;
 use crate::template::Template;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::data::AppData;
+use crate::widgets::tree::root::TreeNodeRoot;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct TemplateData {
@@ -74,9 +75,8 @@ impl TemplateData {
         self.root.node(idx)
     }
 
-    // Be careful can produce weird behavior
-    pub fn node_mut(&mut self, idx: &NodeIndex) -> &mut NodeData {
-        self.root.node_mut(idx)
+    pub fn node_mut<V>(&mut self, idx: &NodeIndex, cb: impl FnOnce(&mut NodeData, usize) -> V) -> V {
+        self.root.node_mut(idx, cb)
     }
 }
 

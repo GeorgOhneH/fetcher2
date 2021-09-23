@@ -43,22 +43,6 @@ pub struct NodeData {
 impl_simple_tree_node! {NodeData}
 
 impl NodeData {
-    pub fn node(&self, idx: &[usize]) -> &NodeData {
-        if idx.len() == 0 {
-            self
-        } else {
-            self.children[idx[0]].node(&idx[1..])
-        }
-    }
-
-    pub fn node_mut(&mut self, idx: &[usize]) -> &mut NodeData {
-        if idx.len() == 0 {
-            self
-        } else {
-            self.children[idx[0]].node_mut(&idx[1..])
-        }
-    }
-
     pub fn child_indexes(
         &self,
         current_idx: NodeIndex,

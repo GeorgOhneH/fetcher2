@@ -49,22 +49,6 @@ impl RootNodeEditData {
         RawRootNode { children }
     }
 
-    pub fn node(&self, idx: &[usize]) -> &NodeEditData {
-        if idx.len() == 0 {
-            panic!("Can't access root node")
-        } else {
-            self.children[idx[0]].node(&idx[1..])
-        }
-    }
-
-    pub fn node_mut(&mut self, idx: &[usize]) -> &mut NodeEditData {
-        if idx.len() == 0 {
-            panic!("Can't access root node")
-        } else {
-            self.children[idx[0]].node_mut(&idx[1..])
-        }
-    }
-
     pub fn remove(&mut self, idx: &[usize]) -> NodeEditData {
         match idx.len() {
             0 => panic!("Can't remove the root node"),

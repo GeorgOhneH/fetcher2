@@ -29,6 +29,7 @@ use crate::template::widget_edit_data::TemplateEditData;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::data::edit::EditWindowData;
 use crate::data::AppData;
+use crate::widgets::tree::root::TreeNodeRoot;
 
 selectors! {
     SAVE_EDIT,
@@ -401,11 +402,6 @@ impl Lens<RootNodeEditData, NodeEditData> for NodeLens {
         data: &mut RootNodeEditData,
         f: F,
     ) -> V {
-        let mut new_node = data.node(&self.idx).to_owned();
-        let v = f(&mut new_node);
-        if !new_node.same(data.node(&self.idx)) {
-            *data.node_mut(&self.idx) = new_node;
-        }
-        v
+        data.node_mut(&self.idx, |child, _| f(child))
     }
 }

@@ -182,7 +182,11 @@ impl History {
             Entry::expanded,
             EntryRoot::selected,
         )
-        .set_sizes([400., 400., 400.]);
+        .set_sizes([400., 400., 400.])
+            .on_activate(|ctx, root, env, idx| {
+                let node = root.node(idx);
+                open::that_in_background(&node.full_path);
+            });
         Self {
             tree: WidgetPod::new(tree),
             root: EntryRoot::empty(),

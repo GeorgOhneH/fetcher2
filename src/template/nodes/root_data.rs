@@ -35,20 +35,5 @@ impl RootNodeData {
             selected: Vector::new(),
         }
     }
-    pub fn node(&self, idx: &[usize]) -> &NodeData {
-        if idx.len() == 0 {
-            panic!("Can't access root node")
-        } else {
-            self.children[idx[0]].node(&idx[1..])
-        }
-    }
-
-    pub fn node_mut(&mut self, idx: &[usize]) -> &mut NodeData {
-        if idx.len() == 0 {
-            panic!("Can't access root node")
-        } else {
-            self.children[idx[0]].node_mut(&idx[1..])
-        }
-    }
 }
 

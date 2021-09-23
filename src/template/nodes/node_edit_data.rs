@@ -66,21 +66,6 @@ impl NodeEditData {
             "New Node".to_string()
         }
     }
-    pub fn node(&self, idx: &[usize]) -> &Self {
-        if idx.len() == 0 {
-            self
-        } else {
-            self.children[idx[0]].node(&idx[1..])
-        }
-    }
-
-    pub fn node_mut(&mut self, idx: &[usize]) -> &mut Self {
-        if idx.len() == 0 {
-            self
-        } else {
-            self.children[idx[0]].node_mut(&idx[1..])
-        }
-    }
 
     pub fn remove(&mut self, idx: &[usize]) -> NodeEditData {
         match idx.len() {
