@@ -7,6 +7,7 @@ pub use crate::ctypes::bool::*;
 pub use crate::ctypes::checkable_struct::*;
 use crate::ctypes::CWrapper;
 pub use crate::ctypes::integer::*;
+pub use crate::ctypes::float::*;
 pub use crate::ctypes::map::*;
 use crate::ctypes::map::CHashMap;
 pub use crate::ctypes::path::*;
@@ -26,6 +27,7 @@ mod path;
 mod string;
 mod r#struct;
 mod vec;
+mod float;
 mod wrapper;
 
 #[derive(Debug, PartialEq)]
@@ -82,6 +84,7 @@ pub enum CType {
     String(CString),
     Bool(CBool),
     Integer(CInteger),
+    Float(CFloat),
     Path(CPath),
     CStruct(CStruct),
     CheckableStruct(CCheckableStruct),
@@ -95,7 +98,7 @@ impl CType {
     pub fn is_leaf(&self) -> bool {
         use CType::*;
         match self {
-            String(_) | Bool(_) | Integer(_) | Path(_) => true,
+            String(_) | Bool(_) | Integer(_) | Float(_) | Path(_) => true,
             CStruct(_) | CheckableStruct(_) | Vec(_) | HashMap(_) => false,
             Wrapper(cwrapper) => cwrapper.is_leaf(),
             CEnum(cenum) => cenum.is_leaf(),
@@ -112,6 +115,13 @@ impl CType {
     pub fn int_mut(&mut self) -> Option<&mut CInteger> {
         match self {
             Self::Integer(cint) => Some(cint),
+            _ => None,
+        }
+    }
+
+    pub fn float_mut(&mut self) -> Option<&mut CFloat> {
+        match self {
+            Self::Float(cfloat) => Some(cfloat),
             _ => None,
         }
     }
@@ -178,6 +188,7 @@ impl CType {
             String(cstring) => cstring.state(),
             Bool(cbool) => cbool.state(),
             Integer(cint) => cint.state(),
+            Float(cfloat) => cfloat.state(),
             Path(cpath) => cpath.state(),
             CStruct(cstruct) => cstruct.state(),
             CheckableStruct(checkable_struct) => checkable_struct.state(),
@@ -193,6 +204,7 @@ impl CType {
             .string(CString::widget())
             .bool(CBool::widget())
             .integer(CInteger::widget())
+            .float(CFloat::widget())
             .path(CPath::widget())
             .c_struct(CStruct::widget())
             .checkable_struct(CCheckableStruct::widget())

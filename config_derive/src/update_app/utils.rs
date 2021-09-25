@@ -56,6 +56,28 @@ pub fn gen_set(
                 _ => panic!("This should never happen"),
             }
         }},
+        ConfigType::Float(_) => quote! {{
+            match #match_arg {
+                ::config::CType::Float(ref mut cfloat) => {
+                    cfloat.set(#set_arg)
+                },
+                _ => panic!("This should never happen"),
+            }
+        }},
+        ConfigType::OptionFloat(_) => quote! {{
+            match #match_arg {
+                ::config::CType::Float(ref mut cfloat) => {
+                    match #set_arg {
+                        Some(float) => cfloat.set(float),
+                        None => {
+                            cfloat.unset();
+                            Ok(())
+                        }
+                    }
+                },
+                _ => panic!("This should never happen"),
+            }
+        }},
         ConfigType::Path(_) => quote! {{
             match #match_arg {
                 ::config::CType::Path(ref mut cpath) => {

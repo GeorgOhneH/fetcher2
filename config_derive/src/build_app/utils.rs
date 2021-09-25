@@ -43,6 +43,14 @@ pub fn gen_type(
                 .build()
             )
         },
+        ConfigType::Float(_) | ConfigType::OptionFloat(_) => quote_spanned! {span=>
+            ::config::CType::Float(
+                ::config::CFloatBuilder::new()
+                #gui_fn
+                #args
+                .build()
+            )
+        },
         ConfigType::Path(_) | ConfigType::OptionPath(_) => quote_spanned! {span=>
             ::config::CType::Path(
                 ::config::CPathBuilder::new()

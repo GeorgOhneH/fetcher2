@@ -253,7 +253,6 @@ async fn replace_template(
 ) -> PostCommand {
     old_template.read().await.inform_of_cancel();
     let mut wl = old_template.write().await;
-    dbg!("REPLACE LOCK");
     sink.submit_command(
         NEW_TEMPLATE,
         SingleUse::new(new_template.widget_data()),
@@ -316,7 +315,6 @@ async fn prepare_template(
     dsettings: Arc<DownloadSettings>,
 ) -> PostCommand {
     let mut wl = template.write().await;
-    dbg!("PREPARE LOCK");
     wl.prepare(dsettings.clone()).await;
     PostCommand::None
 }

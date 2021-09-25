@@ -12,6 +12,7 @@ use crate::template::node_type::NodeTypeData;
 use crate::data::edit::EditWindowData;
 use crate::template::node_type::site::TaskMsg;
 use crate::template::nodes::node_data::NodeData;
+use std::sync::Arc;
 
 pub mod win;
 pub mod settings;
@@ -23,9 +24,8 @@ pub struct AppData {
     #[config(skip = TemplateData::new())]
     pub template: TemplateData,
 
-    #[data(eq)]
     #[config(ty = "Vec<_>")]
-    pub recent_templates: Vector<PathBuf>,
+    pub recent_templates: Vector<Arc<PathBuf>>,
 
     #[config(ty = "struct")]
     pub settings_window: SubWindowInfo<OptionSettings>,
@@ -39,6 +39,9 @@ pub struct AppData {
 
     #[config(ty = "struct")]
     pub edit_window: SubWindowInfo<EditWindowData>,
+
+    #[config(default = 0.5)]
+    pub split_point: f64
 }
 
 

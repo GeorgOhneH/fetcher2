@@ -61,6 +61,12 @@ pub fn gen_option_arg(
                 _ => panic!("This should never happen"),
             }
         }},
+        ConfigType::Float(_) | ConfigType::OptionFloat(_) => quote! {{
+            match #match_arg {
+                ::config::CType::Float(value_arg) => Ok(value_arg.get().map(|x|x.clone())),
+                _ => panic!("This should never happen"),
+            }
+        }},
         ConfigType::Path(_) | ConfigType::OptionPath(_) => quote! {{
             match #match_arg {
                 ::config::CType::Path(cpath) => Ok(cpath.get().map(|x|x.clone())),

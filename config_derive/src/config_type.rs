@@ -2,11 +2,11 @@ use lazy_static::lazy_static;
 use proc_macro2::Span;
 use proc_macro_error::abort;
 use regex::Regex;
-use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 use syn::spanned::Spanned;
 use syn::Type;
+use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 
-use crate::config_attr::{ConfigAttr, parse_config_attributes};
+use crate::config_attr::{parse_config_attributes, ConfigAttr};
 
 pub enum ConfigHashType {
     String,
@@ -24,6 +24,8 @@ pub enum ConfigType {
     OptionString(Path),
     Integer(Path),
     OptionInteger(Path),
+    Float(Path),
+    OptionFloat(Path),
     Bool(Path),
     OptionBool(Path),
     Path(Path),
@@ -44,6 +46,7 @@ impl ConfigType {
         match self {
             String(_)
             | Integer(_)
+            | Float(_)
             | Bool(_)
             | Vec(_, _)
             | Struct(_)
@@ -52,8 +55,8 @@ impl ConfigType {
             | HashMap(_, _, _)
             | Skip(_)
             | Wrapper(_, _, _) => false,
-            OptionString(_) | OptionInteger(_) | OptionBool(_) | CheckableStruct(_)
-            | OptionEnum(_) | OptionPath(_) => true,
+            OptionString(_) | OptionInteger(_) | OptionFloat(_) | OptionBool(_)
+            | CheckableStruct(_) | OptionEnum(_) | OptionPath(_) => true,
         }
     }
 }
@@ -121,6 +124,7 @@ fn _parse_type(ty: &Type, type_annots: Option<TypeAnnotations>) -> ConfigType {
                     ConfigType::Struct(path) => ConfigType::CheckableStruct(path),
                     ConfigType::String(path) => ConfigType::OptionString(path),
                     ConfigType::Integer(path) => ConfigType::OptionInteger(path),
+                    ConfigType::Float(path) => ConfigType::OptionFloat(path),
                     ConfigType::Bool(path) => ConfigType::OptionBool(path),
                     ConfigType::Path(path) => ConfigType::OptionPath(path),
                     ConfigType::Enum(path) => ConfigType::OptionEnum(path),
@@ -147,6 +151,7 @@ fn _parse_type(ty: &Type, type_annots: Option<TypeAnnotations>) -> ConfigType {
             }
             ("String", []) => ConfigType::String(path.clone()),
             ("isize", []) => ConfigType::Integer(path.clone()),
+            ("f64", []) => ConfigType::Float(path.clone()),
             ("bool", []) => ConfigType::Bool(path.clone()),
             ("PathBuf", []) => ConfigType::Path(path.clone()),
             ("struct", inner) => ConfigType::Struct(path.clone()),

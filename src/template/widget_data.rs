@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
+use druid::LensExt;
 use druid::{ExtEventSink, Menu, MenuItem, Rect, Selector, SingleUse, theme, WidgetExt, WidgetId};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -32,7 +32,7 @@ use crate::widgets::tree::root::TreeNodeRoot;
 pub struct TemplateData {
     pub root: RootNodeData,
     #[data(eq)]
-    pub save_path: Option<PathBuf>,
+    pub save_path: Option<Arc<PathBuf>>,
 }
 
 impl TemplateData {
@@ -45,12 +45,12 @@ impl TemplateData {
 }
 
 impl TemplateData {
-    pub fn build_widget() -> impl Widget<Self> {
+    pub fn build_widget() -> impl Widget<AppData> {
         Tree::new(
             [
-                Label::new("Hello"),
-                Label::new("Hello2"),
-                Label::new("Hello3"),
+                Label::new("Name").boxed(),
+                Label::new("Added|Replaced").align_right().boxed(),
+                Label::new("State").boxed(),
             ],
             [
                 Arc::new(|| Label::dynamic(|data: &NodeData, _env| data.name()).boxed()),
@@ -68,7 +68,7 @@ impl TemplateData {
             RootNodeData::selected,
         )
         .controller(ContextMenuController {})
-        .lens(TemplateData::root)
+        .lens(AppData::template.then(TemplateData::root))
     }
 
     pub fn node(&self, idx: &NodeIndex) -> &NodeData {

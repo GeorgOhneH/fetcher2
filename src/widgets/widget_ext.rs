@@ -2,15 +2,15 @@ use druid::{Selector, WidgetExt as _};
 use druid::widget::ControllerHost;
 use druid::widget::prelude::*;
 
-use crate::widgets::on_command::OnCmd;
+use crate::widgets::on_save::Save;
 
 pub trait WidgetExt<T: Data>: Widget<T> + Sized + 'static {
-    fn on_command2<CT: 'static>(
+    fn on_save(
         self,
-        selector: Selector<CT>,
-        handler: impl Fn(&mut EventCtx, &CT, &mut T, &Env) + 'static,
-    ) -> ControllerHost<Self, OnCmd<CT, T>> {
-        self.controller(OnCmd::new(selector, handler))
+        init: impl Fn(&mut Self, &mut LifeCycleCtx, &T, &Env) + 'static,
+        save: impl Fn(&mut Self, &mut EventCtx, &mut T, &Env) + 'static,
+    ) -> ControllerHost<Self, Save<T, Self>> {
+        self.controller(Save::new(init, save))
     }
 }
 

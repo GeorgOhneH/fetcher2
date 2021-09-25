@@ -1,11 +1,3 @@
-use std::fs::DirEntry;
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-use std::{fs, io};
-
 use crossbeam_channel::{Receiver, Select, Sender};
 use druid::im::{OrdMap, Vector};
 use druid::widget::Label;
@@ -17,11 +9,19 @@ use druid::{
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
 use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::fs::{DirEntry, Metadata};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::channel;
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, SystemTime};
+use std::{fs, io};
 
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::Result;
+use chrono::{DateTime, Local};
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::ops::Index;
@@ -35,14 +35,15 @@ fn find_child_by_name(children: &Vector<Entry>, name: &str) -> Option<usize> {
     let all: Vec<_> = children
         .iter()
         .enumerate()
-        .filter_map(|(i, child)| {
-            dbg!(&child.name);
-            if &child.name == name {
-                Some(i)
-            } else {
-                None
-            }
-        })
+        .filter_map(
+            |(i, child)| {
+                if &child.name == name {
+                    Some(i)
+                } else {
+                    None
+                }
+            },
+        )
         .collect();
     match all.len() {
         0 => None,
@@ -75,11 +76,30 @@ impl Ord for Type {
     }
 }
 
+pub struct UpdateData {
+    size: String,
+    created: String,
+}
+
+impl UpdateData {
+    pub fn new(metadata: &Metadata) -> Self {
+        Self {
+            size: format_size(metadata.len()),
+            created: metadata
+                .created()
+                .map(format_time)
+                .unwrap_or("".to_string()),
+        }
+    }
+}
+
 #[derive(Data, Clone, Debug, Lens, Eq, PartialEq)]
 pub struct Entry {
     name: String,
     children: Vector<Entry>,
     ty: Type,
+    size: String,
+    created: String,
     expanded: bool,
 }
 
@@ -102,10 +122,12 @@ impl Ord for Entry {
 impl_simple_tree_node! {Entry}
 
 impl Entry {
-    pub fn new(name: String, ty: Type) -> Self {
+    pub fn new(name: String, ty: Type, size: String, created: String) -> Self {
         Self {
             name,
             ty,
+            size,
+            created,
             expanded: false,
             children: Vector::new(),
         }
@@ -115,6 +137,11 @@ impl Entry {
         let name = entry.file_name().to_string_lossy().to_string();
         if meta_data.is_file() {
             Ok(Self {
+                size: format_size(meta_data.len()),
+                created: meta_data
+                    .created()
+                    .map(format_time)
+                    .unwrap_or("".to_string()),
                 children: Vector::new(),
                 expanded: false,
                 name,
@@ -126,6 +153,11 @@ impl Entry {
                 .collect::<io::Result<Vector<_>>>()?;
             children.sort();
             Ok(Self {
+                size: format_size(meta_data.len()),
+                created: meta_data
+                    .created()
+                    .map(format_time)
+                    .unwrap_or("".to_string()),
                 children,
                 expanded: false,
                 name,
@@ -134,25 +166,39 @@ impl Entry {
         }
     }
 
-    fn update_data(&mut self, ty: Type) {
-        self.ty = ty
+    fn update_data(&mut self, ty: Type, data: UpdateData) {
+        self.ty = ty;
+        self.size = data.size;
+        self.created = data.created;
     }
 
-    fn update(&mut self, components: &[&OsStr], ty: Type) {
+    fn update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
         match (components.len(), child_idx) {
             (0, _) => unreachable!(),
-            (1, Some(child_idx)) => self.children.get_mut(child_idx).unwrap().update_data(ty),
-            (1, None) => self.children.insert_ord(Entry::new(name, ty)),
-            (_, Some(child_idx)) => self
+            (1, Some(child_idx)) => self
                 .children
                 .get_mut(child_idx)
                 .unwrap()
-                .update(&components[1..], ty),
+                .update_data(ty, data),
+            (1, None) => self
+                .children
+                .insert_ord(Entry::new(name, ty, data.size, data.created)),
+            (_, Some(child_idx)) => {
+                self.children
+                    .get_mut(child_idx)
+                    .unwrap()
+                    .update(&components[1..], ty, data)
+            }
             (_, None) => {
-                let mut child = Entry::new(name, Type::Folder);
-                child.update(&components[1..], ty);
+                let mut child = Entry::new(
+                    name,
+                    Type::Folder,
+                    "".to_string(),
+                    format_time(SystemTime::now()),
+                );
+                child.update(&components[1..], ty, data);
                 self.children.insert_ord(child)
             }
         }
@@ -224,27 +270,39 @@ impl EntryRoot {
                 return;
             }
             match update {
-                EntryUpdate::CreateUpdate(ty) => self._update(&components, ty),
+                EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data),
                 EntryUpdate::Remove => self.remove(&components),
             }
         }
     }
 
-    fn _update(&mut self, components: &[&OsStr], ty: Type) {
+    fn _update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
         match (components.len(), child_idx) {
             (0, _) => unreachable!(),
-            (1, Some(child_idx)) => self.children.get_mut(child_idx).unwrap().update_data(ty),
-            (1, None) => self.children.insert_ord(Entry::new(name, ty)),
-            (_, Some(child_idx)) => self
+            (1, Some(child_idx)) => self
                 .children
                 .get_mut(child_idx)
                 .unwrap()
-                .update(&components[1..], ty),
+                .update_data(ty, data),
+            (1, None) => self
+                .children
+                .insert_ord(Entry::new(name, ty, data.size, data.created)),
+            (_, Some(child_idx)) => {
+                self.children
+                    .get_mut(child_idx)
+                    .unwrap()
+                    .update(&components[1..], ty, data)
+            }
             (_, None) => {
-                let mut child = Entry::new(name, Type::Folder);
-                child.update(&components[1..], ty);
+                let mut child = Entry::new(
+                    name,
+                    Type::Folder,
+                    "".to_string(),
+                    format_time(SystemTime::now()),
+                );
+                child.update(&components[1..], ty, data);
                 self.children.insert_ord(child)
             }
         }
@@ -268,7 +326,7 @@ impl EntryRoot {
 }
 
 pub enum EntryUpdate {
-    CreateUpdate(Type),
+    CreateUpdate(Type, UpdateData),
     Remove,
 }
 
@@ -286,7 +344,7 @@ pub struct FileWatcher<T> {
             Entry,
             entry_derived_lenses::expanded,
             entry_root_derived_lenses::selected,
-            1,
+            3,
         >,
     >,
     root: EntryRoot,
@@ -297,14 +355,20 @@ pub struct FileWatcher<T> {
 impl<T> FileWatcher<T> {
     pub fn new(update_closure: impl Fn(&T) -> Option<PathBuf> + 'static) -> Self {
         let tree = Tree::new(
-            [Label::new("Hello3")],
-            [Arc::new(|| {
-                Label::dynamic(|data: &Entry, _env| data.name.clone()).boxed()
-            })],
+            [
+                Label::new("Name"),
+                Label::new("Size"),
+                Label::new("Date Created"),
+            ],
+            [
+                Arc::new(|| Label::dynamic(|data: &Entry, _env| data.name.clone()).boxed()),
+                Arc::new(|| Label::dynamic(|data: &Entry, _env| data.size.clone()).boxed()),
+                Arc::new(|| Label::dynamic(|data: &Entry, _env| data.created.clone()).boxed()),
+            ],
             Entry::expanded,
             EntryRoot::selected,
         )
-        .set_sizes([400.]);
+        .set_sizes([300., 300., 300.]);
         Self {
             path: None,
             tree: WidgetPod::new(tree),
@@ -365,7 +429,6 @@ impl<T: Data> Widget<T> for FileWatcher<T> {
             });
             self.tx = Some(tx);
             let new_path = (self.update_closure)(data);
-            dbg!(&new_path);
             self.set_path(new_path);
         };
         self.tree.lifecycle(ctx, event, &self.root, env)
@@ -398,7 +461,6 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
     let main_thread = sel.recv(&rx);
     let notify_thread = sel.recv(&notify_rx);
 
-    let mut current_path: Option<PathBuf> = None;
     let mut current_watch_path: Option<PathBuf> = None;
 
     loop {
@@ -422,7 +484,6 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
                                 Target::Widget(widget_id),
                             )
                             .unwrap();
-                            current_path = Some(path);
                             watcher
                                 .watch(
                                     current_watch_path.as_ref().unwrap().as_path(),
@@ -438,14 +499,15 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
             i if i == notify_thread => match oper.recv(&notify_rx).unwrap() {
                 Ok(event) => {
                     for path in event.paths {
-                        if path.exists() {
-                            let ty = match path.is_file() {
+                        if let Ok(metadata) = path.metadata() {
+                            let ty = match metadata.is_file() {
                                 true => Type::File,
                                 false => Type::Folder,
                             };
+                            let data = UpdateData::new(&metadata);
                             sink.submit_command(
                                 UPDATE,
-                                SingleUse::new((path, EntryUpdate::CreateUpdate(ty))),
+                                SingleUse::new((path, EntryUpdate::CreateUpdate(ty, data))),
                                 Target::Widget(widget_id),
                             )
                             .unwrap()
@@ -474,4 +536,13 @@ fn get_parent_exit(path: &Path) -> Option<&Path> {
     } else {
         path.parent().map(get_parent_exit).flatten()
     }
+}
+
+fn format_size(size: u64) -> String {
+    bytesize::to_string(size, true)
+}
+
+fn format_time(time: SystemTime) -> String {
+    let datetime: DateTime<Local> = time.into();
+    datetime.format("%d.%m.%Y %T").to_string()
 }

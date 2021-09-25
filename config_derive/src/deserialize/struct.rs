@@ -180,6 +180,12 @@ fn gen_c_setter(
         ConfigType::OptionInteger(_) => quote! {
             let _ = #ctype.int_mut().unwrap().set_raw(#field_name);
         },
+        ConfigType::Float(_) => quote! {
+            let _ = #ctype.float_mut().unwrap().set(#field_name);
+        },
+        ConfigType::OptionFloat(_) => quote! {
+            let _ = #ctype.float_mut().unwrap().set_raw(#field_name);
+        },
         ConfigType::Bool(_) => quote! {
             #ctype.bool_mut().unwrap().set(#field_name);
         },
