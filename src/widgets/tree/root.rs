@@ -243,15 +243,6 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> 
                 ctx.children_changed();
                 return;
             }
-            // TODO?
-            // Event::Notification(notif) if notif.is(TREE_NOTIFY_PARENT) => {
-            //     if self.widget.id() != notif.source() {
-            //         let notif = notif.get(TREE_NOTIFY_PARENT).unwrap();
-            //         ctx.submit_command(TREE_NOTIFY_PARENT.with(*notif).to(self.widget.id()));
-            //         ctx.set_handled();
-            //     }
-            //     None
-            // }
             _ => (),
         };
 

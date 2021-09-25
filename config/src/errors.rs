@@ -46,4 +46,8 @@ impl RequiredError {
             backtrace: Backtrace::capture(),
         }
     }
+
+    pub fn to_string(&self) -> String {
+        format!("got error at field: {}, msg: {}", self.field, self.msg)
+    }
 }

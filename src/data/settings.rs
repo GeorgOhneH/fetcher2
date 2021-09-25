@@ -29,6 +29,7 @@ pub struct DownloadSettings {
 
     #[data(same_fn = "PartialEq::eq")]
     #[config(name = "Save Path")]
+    #[config(must_absolute = false, must_exist = false)]
     pub save_path: PathBuf,
 
     #[config(ty = "struct")]

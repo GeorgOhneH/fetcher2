@@ -34,8 +34,8 @@ impl CPath {
             value: None,
             ty: CPathTypes::Any,
             name: None,
-            must_exist: true,
-            must_absolute: true,
+            must_exist: false,
+            must_absolute: false,
         }
     }
 

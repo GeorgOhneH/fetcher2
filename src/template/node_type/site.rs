@@ -191,7 +191,11 @@ impl Site {
             }
         }
 
-        let final_path: PathBuf = dsettings.save_path.join(base_path.as_ref()).join(&task_path).into();
+        let final_path: PathBuf = dsettings
+            .save_path
+            .join(base_path.as_ref())
+            .join(&task_path)
+            .into();
         // TODO use real temp file
         let temp_path = add_to_file_stem(&final_path, "-temp");
         let old_path = add_to_file_stem(&final_path, "-old");
@@ -238,6 +242,7 @@ impl Site {
             task_bearer_auth,
             task_basic_auth,
             &final_path,
+            action
         )?;
 
         let mut response = session.execute(request).await?.error_for_status()?;
@@ -373,31 +378,29 @@ impl Site {
         task_bearer_auth: Option<String>,
         task_basic_auth: Option<(String, Option<String>)>,
         final_path: &PathBuf,
+        action: Action,
     ) -> Result<Request> {
-        let request_builder = session.get(task_url);
+        let mut request_builder = session.get(task_url);
 
-        let request_builder = match self.storage.files.get(final_path) {
-            Some(file_data) => match file_data.etag.as_ref() {
-                Some(etag) => request_builder.header("If-None-Match", etag),
-                _ => request_builder,
-            },
-            _ => request_builder,
-        };
+        if Action::AddNew != action {
+            if let Some(file_data) = self.storage.files.get(final_path) {
+                if let Some(etag) = file_data.etag.as_ref() {
+                    request_builder = request_builder.header("If-None-Match", etag)
+                }
+            }
+        }
 
-        let request_builder = match task_headers {
-            Some(headers) => request_builder.headers(headers),
-            None => request_builder,
-        };
+        if let Some(headers) = task_headers {
+            request_builder = request_builder.headers(headers)
+        }
 
-        let request_builder = match task_bearer_auth {
-            Some(token) => request_builder.bearer_auth(token),
-            None => request_builder,
-        };
+        if let Some(token) = task_bearer_auth {
+            request_builder = request_builder.bearer_auth(token)
+        }
 
-        let request_builder = match task_basic_auth {
-            Some((username, password)) => request_builder.basic_auth(username, password),
-            None => request_builder,
-        };
+        if let Some((username, password)) = task_basic_auth {
+            request_builder = request_builder.basic_auth(username, password)
+        }
 
         let request = request_builder.build()?;
         Ok(request)
@@ -428,7 +431,7 @@ fn format_etag(etag: &HeaderValue) -> Result<String> {
         .replace("-gzip", ""))
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Action {
     AddNew,
     Replace,
@@ -439,9 +442,7 @@ pub struct TaskMsg {
     #[config(ty = "enum")]
     pub kind: MsgKind,
     #[data(same_fn = "PartialEq::eq")]
-    #[config(must_absolute = false, must_exist = false)]
     pub full_path: PathBuf,
-    #[config(must_absolute = false, must_exist = false)]
     #[data(same_fn = "PartialEq::eq")]
     pub rel_path: PathBuf,
 }

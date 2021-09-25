@@ -130,7 +130,7 @@ pub fn gen_de_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
                         }
 
                         #enum_name::parse_from_app(&cenum)
-                            .map_err(|err| serde::de::Error::custom(err.msg))?
+                            .map_err(|err| serde::de::Error::custom(err.to_string()))?
                             .ok_or(serde::de::Error::custom("Must be selected"))
                     }
                 }

@@ -1,19 +1,20 @@
+use itertools::Itertools;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 use std::marker::PhantomData;
 use std::ops::Mul;
 use std::sync::Arc;
 
-use druid::{Affine, Lens, LensExt, Rect, SingleUse, theme, Vec2, WidgetExt};
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::scroll_component::{ScrollComponent, ScrollbarsEnabled};
+use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
+use druid::{theme, Affine, Lens, LensExt, Rect, SingleUse, Vec2, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::im::Vector;
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::scroll_component::{ScrollbarsEnabled, ScrollComponent};
-use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::Header;
@@ -129,12 +130,7 @@ where
         }
     }
 
-    fn update_selection(
-        &mut self,
-        new_node: &NodeIndex,
-        mode: SelectUpdateMode,
-        data: &mut R,
-    ) -> bool {
+    fn update_selection(&mut self, new_node: &NodeIndex, mode: SelectUpdateMode) -> bool {
         let current_selected = self.root_node.widget().child().get_selected();
         match mode {
             SelectUpdateMode::Single => {
@@ -151,10 +147,6 @@ where
                 }
                 let node = self.root_node.widget_mut().child_mut().node_mut(&new_node);
                 node.selected = true;
-                self.selected_lens.with_mut(data, |selected| {
-                    selected.clear();
-                    selected.push_back(new_node.into())
-                });
                 true
             }
             SelectUpdateMode::Add => {
@@ -163,8 +155,6 @@ where
                 }
                 let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
                 node.selected = true;
-                self.selected_lens
-                    .with_mut(data, |selected| selected.push_back(new_node.into()));
                 true
             }
             SelectUpdateMode::Sub => {
@@ -173,9 +163,6 @@ where
                 }
                 let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
                 node.selected = false;
-                self.selected_lens.with_mut(data, |selected| {
-                    selected.retain(|idx| idx != &Vector::from(new_node))
-                });
                 true
             }
         }
@@ -220,7 +207,7 @@ where
                 if let Some(idx) = self.node_at(mouse_event.pos) {
                     ctx.set_active(true);
                     ctx.set_handled();
-                    if self.update_selection(&idx, SelectUpdateMode::Single, data) {
+                    if self.update_selection(&idx, SelectUpdateMode::Single) {
                         ctx.request_paint();
                     }
                     if mouse_event.count == 2 {
@@ -246,13 +233,19 @@ where
                             SelectionMode::Single => SelectUpdateMode::Single,
                             SelectionMode::Multiple => SelectUpdateMode::Add,
                         };
-                        if self.update_selection(&idx, mode, data) {
+                        if self.update_selection(&idx, mode) {
                             ctx.request_paint();
                         }
                     }
                 }
             }
             _ => (),
+        }
+
+        let current_selected = self.root_node.widget().child().get_selected();
+        let current_selected_lens = self.selected_lens.get(data);
+        if !is_selected_eq(&current_selected, &current_selected_lens) {
+            self.selected_lens.put(data, transform_selected(current_selected))
         }
     }
 
@@ -264,28 +257,28 @@ where
         self.header.lifecycle(ctx, event, data, env);
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &R, data: &R, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &R, data: &R, env: &Env) {
         self.header.update(ctx, data, env);
         self.root_node.update(ctx, data, env);
-
-        let lens_selected = self.selected_lens.get(data);
-        let current_selected = self.root_node.widget().child().get_selected();
-        for selected_child_idx in &current_selected {
-            let node = self
-                .root_node
-                .widget_mut()
-                .child_mut()
-                .node_mut(selected_child_idx);
-            node.selected = false;
-        }
-        for selected_child_idx in &lens_selected {
-            let node = self
-                .root_node
-                .widget_mut()
-                .child_mut()
-                .node_mut(&selected_child_idx.iter().map(|x| *x).collect::<Vec<_>>());
-            node.selected = true;
-        }
+        // TODO test if really needed
+        // let lens_selected = self.selected_lens.get(data);
+        // let current_selected = self.root_node.widget().child().get_selected();
+        // for selected_child_idx in &current_selected {
+        //     let node = self
+        //         .root_node
+        //         .widget_mut()
+        //         .child_mut()
+        //         .node_mut(selected_child_idx);
+        //     node.selected = false;
+        // }
+        // for selected_child_idx in &lens_selected {
+        //     let node = self
+        //         .root_node
+        //         .widget_mut()
+        //         .child_mut()
+        //         .node_mut(&selected_child_idx.iter().map(|x| *x).collect::<Vec<_>>());
+        //     node.selected = true;
+        // }
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &R, env: &Env) -> Size {
@@ -326,4 +319,25 @@ where
         self.root_node.paint(ctx, data, env);
         self.header.paint(ctx, data, env);
     }
+}
+
+fn is_selected_eq(vec: &Vec<NodeIndex>, vector: &Vector<DataNodeIndex>) -> bool {
+    if vec.len() != vector.len() {
+        return false;
+    }
+    vec.iter()
+        .zip_eq(vector.iter())
+        .all(|(vec_child, vector_child)| {
+            if vec_child.len() != vector_child.len() {
+                false
+            } else {
+                vec_child.iter().zip_eq(vector_child.iter()).all_equal()
+            }
+        })
+}
+
+fn transform_selected(vec: Vec<NodeIndex>) -> Vector<DataNodeIndex> {
+    vec.into_iter()
+        .map(|nidx| nidx.into_iter().collect())
+        .collect()
 }

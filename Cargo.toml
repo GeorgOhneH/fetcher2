@@ -45,6 +45,7 @@ notify = "5.0.0-pre.12"
 crossbeam-channel = "0.5.0"
 directories = "3.0"
 ron = "0.6.5"
+itertools = "0.10"
 
 druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde", "raw-win-handle"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }

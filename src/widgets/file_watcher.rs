@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::{fs, io};
 
 use crossbeam_channel::{Receiver, Select, Sender};
-use druid::im::Vector;
+use druid::im::{OrdMap, Vector};
 use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
@@ -16,24 +16,66 @@ use druid::{
 };
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
-use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::Result;
+use std::cmp::Ordering;
+use std::ffi::OsStr;
+use std::ops::Index;
 
 selectors! {
-    NEW_ROOT: SingleUse<io::Result<EntryRoot>>
+    NEW_ROOT: SingleUse<EntryRoot>,
+    UPDATE: SingleUse<(PathBuf, EntryUpdate)>,
 }
 
-#[derive(Data, Clone, Debug, PartialEq)]
+fn find_child_by_name(children: &Vector<Entry>, name: &str) -> Option<usize> {
+    let all: Vec<_> = children
+        .iter()
+        .enumerate()
+        .filter_map(|(i, child)| {
+            dbg!(&child.name);
+            if &child.name == name {
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .collect();
+    match all.len() {
+        0 => None,
+        1 => Some(all[0]),
+        _ => panic!("name should be unique"),
+    }
+}
+
+#[derive(Data, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Type {
     Folder,
     File,
 }
 
-#[derive(Data, Clone, Debug, Lens)]
+impl PartialOrd for Type {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Type {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self == other {
+            Ordering::Equal
+        } else if let Self::Folder = self {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }
+    }
+}
+
+#[derive(Data, Clone, Debug, Lens, Eq, PartialEq)]
 pub struct Entry {
     name: String,
     children: Vector<Entry>,
@@ -41,35 +83,103 @@ pub struct Entry {
     expanded: bool,
 }
 
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.ty.cmp(&other.ty) == Ordering::Equal {
+            self.name.cmp(&other.name)
+        } else {
+            self.ty.cmp(&other.ty)
+        }
+    }
+}
+
 impl_simple_tree_node! {Entry}
 
 impl Entry {
-    pub fn new(entry: fs::DirEntry) -> io::Result<Self> {
+    pub fn new(name: String, ty: Type) -> Self {
+        Self {
+            name,
+            ty,
+            expanded: false,
+            children: Vector::new(),
+        }
+    }
+    pub fn build(entry: &fs::DirEntry) -> io::Result<Self> {
         let meta_data = entry.metadata()?;
-
+        let name = entry.file_name().to_string_lossy().to_string();
         if meta_data.is_file() {
             Ok(Self {
                 children: Vector::new(),
                 expanded: false,
-                name: entry.file_name().to_string_lossy().to_string(),
+                name,
                 ty: Type::File,
             })
         } else {
-            let children = fs::read_dir(entry.path())?
-                .map(|entry| Entry::new(entry?))
+            let mut children = fs::read_dir(entry.path())?
+                .map(|child_entry| Entry::build(&child_entry?))
                 .collect::<io::Result<Vector<_>>>()?;
+            children.sort();
             Ok(Self {
                 children,
                 expanded: false,
-                name: entry.file_name().to_string_lossy().to_string(),
+                name,
                 ty: Type::Folder,
             })
+        }
+    }
+
+    fn update_data(&mut self, ty: Type) {
+        self.ty = ty
+    }
+
+    fn update(&mut self, components: &[&OsStr], ty: Type) {
+        let name = components[0].to_string_lossy().to_string();
+        let child_idx = find_child_by_name(&self.children, name.as_str());
+        match (components.len(), child_idx) {
+            (0, _) => unreachable!(),
+            (1, Some(child_idx)) => self.children.get_mut(child_idx).unwrap().update_data(ty),
+            (1, None) => self.children.insert_ord(Entry::new(name, ty)),
+            (_, Some(child_idx)) => self
+                .children
+                .get_mut(child_idx)
+                .unwrap()
+                .update(&components[1..], ty),
+            (_, None) => {
+                let mut child = Entry::new(name, Type::Folder);
+                child.update(&components[1..], ty);
+                self.children.insert_ord(child)
+            }
+        }
+    }
+
+    fn remove(&mut self, components: &[&OsStr]) {
+        let name = components[0].to_string_lossy();
+        let to_remove = find_child_by_name(&self.children, name.as_ref());
+        match components.len() {
+            0 => unreachable!(),
+            1 => {
+                // TODO not unwrap (also by root)
+                self.children.remove(to_remove.unwrap());
+            }
+            _ => {
+                if let Some(child) = self.children.get_mut(to_remove.unwrap()) {
+                    child.remove(&components[1..]);
+                }
+            }
         }
     }
 }
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct EntryRoot {
+    #[data(eq)]
+    path: Option<PathBuf>,
     children: Vector<Entry>,
     selected: Vector<DataNodeIndex>,
 }
@@ -81,18 +191,85 @@ impl EntryRoot {
         Self {
             children: Vector::new(),
             selected: Vector::new(),
+            path: None,
         }
     }
 
-    pub fn new(path: impl AsRef<Path>) -> io::Result<Self> {
-        let children = fs::read_dir(path)?
-            .map(|entry| Entry::new(entry?))
-            .collect::<io::Result<Vector<_>>>()?;
-        Ok(Self {
-            children,
+    pub fn new(path: PathBuf) -> Self {
+        Self::build(&path).unwrap_or(Self {
+            children: Vector::new(),
+            path: Some(path),
             selected: Vector::new(),
         })
     }
+
+    pub fn build(path: &PathBuf) -> io::Result<Self> {
+        let mut children = fs::read_dir(&path)?
+            .map(|child_entry| Entry::build(&child_entry?))
+            .collect::<io::Result<Vector<_>>>()?;
+        children.sort();
+        Ok(Self {
+            children,
+            path: Some(path.clone()),
+            selected: Vector::new(),
+        })
+    }
+
+    fn update(&mut self, update: EntryUpdate, update_path: &Path) {
+        if let Some(path) = &self.path {
+            // TODO not unwrap
+            let r_path = update_path.strip_prefix(path).unwrap();
+            let components: Vec<_> = r_path.iter().collect();
+            if components.is_empty() {
+                return;
+            }
+            match update {
+                EntryUpdate::CreateUpdate(ty) => self._update(&components, ty),
+                EntryUpdate::Remove => self.remove(&components),
+            }
+        }
+    }
+
+    fn _update(&mut self, components: &[&OsStr], ty: Type) {
+        let name = components[0].to_string_lossy().to_string();
+        let child_idx = find_child_by_name(&self.children, name.as_str());
+        match (components.len(), child_idx) {
+            (0, _) => unreachable!(),
+            (1, Some(child_idx)) => self.children.get_mut(child_idx).unwrap().update_data(ty),
+            (1, None) => self.children.insert_ord(Entry::new(name, ty)),
+            (_, Some(child_idx)) => self
+                .children
+                .get_mut(child_idx)
+                .unwrap()
+                .update(&components[1..], ty),
+            (_, None) => {
+                let mut child = Entry::new(name, Type::Folder);
+                child.update(&components[1..], ty);
+                self.children.insert_ord(child)
+            }
+        }
+    }
+
+    fn remove(&mut self, components: &[&OsStr]) {
+        let name = components[0].to_string_lossy();
+        let to_remove = find_child_by_name(&self.children, name.as_ref());
+        match components.len() {
+            0 => panic!("Should this be allowed"),
+            1 => {
+                self.children.remove(to_remove.unwrap());
+            }
+            _ => {
+                if let Some(child) = self.children.get_mut(to_remove.unwrap()) {
+                    child.remove(&components[1..]);
+                }
+            }
+        }
+    }
+}
+
+pub enum EntryUpdate {
+    CreateUpdate(Type),
+    Remove,
 }
 
 #[derive(Debug)]
@@ -159,17 +336,18 @@ impl<T> FileWatcher<T> {
 impl<T: Data> Widget<T> for FileWatcher<T> {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, _: &mut T, env: &Env) {
         match event {
-            Event::Command(command) if command.is(NEW_ROOT) => {
+            Event::Command(cmd) if cmd.is(NEW_ROOT) => {
                 ctx.set_handled();
-                match command.get_unchecked(NEW_ROOT).take().unwrap() {
-                    Ok(new_root) => {
-                        self.root = new_root;
-                        ctx.request_update();
-                    }
-                    Err(err) => {
-                        dbg!(err);
-                    }
-                }
+                self.root = cmd.get_unchecked(NEW_ROOT).take().unwrap();
+                ctx.request_update();
+                return;
+            }
+            Event::Command(cmd) if cmd.is(UPDATE) => {
+                ctx.set_handled();
+                let (path, up) = cmd.get_unchecked(UPDATE).take().unwrap();
+                self.root.update(up, &path);
+                ctx.request_update();
+
                 return;
             }
             _ => (),
@@ -220,6 +398,9 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
     let main_thread = sel.recv(&rx);
     let notify_thread = sel.recv(&notify_rx);
 
+    let mut current_path: Option<PathBuf> = None;
+    let mut current_watch_path: Option<PathBuf> = None;
+
     loop {
         let oper = sel.select();
         match oper.index() {
@@ -227,14 +408,26 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
                 if let Ok(msg) = oper.recv(&rx) {
                     match msg {
                         Msg::NewPath(path) => {
+                            if let Some(watch_path) = current_watch_path.as_ref() {
+                                watcher.unwatch(watch_path.as_path()).unwrap()
+                            }
+                            current_watch_path = Some(
+                                get_parent_exit(&path)
+                                    .expect("Path must always have a valid parent")
+                                    .to_owned(),
+                            );
                             sink.submit_command(
                                 NEW_ROOT,
-                                SingleUse::new(EntryRoot::new(&path)),
+                                SingleUse::new(EntryRoot::new(path.clone())),
                                 Target::Widget(widget_id),
                             )
                             .unwrap();
+                            current_path = Some(path);
                             watcher
-                                .watch(path.as_path(), RecursiveMode::Recursive)
+                                .watch(
+                                    current_watch_path.as_ref().unwrap().as_path(),
+                                    RecursiveMode::Recursive,
+                                )
                                 .unwrap()
                         }
                     }
@@ -242,12 +435,43 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
                     break;
                 }
             }
-            i if i == notify_thread => {
-                if let Ok(event) = oper.recv(&notify_rx) {
-                    // TODO make things update
+            i if i == notify_thread => match oper.recv(&notify_rx).unwrap() {
+                Ok(event) => {
+                    for path in event.paths {
+                        if path.exists() {
+                            let ty = match path.is_file() {
+                                true => Type::File,
+                                false => Type::Folder,
+                            };
+                            sink.submit_command(
+                                UPDATE,
+                                SingleUse::new((path, EntryUpdate::CreateUpdate(ty))),
+                                Target::Widget(widget_id),
+                            )
+                            .unwrap()
+                        } else {
+                            sink.submit_command(
+                                UPDATE,
+                                SingleUse::new((path, EntryUpdate::Remove)),
+                                Target::Widget(widget_id),
+                            )
+                            .unwrap()
+                        }
+                    }
                 }
-            }
+                Err(err) => {
+                    dbg!(err);
+                }
+            },
             _ => unreachable!(),
         }
+    }
+}
+
+fn get_parent_exit(path: &Path) -> Option<&Path> {
+    if path.exists() {
+        return Some(path);
+    } else {
+        path.parent().map(get_parent_exit).flatten()
     }
 }

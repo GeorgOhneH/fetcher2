@@ -151,7 +151,7 @@ pub fn gen_visitor(
                         #c_struct_setter
                     }
                 )*
-                #name::parse_from_app(&cstruct).map_err(|err| serde::de::Error::custom(err.msg))
+                #name::parse_from_app(&cstruct).map_err(|err| serde::de::Error::custom(err.to_string()))
             }
         }
 
