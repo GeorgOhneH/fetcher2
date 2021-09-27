@@ -100,6 +100,8 @@ pub struct Entry {
     ty: Type,
     size: String,
     created: String,
+
+    path: Arc<PathBuf>,
     expanded: bool,
 }
 
@@ -122,12 +124,13 @@ impl Ord for Entry {
 impl_simple_tree_node! {Entry}
 
 impl Entry {
-    pub fn new(name: String, ty: Type, size: String, created: String) -> Self {
+    pub fn new(name: String, ty: Type, size: String, created: String, path: PathBuf) -> Self {
         Self {
             name,
             ty,
             size,
             created,
+            path: Arc::new(path),
             expanded: false,
             children: Vector::new(),
         }
@@ -143,6 +146,7 @@ impl Entry {
                     .map(format_time)
                     .unwrap_or("".to_string()),
                 children: Vector::new(),
+                path: Arc::new(entry.path()),
                 expanded: false,
                 name,
                 ty: Type::File,
@@ -159,6 +163,7 @@ impl Entry {
                     .map(format_time)
                     .unwrap_or("".to_string()),
                 children,
+                path: Arc::new(entry.path()),
                 expanded: false,
                 name,
                 ty: Type::Folder,
@@ -187,8 +192,9 @@ impl Entry {
                 .unwrap()
                 .update_data(ty, data),
             (1, None) => {
+                let path = Path::join(self.path.as_path(), components[0]).to_path_buf();
                 self.children
-                    .insert_ord(Entry::new(name, ty, data.size, data.created));
+                    .insert_ord(Entry::new(name, ty, data.size, data.created, path));
                 true
             }
             (_, Some(child_idx)) => {
@@ -198,11 +204,13 @@ impl Entry {
                     .update(&components[1..], ty, data)
             }
             (_, None) => {
+                let path = Path::join(self.path.as_path(), components[0]).to_path_buf();
                 let mut child = Entry::new(
                     name,
                     Type::Folder,
                     "".to_string(),
                     format_time(SystemTime::now()),
+                    path,
                 );
                 child.update(&components[1..], ty, data);
                 self.children.insert_ord(child);
@@ -282,7 +290,7 @@ impl EntryRoot {
                 return false;
             }
             match update {
-                EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data),
+                EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data, path),
                 EntryUpdate::Remove => self.remove(&components),
             }
         } else {
@@ -290,7 +298,13 @@ impl EntryRoot {
         }
     }
 
-    fn _update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) -> bool {
+    fn _update(
+        &mut self,
+        components: &[&OsStr],
+        ty: Type,
+        data: UpdateData,
+        path: &PathBuf,
+    ) -> bool {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
         match (components.len(), child_idx) {
@@ -301,8 +315,9 @@ impl EntryRoot {
                 .unwrap()
                 .update_data(ty, data),
             (1, None) => {
+                let path = path.as_path().join(components[0]).to_path_buf();
                 self.children
-                    .insert_ord(Entry::new(name, ty, data.size, data.created));
+                    .insert_ord(Entry::new(name, ty, data.size, data.created, path));
                 true
             }
             (_, Some(child_idx)) => {
@@ -312,11 +327,13 @@ impl EntryRoot {
                     .update(&components[1..], ty, data)
             }
             (_, None) => {
+                let path = path.as_path().join(components[0]).to_path_buf();
                 let mut child = Entry::new(
                     name,
                     Type::Folder,
                     "".to_string(),
                     format_time(SystemTime::now()),
+                    path,
                 );
                 child.update(&components[1..], ty, data);
                 self.children.insert_ord(child);
@@ -391,7 +408,11 @@ impl<T> FileWatcher<T> {
             Entry::expanded,
             EntryRoot::selected,
         )
-        .set_sizes([300., 300., 300.]);
+        .set_sizes([300., 300., 300.])
+        .on_activate(|ctx, root, env, idx| {
+            let node = root.node(idx);
+            open::that_in_background(&*node.path);
+        });
         Self {
             path: None,
             tree: WidgetPod::new(tree),
@@ -434,9 +455,6 @@ impl<T: Data> Widget<T> for FileWatcher<T> {
                 for (path, up) in cmd.get_unchecked(UPDATE).take().unwrap() {
                     if self.root.update(up, &path) {
                         ctx.request_update();
-                        dbg!("Update");
-                    } else {
-                        dbg!("No Update");
                     }
                 }
 

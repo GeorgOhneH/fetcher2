@@ -85,15 +85,8 @@ impl Entry {
         let rel_path = task_msg
             .rel_path
             .parent()
-            .map(|path| {
-                let r = path.to_string_lossy().to_string();
-                if r.is_empty() {
-                    String::from("/")
-                } else {
-                    r
-                }
-            })
-            .unwrap_or(String::from("/"));
+            .map(|path| String::from(std::path::MAIN_SEPARATOR) + path.to_string_lossy().as_ref())
+            .unwrap_or(String::from(std::path::MAIN_SEPARATOR));
         let (ty, children) = Type::from_msg(task_msg.kind, &rel_path);
         let name = task_msg
             .full_path
@@ -146,6 +139,7 @@ impl EntryRoot {
         let children = history
             .iter()
             .rev()
+            .take(100)
             .map(|task_msg| Entry::new(task_msg.clone()))
             .collect();
 
@@ -183,10 +177,10 @@ impl History {
             EntryRoot::selected,
         )
         .set_sizes([400., 400., 400.])
-            .on_activate(|ctx, root, env, idx| {
-                let node = root.node(idx);
-                open::that_in_background(&node.full_path);
-            });
+        .on_activate(|ctx, root, env, idx| {
+            let node = root.node(idx);
+            open::that_in_background(&node.full_path);
+        });
         Self {
             tree: WidgetPod::new(tree),
             root: EntryRoot::empty(),
