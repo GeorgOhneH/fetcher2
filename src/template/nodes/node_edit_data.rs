@@ -17,7 +17,6 @@ use futures::StreamExt;
 
 use crate::TError;
 use crate::template::communication::NODE_EVENT;
-use crate::template::MetaData;
 use crate::template::node_type::{NodeTypeData, NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node::{NodeEvent, PathEvent, RawNode};
 use crate::template::nodes::node_data::NodeData;
@@ -52,7 +51,6 @@ impl NodeEditData {
             Some(RawNode {
                 ty: ty.kind.raw(),
                 children,
-                meta_data: ty.meta_data,
                 cached_path_segment: None,
             })
         } else {

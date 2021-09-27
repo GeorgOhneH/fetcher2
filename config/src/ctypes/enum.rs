@@ -1,16 +1,19 @@
-use druid::{Data, Lens};
-use druid::{Widget, WidgetExt, WidgetPod};
+use druid::im::{OrdMap, Vector};
+use druid::widget::Label;
+use druid::widget::{Flex, ListIter, Maybe};
+use druid::Point;
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
-use druid::im::{OrdMap, Vector};
-use druid::Point;
-use druid::widget::{Flex, ListIter, Maybe};
-use druid::widget::Label;
+use druid::{Data, Lens};
+use druid::{Widget, WidgetExt, WidgetPod};
 
-use crate::{CType, InvalidError, State};
+use crate::widgets::warning_label::WarningLabel;
 use crate::widgets::ListSelect;
+use crate::{CType, InvalidError, State};
+use druid::lens::Index;
+use druid::LensExt;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {
@@ -157,12 +160,18 @@ impl CEnumBuilder {
 }
 
 #[derive(Debug, Clone, Data, Lens)]
+pub struct Parameter {
+    required: bool,
+    ty: CType,
+}
+
+#[derive(Debug, Clone, Data, Lens)]
 pub struct CArg {
     #[data(ignore)]
     #[lens(name = "name_lens")]
     name: String,
 
-    parameter: Option<CType>,
+    parameter: Option<Parameter>,
 }
 
 impl CArg {
@@ -178,11 +187,11 @@ impl CArg {
     }
 
     pub fn get(&self) -> Option<&CType> {
-        Option::from(&self.parameter)
+        self.parameter.as_ref().map(|par| &par.ty)
     }
 
     pub fn get_mut(&mut self) -> Option<&mut CType> {
-        Option::from(&mut self.parameter)
+        self.parameter.as_mut().map(|par| &mut par.ty)
     }
 
     pub fn is_unit(&self) -> bool {
@@ -191,13 +200,32 @@ impl CArg {
 
     pub fn state(&self) -> State {
         match &self.parameter {
-            Some(ty) => ty.state(),
+            Some(parameter) => match parameter.ty.state() {
+                State::Valid => State::Valid,
+                State::None => {
+                    if parameter.required {
+                        State::invalid("Value is required")
+                    } else {
+                        State::Valid
+                    }
+                }
+                State::InValid(msg) => State::InValid(msg),
+            },
             None => State::Valid,
         }
     }
 
+    fn error_msg(&self) -> Option<String> {
+        match self.state() {
+            State::InValid(str) => Some(str),
+            _ => None,
+        }
+    }
+
     pub fn widget() -> impl Widget<Self> {
-        Maybe::or_empty(|| CType::widget()).lens(Self::parameter)
+        Flex::column()
+            .with_child(Maybe::or_empty(|| CType::widget().lens(Parameter::ty)).lens(Self::parameter))
+            .with_child(WarningLabel::new(|data: &Self| data.error_msg()))
     }
 }
 
@@ -212,8 +240,8 @@ impl CArgBuilder {
         }
     }
 
-    pub fn value(mut self, value: CType) -> Self {
-        self.inner.parameter = Some(value);
+    pub fn value(mut self, ty: CType, required: bool) -> Self {
+        self.inner.parameter = Some(Parameter { ty, required });
         self
     }
 

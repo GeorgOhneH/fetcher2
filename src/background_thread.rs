@@ -232,6 +232,7 @@ async fn replace_template_by_path(
     sink: ExtEventSink,
 ) -> PostCommand {
     let comm = RawCommunication::new(sink.clone());
+    dbg!("starting load");
     match Template::load(path.as_path(), comm).await {
         Ok(new_template) => replace_template(old_template, new_template, sink).await,
         Err(err) => {
@@ -251,6 +252,7 @@ async fn replace_template(
     new_template: Template,
     sink: ExtEventSink,
 ) -> PostCommand {
+    dbg!("replace load");
     old_template.read().await.inform_of_cancel();
     let mut wl = old_template.write().await;
     sink.submit_command(
@@ -282,6 +284,7 @@ async fn replace_template(
         .unwrap()
     }
     *wl = new_template;
+    dbg!("finished");
     PostCommand::RunPrepare
 }
 
@@ -314,6 +317,7 @@ async fn prepare_template(
     template: &tokio::sync::RwLock<Template>,
     dsettings: Arc<DownloadSettings>,
 ) -> PostCommand {
+    dbg!("start prepare");
     let mut wl = template.write().await;
     wl.prepare(dsettings.clone()).await;
     PostCommand::None

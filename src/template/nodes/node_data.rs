@@ -18,7 +18,6 @@ use futures::StreamExt;
 
 use crate::TError;
 use crate::template::communication::NODE_EVENT;
-use crate::template::MetaData;
 use crate::template::node_type::NodeTypeData;
 use crate::template::node_type::site_data::SiteState;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
@@ -29,7 +28,6 @@ use crate::widgets::tree::NodeIndex;
 pub struct NodeData {
     pub expanded: bool,
     pub ty: NodeTypeData,
-    pub meta_data: MetaData,
     pub children: Vector<NodeData>,
 
     #[data(same_fn = "PartialEq::eq")]

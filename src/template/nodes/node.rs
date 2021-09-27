@@ -11,6 +11,8 @@ use futures::prelude::*;
 use serde::Serialize;
 use sha1::Digest;
 
+use serde::Deserialize;
+
 use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
@@ -23,8 +25,6 @@ use crate::TError;
 use crate::utils::spawn_drop;
 use crate::widgets::tree::NodeIndex;
 
-#[derive(Config, Clone, Debug, Data, PartialEq)]
-pub struct MetaData {}
 
 #[derive(Debug, PartialEq)]
 pub enum Status {
@@ -32,14 +32,10 @@ pub enum Status {
     Failure,
 }
 
-#[derive(Config, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct RawNode {
-    #[config(ty = "enum")]
     pub ty: NodeType,
-    #[config(ty = "_<struct>")]
     pub children: Vec<RawNode>,
-    #[config(ty = "struct")]
-    pub meta_data: MetaData,
 
     pub cached_path_segment: Option<PathBuf>,
 }
@@ -58,7 +54,6 @@ impl RawNode {
                     raw_node.transform(new_index, comm.clone())
                 })
                 .collect(),
-            meta_data: self.meta_data,
             cached_path_segment: self.cached_path_segment,
             comm: comm.with_idx(index.clone()),
             path: None,
@@ -71,7 +66,6 @@ impl RawNode {
 pub struct Node {
     pub ty: NodeType,
     pub children: Vec<Node>,
-    pub meta_data: MetaData,
     pub cached_path_segment: Option<PathBuf>,
     pub comm: Communication,
     pub index: NodeIndex,
@@ -83,7 +77,6 @@ impl Node {
         RawNode {
             ty: self.ty,
             children: self.children.into_iter().map(|node| node.raw()).collect(),
-            meta_data: self.meta_data,
             cached_path_segment: self.cached_path_segment,
         }
     }
@@ -193,7 +186,6 @@ impl Node {
         NodeData {
             expanded: true,
             children,
-            meta_data: self.meta_data.clone(),
             cached_path_segment: self.cached_path_segment.clone(),
             ty: self.ty.widget_data(),
             state: NodeState::new(),
@@ -210,7 +202,7 @@ impl Node {
         NodeEditData {
             expanded: true,
             children,
-            ty: Some(self.ty.widget_edit_data(self.meta_data.clone())),
+            ty: Some(self.ty.widget_edit_data()),
         }
     }
 }

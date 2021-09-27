@@ -149,7 +149,7 @@ pub fn main() {
     tracing_subscriber::registry()
         .with(filter_layer)
         .with(fmt_layer)
-        // .with(filter)
+        .with(filter)
         .init();
 
     app_launcher

@@ -2,34 +2,34 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use config::{CEnum, ConfigEnum};
-use config::Config;
 use config::CStruct;
+use config::Config;
+use config::{CEnum, ConfigEnum};
+use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
+use druid::im::Vector;
+use druid::widget::prelude::*;
+use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
 use druid::{
-    Command, commands, FileDialogOptions, lens, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
+    commands, lens, Command, FileDialogOptions, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
 };
 use druid::{InternalEvent, LensExt};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
-use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
-use druid::im::Vector;
-use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
-use druid::widget::prelude::*;
 use druid_widget_nursery::selectors;
 use serde::{Deserialize, Serialize};
 
 use crate::controller::{Msg, MSG_THREAD};
-use crate::cstruct_window::{APPLY, c_option_window};
+use crate::cstruct_window::{c_option_window, APPLY};
+use crate::data::edit::EditWindowData;
 use crate::data::win::WindowState;
+use crate::data::AppData;
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::Template;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
-use crate::data::edit::EditWindowData;
-use crate::data::AppData;
+use crate::template::Template;
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 
 selectors! {
     SAVE_EDIT,
@@ -113,6 +113,9 @@ impl Widget<EditWindowData> for DataBuffer {
             .event(ctx, event, self.data.as_mut().unwrap(), env);
         if !old_data.same(&self.data) {
             dbg!("CHANGEF");
+            let old_template = data.edit_template.clone();
+            *data = self.data.clone().unwrap();
+            data.edit_template = old_template;
             ctx.request_update()
         }
     }
@@ -125,13 +128,12 @@ impl Widget<EditWindowData> for DataBuffer {
         env: &Env,
     ) {
         if let LifeCycle::WidgetAdded = event {
-            let new_data = if self.new {
-                let mut n_data = data.clone();
-                n_data.edit_template = TemplateEditData::new();
-                n_data
-            } else {
-                data.clone()
+            let new_template = match self.new {
+                true => TemplateEditData::new(),
+                false => data.edit_template.clone(),
             };
+            let mut new_data = data.clone();
+            new_data.edit_template = new_template;
             self.data = Some(new_data)
         }
         self.child
@@ -303,8 +305,8 @@ pub fn edit_window(new: bool) -> impl Widget<EditWindowData> {
     DataBuffer::new(_edit_window(), new)
 }
 
-fn _edit_window() -> impl Widget<EditWindowData> {
-    let tree = Tree::new(
+fn tree() -> impl Widget<TemplateEditData> {
+    Tree::new(
         [Label::new("Hello")],
         [Arc::new(|| {
             Label::dynamic(|data: &NodeEditData, _env| data.name()).boxed()
@@ -316,8 +318,13 @@ fn _edit_window() -> impl Widget<EditWindowData> {
         ctx.submit_command(OPEN_NODE.with(idx.clone()));
     })
     .controller(NodeController::new())
-    .lens(EditWindowData::edit_template.then(TemplateEditData::root))
-    .controller(NodeWindowController);
+    .lens(TemplateEditData::root)
+}
+
+fn _edit_window() -> impl Widget<EditWindowData> {
+    let tree = tree()
+        .lens(EditWindowData::edit_template)
+        .controller(NodeWindowController);
     Flex::column()
         .with_flex_child(tree.expand(), 1.0)
         .with_child(

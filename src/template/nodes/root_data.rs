@@ -15,7 +15,6 @@ use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 
 use crate::template::node_type::NodeTypeData;
-use crate::template::nodes::node::MetaData;
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::DataNodeIndex;
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};

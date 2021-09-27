@@ -29,7 +29,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Request, RequestBuilder};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use sha1::{Digest, Sha1};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -54,15 +54,12 @@ use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
 
-#[derive(Config, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Site {
-    #[config(ty = "enum")]
     pub module: Module,
 
-    #[config(ty = "_<struct>")]
     pub storage: Arc<SiteStorage>,
 
-    #[config(ty = "_<struct>")]
     pub download_args: Option<DownloadArgs>,
 }
 
@@ -131,7 +128,7 @@ impl Site {
                     let handel: std::result::Result<_, JoinError> = handle;
                     handel.unwrap();
                 },
-                Some(task) = receiver.recv(), if futs.len() < 512 => {
+                Some(task) = receiver.recv(), if futs.len() < 64 => {
                     let self_clone = Arc::clone(&self);
                     let handle = spawn_drop(
                         DownloadEvent::wrapper(
@@ -277,8 +274,8 @@ impl Site {
         }
 
         let file_checksum = String::from_utf8_lossy(&hasher.finalize()[..]).into_owned();
-        let current_file_checksum = Self::compute_file_checksum(temp_path.as_path()).await?;
-        assert_eq!(current_file_checksum, file_checksum); // TODO remove later
+        // let current_file_checksum = Self::compute_file_checksum(temp_path.as_path()).await?;
+        // assert_eq!(current_file_checksum, file_checksum); // TODO remove later
         let etag = response
             .headers()
             .get("ETag")
@@ -503,12 +500,10 @@ pub enum Mode {
     Allowed,
 }
 
-#[derive(Config, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SiteStorage {
-    #[config(ty = "HashMap<_, struct>")]
     pub files: dashmap::DashMap<PathBuf, FileData>,
 
-    #[config(ty = "_<_<struct>>")]
     pub history: Mutex<Vec<TaskMsg>>,
 }
 

@@ -8,7 +8,7 @@ use druid::{
 };
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
-use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::fs::{DirEntry, Metadata};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
@@ -28,7 +28,7 @@ use std::ops::Index;
 
 selectors! {
     NEW_ROOT: SingleUse<EntryRoot>,
-    UPDATE: SingleUse<(PathBuf, EntryUpdate)>,
+    UPDATE: SingleUse<Vec<(PathBuf, EntryUpdate)>>,
 }
 
 fn find_child_by_name(children: &Vector<Entry>, name: &str) -> Option<usize> {
@@ -166,13 +166,17 @@ impl Entry {
         }
     }
 
-    fn update_data(&mut self, ty: Type, data: UpdateData) {
+    fn update_data(&mut self, ty: Type, data: UpdateData) -> bool {
+        if &self.ty == &ty && &self.size == &data.size && &self.created == &data.created {
+            return false;
+        }
         self.ty = ty;
         self.size = data.size;
         self.created = data.created;
+        true
     }
 
-    fn update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) {
+    fn update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) -> bool {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
         match (components.len(), child_idx) {
@@ -182,9 +186,11 @@ impl Entry {
                 .get_mut(child_idx)
                 .unwrap()
                 .update_data(ty, data),
-            (1, None) => self
-                .children
-                .insert_ord(Entry::new(name, ty, data.size, data.created)),
+            (1, None) => {
+                self.children
+                    .insert_ord(Entry::new(name, ty, data.size, data.created));
+                true
+            }
             (_, Some(child_idx)) => {
                 self.children
                     .get_mut(child_idx)
@@ -199,25 +205,31 @@ impl Entry {
                     format_time(SystemTime::now()),
                 );
                 child.update(&components[1..], ty, data);
-                self.children.insert_ord(child)
+                self.children.insert_ord(child);
+                true
             }
         }
     }
 
-    fn remove(&mut self, components: &[&OsStr]) {
+    fn remove(&mut self, components: &[&OsStr]) -> bool {
         let name = components[0].to_string_lossy();
-        let to_remove = find_child_by_name(&self.children, name.as_ref());
-        match components.len() {
-            0 => unreachable!(),
-            1 => {
-                // TODO not unwrap (also by root)
-                self.children.remove(to_remove.unwrap());
-            }
-            _ => {
-                if let Some(child) = self.children.get_mut(to_remove.unwrap()) {
-                    child.remove(&components[1..]);
+        if let Some(to_remove) = find_child_by_name(&self.children, name.as_ref()) {
+            match components.len() {
+                0 => unreachable!(),
+                1 => {
+                    self.children.remove(to_remove);
+                    true
+                }
+                _ => {
+                    if let Some(child) = self.children.get_mut(to_remove) {
+                        child.remove(&components[1..])
+                    } else {
+                        false
+                    }
                 }
             }
+        } else {
+            false
         }
     }
 }
@@ -261,22 +273,24 @@ impl EntryRoot {
         })
     }
 
-    fn update(&mut self, update: EntryUpdate, update_path: &Path) {
+    fn update(&mut self, update: EntryUpdate, update_path: &Path) -> bool {
         if let Some(path) = &self.path {
             // TODO not unwrap
             let r_path = update_path.strip_prefix(path).unwrap();
             let components: Vec<_> = r_path.iter().collect();
             if components.is_empty() {
-                return;
+                return false;
             }
             match update {
                 EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data),
                 EntryUpdate::Remove => self.remove(&components),
             }
+        } else {
+            false
         }
     }
 
-    fn _update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) {
+    fn _update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) -> bool {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
         match (components.len(), child_idx) {
@@ -286,9 +300,11 @@ impl EntryRoot {
                 .get_mut(child_idx)
                 .unwrap()
                 .update_data(ty, data),
-            (1, None) => self
-                .children
-                .insert_ord(Entry::new(name, ty, data.size, data.created)),
+            (1, None) => {
+                self.children
+                    .insert_ord(Entry::new(name, ty, data.size, data.created));
+                true
+            }
             (_, Some(child_idx)) => {
                 self.children
                     .get_mut(child_idx)
@@ -303,24 +319,31 @@ impl EntryRoot {
                     format_time(SystemTime::now()),
                 );
                 child.update(&components[1..], ty, data);
-                self.children.insert_ord(child)
+                self.children.insert_ord(child);
+                true
             }
         }
     }
 
-    fn remove(&mut self, components: &[&OsStr]) {
+    fn remove(&mut self, components: &[&OsStr]) -> bool {
         let name = components[0].to_string_lossy();
-        let to_remove = find_child_by_name(&self.children, name.as_ref());
-        match components.len() {
-            0 => panic!("Should this be allowed"),
-            1 => {
-                self.children.remove(to_remove.unwrap());
-            }
-            _ => {
-                if let Some(child) = self.children.get_mut(to_remove.unwrap()) {
-                    child.remove(&components[1..]);
+        if let Some(to_remove) = find_child_by_name(&self.children, name.as_ref()) {
+            match components.len() {
+                0 => unreachable!(),
+                1 => {
+                    self.children.remove(to_remove);
+                    true
+                }
+                _ => {
+                    if let Some(child) = self.children.get_mut(to_remove) {
+                        child.remove(&components[1..])
+                    } else {
+                        false
+                    }
                 }
             }
+        } else {
+            false
         }
     }
 }
@@ -408,9 +431,14 @@ impl<T: Data> Widget<T> for FileWatcher<T> {
             }
             Event::Command(cmd) if cmd.is(UPDATE) => {
                 ctx.set_handled();
-                let (path, up) = cmd.get_unchecked(UPDATE).take().unwrap();
-                self.root.update(up, &path);
-                ctx.request_update();
+                for (path, up) in cmd.get_unchecked(UPDATE).take().unwrap() {
+                    if self.root.update(up, &path) {
+                        ctx.request_update();
+                        dbg!("Update");
+                    } else {
+                        dbg!("No Update");
+                    }
+                }
 
                 return;
             }
@@ -455,11 +483,21 @@ impl<T: Data> Widget<T> for FileWatcher<T> {
 
 fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
     let (notify_tx, notify_rx) = crossbeam_channel::unbounded();
-    let mut watcher = notify::recommended_watcher(notify_tx).unwrap();
+    let mut watcher = notify::RecommendedWatcher::new(notify_tx).unwrap();
+
+    let timer = timer::Timer::new();
+    let (timer_tx, timer_rx) = crossbeam_channel::unbounded();
+
+    let _guard = timer.schedule_repeating(chrono::Duration::milliseconds(100), move || {
+        timer_tx.send(()).unwrap();
+    });
+
+    let mut updates = Vec::new();
 
     let mut sel = Select::new();
     let main_thread = sel.recv(&rx);
     let notify_thread = sel.recv(&notify_rx);
+    let timer_thread = sel.recv(&timer_rx);
 
     let mut current_watch_path: Option<PathBuf> = None;
 
@@ -498,33 +536,33 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
             }
             i if i == notify_thread => match oper.recv(&notify_rx).unwrap() {
                 Ok(event) => {
+                    dbg!("EVENT");
                     for path in event.paths {
-                        if let Ok(metadata) = path.metadata() {
+                        let update = if let Ok(metadata) = path.metadata() {
                             let ty = match metadata.is_file() {
                                 true => Type::File,
                                 false => Type::Folder,
                             };
                             let data = UpdateData::new(&metadata);
-                            sink.submit_command(
-                                UPDATE,
-                                SingleUse::new((path, EntryUpdate::CreateUpdate(ty, data))),
-                                Target::Widget(widget_id),
-                            )
-                            .unwrap()
+                            (path, EntryUpdate::CreateUpdate(ty, data))
                         } else {
-                            sink.submit_command(
-                                UPDATE,
-                                SingleUse::new((path, EntryUpdate::Remove)),
-                                Target::Widget(widget_id),
-                            )
-                            .unwrap()
-                        }
+                            (path, EntryUpdate::Remove)
+                        };
+                        updates.push(update)
                     }
                 }
                 Err(err) => {
                     dbg!(err);
                 }
             },
+            i if i == timer_thread => {
+                oper.recv(&timer_rx).unwrap();
+                if !updates.is_empty() {
+                    sink.submit_command(UPDATE, SingleUse::new(updates), Target::Widget(widget_id))
+                        .unwrap();
+                    updates = Vec::new();
+                }
+            }
             _ => unreachable!(),
         }
     }

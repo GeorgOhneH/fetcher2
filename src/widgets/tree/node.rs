@@ -381,7 +381,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
         if let LifeCycle::WidgetAdded = event {
-            if self.update_children(data) {
+            if self.expand_lens.get(data) && self.update_children(data) {
                 ctx.children_changed();
             }
         }
@@ -402,7 +402,6 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
             .iter_mut()
             .for_each(|widget| widget.update(ctx, data, env));
         self.opener.update(ctx, data, env);
-
         if self.update_children(data) {
             if self.expand_lens.get(data) {
                 for child_widget_node in self.children.iter_mut() {

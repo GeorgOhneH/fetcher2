@@ -25,9 +25,12 @@ fn gen_enum_augmentation(e: &DataEnum) -> TokenStream {
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 let field = &unnamed[0];
                 let config_type = parse_type(&field.ty, &var.attrs);
+                let is_required = !config_type.is_inside_option();
                 let config_attrs = parse_config_attributes(&field.attrs);
                 let sup_type = gen_type(&config_type, &config_attrs, field.span(), None);
-                quote! { .value(#sup_type) }
+                quote! {
+                    .value(#sup_type, #is_required)
+                }
             }
             Fields::Unit => {
                 quote! {}

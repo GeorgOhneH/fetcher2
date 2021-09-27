@@ -4,6 +4,7 @@ use std::sync::Arc;
 use config::{Config, ConfigEnum};
 use druid::Data;
 use serde::Serialize;
+use serde::Deserialize;
 
 use crate::data::settings::DownloadSettings;
 use crate::error::Result;
@@ -16,7 +17,6 @@ pub use crate::template::node_type::site::Site;
 pub use crate::template::node_type::site::SiteStorage;
 use crate::template::node_type::site_data::{SiteData, SiteState};
 use crate::template::node_type::site_edit_data::SiteEditData;
-use crate::template::nodes::node::MetaData;
 
 pub mod folder;
 pub mod site;
@@ -24,11 +24,9 @@ pub mod site_data;
 pub mod site_edit_data;
 mod utils;
 
-#[derive(ConfigEnum, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum NodeType {
-    #[config(ty = "struct")]
     Folder(Folder),
-    #[config(ty = "_<struct>")]
     Site(Arc<Site>),
 }
 
@@ -51,12 +49,12 @@ impl NodeType {
         }
     }
 
-    pub fn widget_edit_data(&self, meta_data: MetaData) -> NodeTypeEditData {
+    pub fn widget_edit_data(&self) -> NodeTypeEditData {
         let kind = match self {
             NodeType::Site(site) => NodeTypeEditKindData::Site(site.widget_edit_data()),
             NodeType::Folder(folder) => NodeTypeEditKindData::Folder(folder.widget_edit_data()),
         };
-        NodeTypeEditData { kind, meta_data }
+        NodeTypeEditData { kind }
     }
 }
 
@@ -118,9 +116,6 @@ impl NodeTypeData {
 pub struct NodeTypeEditData {
     #[config(ty = "enum")]
     pub kind: NodeTypeEditKindData,
-
-    #[config(ty = "struct")]
-    pub meta_data: MetaData,
 }
 
 impl NodeTypeEditData {

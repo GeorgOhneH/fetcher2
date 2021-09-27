@@ -1,11 +1,12 @@
-use druid::{Color, im};
-use druid::{Data, Lens, Widget, WidgetExt};
+use druid::im::Vector;
+use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
+use druid::{im, Color};
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
-use druid::im::Vector;
-use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
+use crate::widgets::warning_label::WarningLabel;
+use druid::{Data, Lens, Widget, WidgetExt};
 
 use crate::{CType, State};
 
@@ -189,27 +190,23 @@ impl CKwarg {
     }
 
     fn error_msg(&self) -> Option<String> {
-        if !self.ty.is_leaf() {
-            None
-        } else {
-            match self.ty.state() {
-                State::Valid => None,
-                State::None => {
-                    if self.required {
-                        Some("Value is required".to_string())
-                    } else {
-                        None
-                    }
+        match self.ty.state() {
+            State::Valid => None,
+            State::None => {
+                if self.required {
+                    Some("Value is required".to_string())
+                } else {
+                    None
                 }
-                State::InValid(msg) => Some(msg),
             }
+            State::InValid(msg) => Some(msg),
         }
     }
 
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
             .with_child(CType::widget().lens(Self::ty))
-            .with_child(WarningLabel::new())
+            .with_child(WarningLabel::new(|data: &Self| data.error_msg()))
     }
 }
 
@@ -246,73 +243,5 @@ impl CKwargBuilder {
 
     pub fn build(self) -> CKwarg {
         self.inner
-    }
-}
-
-pub struct WarningLabel {
-    label: Label<()>,
-    active: bool,
-}
-
-impl WarningLabel {
-    pub fn new() -> WarningLabel {
-        WarningLabel {
-            label: Label::new("test").with_text_color(Color::rgb8(255, 0, 0)),
-            active: true,
-        }
-    }
-}
-
-impl Widget<CKwarg> for WarningLabel {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut CKwarg, env: &Env) {
-        self.label.event(ctx, event, &mut (), env);
-    }
-
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &CKwarg, env: &Env) {
-        if let LifeCycle::WidgetAdded = event {
-            match data.error_msg() {
-                None => self.active = false,
-                Some(msg) => {
-                    self.active = true;
-                    self.label.set_text(msg)
-                }
-            }
-            ctx.request_layout();
-        }
-        self.label.lifecycle(ctx, event, &(), env)
-    }
-
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CKwarg, data: &CKwarg, env: &Env) {
-        if !old_data.same(data) {
-            match data.error_msg() {
-                None => self.active = false,
-                Some(msg) => {
-                    self.active = true;
-                    self.label.set_text(msg);
-                }
-            }
-            ctx.request_layout();
-        }
-        self.label.update(ctx, &(), &(), env);
-    }
-
-    fn layout(
-        &mut self,
-        ctx: &mut LayoutCtx,
-        bc: &BoxConstraints,
-        _data: &CKwarg,
-        env: &Env,
-    ) -> Size {
-        if self.active {
-            self.label.layout(ctx, bc, &(), env)
-        } else {
-            bc.min()
-        }
-    }
-
-    fn paint(&mut self, ctx: &mut PaintCtx, _data: &CKwarg, env: &Env) {
-        if self.active {
-            self.label.paint(ctx, &(), env);
-        }
     }
 }

@@ -21,7 +21,7 @@ use crate::template::communication::{Communication, RawCommunication};
 use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
-use crate::template::nodes::node::{MetaData, Node, RawNode, Status};
+use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::template::widget_data::TemplateData;
@@ -50,81 +50,6 @@ impl Template {
         }
     }
 
-    pub fn test(comm: RawCommunication) -> Self {
-        let mut raw_app = RawNode::builder().build();
-        let mut map = dashmap::DashMap::new();
-        map.insert(
-            PathBuf::from("efef"),
-            FileData::new("efe".to_string(), None, None),
-        );
-        let file_root = RawRootNode {
-            children: vec![
-                RawNode {
-                    cached_path_segment: None,
-                    ty: NodeType::Site(Arc::new(Site {
-                        module: Module::Polybox(Polybox {
-                            id: "TnFKtU4xoe5gIZy".to_owned(),
-                            mode: PolyboxMode::Shared(Some("123".to_owned())),
-                        }),
-                        storage: Arc::new(SiteStorage {
-                            files: dashmap::DashMap::new(),
-                            history: Mutex::new(Vec::new()),
-                        }),
-                        download_args: None,
-                    })),
-                    children: vec![RawNode {
-                        cached_path_segment: None,
-                        ty: NodeType::Site(Arc::new(Site {
-                            module: Module::Minimal(Minimal {
-                                parameters: None,
-                                parameters2: None,
-                            }),
-                            storage: Arc::new(SiteStorage {
-                                files: map,
-                                history: Mutex::new(vec![TaskMsg::new(
-                                    PathBuf::from("C:\\ethz"),
-                                    PathBuf::from("C:\\ethz"),
-                                    MsgKind::AddedFile,
-                                )]),
-                            }),
-                            download_args: None,
-                        })),
-                        children: vec![].into(),
-                        meta_data: MetaData {},
-                    }]
-                    .into(),
-                    meta_data: MetaData {},
-                },
-                RawNode {
-                    cached_path_segment: None,
-                    ty: NodeType::Site(Arc::new(Site {
-                        module: Module::Polybox(Polybox {
-                            id: "1929777502".to_owned(),
-                            mode: PolyboxMode::Private,
-                        }),
-                        storage: Arc::new(SiteStorage {
-                            files: dashmap::DashMap::new(),
-                            history: Mutex::new(Vec::new()),
-                        }),
-                        download_args: None,
-                    })),
-                    children: vec![].into(),
-                    meta_data: MetaData {},
-                },
-            ]
-            .into(),
-        };
-
-        file_root.update_app(&mut raw_app).unwrap();
-        let raw_root = RawRootNode::parse_from_app(&raw_app).unwrap();
-
-        Self {
-            root: raw_root.transform(comm),
-            is_prepared: false,
-            save_path: None,
-        }
-    }
-
     pub fn from_raw(
         edit_data: RootNodeEditData,
         comm: RawCommunication,
@@ -139,8 +64,11 @@ impl Template {
     }
 
     pub async fn load(path: &Path, comm: RawCommunication) -> Result<Self> {
+        dbg!("load");
         let x = String::from_utf8(fs::read(path).await?)?;
+        dbg!("build");
         let raw_root: RawRootNode = ron::from_str(&*x)?;
+        dbg!("build finished");
         Ok(Self {
             root: raw_root.transform(comm),
             is_prepared: false,
@@ -184,7 +112,7 @@ impl Template {
         if let Some(save_path) = &self.save_path {
             // TODO remove later
             let raw_root = self.root.clone().raw();
-            let template_str = ron::ser::to_string_pretty(&raw_root, Default::default())?;
+            let template_str = ron::to_string(&raw_root)?;
             let mut f = fs::OpenOptions::new()
                 .write(true)
                 .truncate(true)

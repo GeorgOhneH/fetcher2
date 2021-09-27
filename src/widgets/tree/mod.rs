@@ -21,6 +21,7 @@ use crate::widgets::header::Header;
 use crate::widgets::tree::node::{OpenerFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;
 use crate::widgets::tree::root::{TreeNodeRoot, TreeNodeRootWidget};
+use std::time::Duration;
 
 pub mod node;
 pub mod opener;
@@ -181,6 +182,7 @@ where
     S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
+        let t = std::time::Instant::now();
         self.root_node.event(ctx, event, data, env);
 
         let header_offset = self.header_offset();
@@ -253,13 +255,21 @@ where
         if let LifeCycle::HotChanged(false) = event {
             self.root_node.widget_mut().child_mut().remove_highlights();
         }
+        let t = std::time::Instant::now();
         self.root_node.lifecycle(ctx, event, data, env);
         self.header.lifecycle(ctx, event, data, env);
+        if t.elapsed() > Duration::from_millis(10) {
+            dbg!("LifeCycle", t.elapsed(), event);
+        }
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &R, data: &R, env: &Env) {
+        let t = std::time::Instant::now();
         self.header.update(ctx, data, env);
         self.root_node.update(ctx, data, env);
+        if t.elapsed() > Duration::from_millis(10) {
+            dbg!("Update", t.elapsed());
+        }
         // TODO test if really needed
         // let lens_selected = self.selected_lens.get(data);
         // let current_selected = self.root_node.widget().child().get_selected();
