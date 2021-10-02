@@ -5,7 +5,7 @@ use convert_case::{Case, Casing};
 use once_cell::sync::Lazy;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{self, DeriveInput, Field, Fields, Item, parse_macro_input};
+use syn::{self, DeriveInput, Field, Fields, parse_macro_input, Item};
 use syn::parse::Parser;
 
 static ENUM_DEFS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
