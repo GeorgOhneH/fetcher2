@@ -497,7 +497,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> Widget<T> for TreeNo
         for widget in &self.widgets {
             height = height.max(widget.layout_rect().height());
         }
-        let background_rect = Rect::new(0., 0., width, height);
+        let _background_rect = Rect::new(0., 0., width, height);
         let highlight_rect = Rect::new(origin_x, 0., width, height);
         if self.selected {
             ctx.fill(highlight_rect, &env.get(theme::PRIMARY_DARK))

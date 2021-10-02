@@ -409,7 +409,7 @@ impl<T> FileWatcher<T> {
             EntryRoot::selected,
         )
         .sizes([300., 300., 300.])
-        .on_activate(|ctx, root, env, idx| {
+        .on_activate(|_ctx, root, _env, idx| {
             let node = root.node(idx);
             open::that_in_background(&*node.path);
         });

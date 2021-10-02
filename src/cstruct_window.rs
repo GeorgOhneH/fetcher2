@@ -109,7 +109,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
         &mut self,
         ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &Option<T>,
+        _data: &Option<T>,
         env: &Env,
     ) -> Size {
         let size = self.child.layout(ctx, bc, &self.c_struct_data, env);
@@ -118,7 +118,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
         size
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &Option<T>, env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, _data: &Option<T>, env: &Env) {
         self.child.paint(ctx, &self.c_struct_data, env)
     }
 }

@@ -121,7 +121,7 @@ impl Node {
             .children
             .iter_mut()
             .enumerate()
-            .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), path.clone()))
+            .map(|(_idx, child)| child.prepare(session, Arc::clone(&dsettings), path.clone()))
             .collect();
 
         if join_all(futures)

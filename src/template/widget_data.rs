@@ -153,14 +153,14 @@ fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> 
     let idx3 = idx.clone();
     Menu::empty()
         .entry(
-            MenuItem::new("Run Recursive").on_activate(move |ctx, data: &mut AppData, _env| {
+            MenuItem::new("Run Recursive").on_activate(move |ctx, _data: &mut AppData, _env| {
                 ctx.submit_command(
                     MSG_THREAD.with(SingleUse::new(Msg::StartByIndex(indexes.clone()))),
                 )
             }),
         )
         .entry(
-            MenuItem::new("Run").on_activate(move |ctx, data: &mut AppData, _env| {
+            MenuItem::new("Run").on_activate(move |ctx, _data: &mut AppData, _env| {
                 let mut set = HashSet::with_capacity(1);
                 set.insert(idx1.clone());
                 ctx.submit_command(MSG_THREAD.with(SingleUse::new(Msg::StartByIndex(set))))
@@ -180,5 +180,5 @@ fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> 
                 }),
         )
         .separator()
-        .entry(MenuItem::new("Open Website").on_activate(|_ctx, data: &mut AppData, _env| todo!()))
+        .entry(MenuItem::new("Open Website").on_activate(|_ctx, _data: &mut AppData, _env| todo!()))
 }

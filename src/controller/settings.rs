@@ -65,7 +65,7 @@ impl SettingController {
         let c_window = c_option_window(
             Some("Settings"),
             Some(Box::new(
-                move |inner_ctx: &mut EventCtx, old_data, data: &mut Settings, env| {
+                move |inner_ctx: &mut EventCtx, _old_data, data: &mut Settings, _env| {
                     inner_ctx.submit_command(
                         MSG_THREAD
                             .with(SingleUse::new(Msg::NewSettings(data.download.clone())))

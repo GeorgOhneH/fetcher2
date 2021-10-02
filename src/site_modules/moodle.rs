@@ -37,9 +37,9 @@ pub struct Moodle {
 impl ModuleExt for Moodle {
     async fn fetch_urls_impl(
         &self,
-        session: Session,
-        sender: Sender<Task>,
-        dsettings: Arc<DownloadSettings>,
+        _session: Session,
+        _sender: Sender<Task>,
+        _dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
         todo!()
     }

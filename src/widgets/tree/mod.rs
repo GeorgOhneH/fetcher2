@@ -190,7 +190,7 @@ where
     S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
-        let t = std::time::Instant::now();
+        let _t = std::time::Instant::now();
         self.root_node.event(ctx, event, data, env);
 
         let header_offset = self.header_offset();
@@ -272,7 +272,7 @@ where
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &R, data: &R, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &R, data: &R, env: &Env) {
         let t = std::time::Instant::now();
         self.header.update(ctx, data, env);
         self.root_node.update(ctx, data, env);

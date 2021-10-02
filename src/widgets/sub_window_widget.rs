@@ -27,7 +27,7 @@ impl<T: Data> Widget<SubWindowInfo<T>> for SubWindow<T> {
         self.child.lifecycle(ctx, event, &data.data, env)
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &SubWindowInfo<T>, data: &SubWindowInfo<T>, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &SubWindowInfo<T>, data: &SubWindowInfo<T>, env: &Env) {
         self.child.update(ctx, &data.data, env)
     }
 

@@ -62,7 +62,7 @@ impl RootNode {
             .children
             .iter_mut()
             .enumerate()
-            .map(|(idx, child)| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
+            .map(|(_idx, child)| child.prepare(session, Arc::clone(&dsettings), PathBuf::new()))
             .collect();
 
         if join_all(futures)

@@ -142,8 +142,8 @@ impl Widget<EditWindowData> for DataBuffer {
     fn update(
         &mut self,
         ctx: &mut UpdateCtx,
-        old_data: &EditWindowData,
-        data: &EditWindowData,
+        _old_data: &EditWindowData,
+        _data: &EditWindowData,
         env: &Env,
     ) {
         self.child.update(ctx, self.data.as_ref().unwrap(), env)
@@ -153,7 +153,7 @@ impl Widget<EditWindowData> for DataBuffer {
         &mut self,
         ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &EditWindowData,
+        _data: &EditWindowData,
         env: &Env,
     ) -> Size {
         let size = self.child.layout(ctx, bc, self.data.as_ref().unwrap(), env);
@@ -162,7 +162,7 @@ impl Widget<EditWindowData> for DataBuffer {
         size
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &EditWindowData, env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, _data: &EditWindowData, env: &Env) {
         self.child.paint(ctx, self.data.as_ref().unwrap(), env)
     }
 }
@@ -273,28 +273,28 @@ fn make_node_menu(idx: NodeIndex) -> Menu<AppData> {
     let idx5 = idx.clone();
     Menu::empty()
         .entry(
-            MenuItem::new("Edit").on_activate(move |ctx, data: &mut AppData, _env| {
+            MenuItem::new("Edit").on_activate(move |ctx, _data: &mut AppData, _env| {
                 ctx.submit_command(OPEN_NODE.with(idx1.clone()))
             }),
         )
         .entry(
-            MenuItem::new("Delete").on_activate(move |ctx, data: &mut AppData, _env| {
+            MenuItem::new("Delete").on_activate(move |ctx, _data: &mut AppData, _env| {
                 ctx.submit_command(DELETE_NODE.with(idx2.clone()))
             }),
         )
         .separator()
         .entry(MenuItem::new("Add new node above").on_activate(
-            move |ctx, data: &mut AppData, _env| {
+            move |ctx, _data: &mut AppData, _env| {
                 ctx.submit_command(ADD_NODE.with((idx3.clone(), NodePosition::Above)))
             },
         ))
         .entry(MenuItem::new("Add new node below").on_activate(
-            move |ctx, data: &mut AppData, _env| {
+            move |ctx, _data: &mut AppData, _env| {
                 ctx.submit_command(ADD_NODE.with((idx4.clone(), NodePosition::Below)))
             },
         ))
         .entry(MenuItem::new("Add new node as child").on_activate(
-            move |ctx, data: &mut AppData, _env| {
+            move |ctx, _data: &mut AppData, _env| {
                 ctx.submit_command(ADD_NODE.with((idx5.clone(), NodePosition::Child)))
             },
         ))
@@ -313,7 +313,7 @@ fn tree() -> impl Widget<TemplateEditData> {
         NodeEditData::expanded,
         RootNodeEditData::selected,
     )
-    .on_activate(|ctx, data: &mut RootNodeEditData, env, idx| {
+    .on_activate(|ctx, _data: &mut RootNodeEditData, _env, idx| {
         ctx.submit_command(OPEN_NODE.with(idx.clone()));
     })
     .controller(NodeController::new())
@@ -378,22 +378,22 @@ fn _edit_window() -> impl Widget<EditWindowData> {
             Flex::row()
                 .with_child(
                     Button::new("Save")
-                        .on_click(|ctx, data: &mut EditWindowData, env| {
+                        .on_click(|ctx, _data: &mut EditWindowData, _env| {
                             ctx.submit_command(SAVE_EDIT.to(Target::Window(ctx.window_id())));
                         })
-                        .disabled_if(|data: &EditWindowData, env| {
+                        .disabled_if(|data: &EditWindowData, _env| {
                             data.edit_template.save_path.is_none()
                         }),
                 )
                 .with_child(Button::new("Save as").on_click(
-                    |ctx, data: &mut EditWindowData, env| {
+                    |ctx, _data: &mut EditWindowData, _env| {
                         ctx.submit_command(
                             commands::SHOW_SAVE_PANEL.with(FileDialogOptions::default()),
                         );
                     },
                 ))
                 .with_child(Button::new("Cancel").on_click(
-                    |ctx, data: &mut EditWindowData, env| {
+                    |ctx, _data: &mut EditWindowData, _env| {
                         ctx.submit_command(CLOSE_WINDOW);
                     },
                 )),
@@ -403,7 +403,7 @@ fn _edit_window() -> impl Widget<EditWindowData> {
 fn node_window(idx: &NodeIndex) -> impl Widget<EditWindowData> {
     c_option_window(
         Some("Node"),
-        Some(Box::new(|ctx, old_data, data: &mut NodeTypeEditData, _| {
+        Some(Box::new(|_ctx, old_data, data: &mut NodeTypeEditData, _| {
             if let Some(old) = old_data {
                 if !old.same(data) {
                     data.invalidate_cache();

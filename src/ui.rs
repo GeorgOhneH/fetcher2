@@ -71,7 +71,7 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
             let path_clone = path.clone();
             open_recent = open_recent.entry(
                 MenuItem::new(file_name.to_string_lossy().to_string()).on_activate(
-                    move |ctx, data: &mut AppData, env| {
+                    move |ctx, _data: &mut AppData, _env| {
                         ctx.submit_command(commands::OPEN_FILE.with(FileInfo {
                             path: (*path_clone).clone(),
                             format: None,
@@ -127,7 +127,7 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
         );
     }
 
-    base.rebuild_on(|old_data, data, env| old_data.recent_templates != data.recent_templates)
+    base.rebuild_on(|old_data, data, _env| old_data.recent_templates != data.recent_templates)
 }
 pub fn build_ui() -> impl Widget<AppData> {
     Flex::column()
@@ -164,8 +164,8 @@ fn template_ui() -> impl Widget<AppData> {
             )
             .draggable(true)
             .on_save(
-                |split, ctx, data: &AppData, env| split.set_split_point(data.split_point),
-                |split, ctx, data: &mut AppData, env| {
+                |split, _ctx, data: &AppData, _env| split.set_split_point(data.split_point),
+                |split, _ctx, data: &mut AppData, _env| {
                     data.split_point = split.current_split_point()
                 },
             )
@@ -188,7 +188,7 @@ fn info_view_ui() -> impl Widget<AppData> {
 }
 
 fn info_general() -> impl Widget<AppData> {
-    Label::dynamic(|data: &AppData, env| {
+    Label::dynamic(|data: &AppData, _env| {
         let node = data.get_selected_node();
         format!("{:#?}", node)
     })
@@ -228,17 +228,17 @@ fn info_history() -> impl Widget<AppData> {
 fn info_view_selector_ui() -> impl Widget<TemplateInfoSelect> {
     Flex::row()
         .with_child(
-            Button::new("General").on_click(|ctx, data: &mut TemplateInfoSelect, _env| {
+            Button::new("General").on_click(|_ctx, data: &mut TemplateInfoSelect, _env| {
                 *data = TemplateInfoSelect::General
             }),
         )
         .with_child(
-            Button::new("Folder").on_click(|ctx, data: &mut TemplateInfoSelect, _env| {
+            Button::new("Folder").on_click(|_ctx, data: &mut TemplateInfoSelect, _env| {
                 *data = TemplateInfoSelect::Folder
             }),
         )
         .with_child(
-            Button::new("History").on_click(|ctx, data: &mut TemplateInfoSelect, _env| {
+            Button::new("History").on_click(|_ctx, data: &mut TemplateInfoSelect, _env| {
                 *data = TemplateInfoSelect::History
             }),
         )
@@ -262,7 +262,7 @@ fn tool_bar() -> impl Widget<AppData> {
     });
     let edit = Button::new("Edit").on_click(|ctx, _, _| ctx.submit_command(OPEN_EDIT));
     let settings = Button::new("Settings")
-        .on_click(|ctx, _, env| ctx.submit_command(commands::SHOW_PREFERENCES));
+        .on_click(|ctx, _, _env| ctx.submit_command(commands::SHOW_PREFERENCES));
 
     Flex::row()
         .cross_axis_alignment(CrossAxisAlignment::Start)
