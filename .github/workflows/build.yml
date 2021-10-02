@@ -103,9 +103,6 @@ jobs:
 
       - run: sudo apt-get install libgtk-3-dev
         if: startsWith(runner.os, 'ubuntu')
-      - uses: actions/download-artifact@master
-        with:
-          name: version
       - uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
@@ -125,7 +122,6 @@ jobs:
           override: true
       - uses: actions-rs/cargo@v1
         env:
-          VERSION: '${{ steps.get_version.outputs.VERSION }}'
           REPOSITORY_NAME: '${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}'
         with:
           command: build
