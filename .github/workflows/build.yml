@@ -101,7 +101,7 @@ jobs:
         run: echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
         shell: bash
 
-      - if: startsWith(runner.os, 'ubuntu')
+      - if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt-get install libgtk-3-dev
       - uses: actions/cache@v1
         with:
