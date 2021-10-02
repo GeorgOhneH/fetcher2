@@ -1,10 +1,11 @@
 use std::cmp::max;
 use std::collections::HashSet;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use druid::LensExt;
+
+use config::Config;
 use druid::{ExtEventSink, Menu, MenuItem, Rect, Selector, SingleUse, theme, WidgetExt, WidgetId};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -12,40 +13,37 @@ use druid::{
 };
 use druid::im::Vector;
 use druid::kurbo::{BezPath, Size};
+use druid::LensExt;
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Controller, Label};
+use druid::widget::{Controller, Label, WidgetWrapper};
 use druid_widget_nursery::{selectors, Wedge};
 
-use crate::{Result};
 use crate::background_thread::NEW_TEMPLATE;
 use crate::controller::{Msg, MSG_THREAD};
+use crate::data::AppData;
+use crate::Result;
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::Template;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
-use crate::data::AppData;
 use crate::widgets::tree::root::TreeNodeRoot;
 
-#[derive(Debug, Clone, Data, Lens)]
+#[derive(Debug, Clone, Data, Lens, Config)]
 pub struct TemplateData {
+    #[config(skip = RootNodeData::new())]
     pub root: RootNodeData,
-    #[data(eq)]
+
+    #[config(skip = None)]
     pub save_path: Option<Arc<PathBuf>>,
+
+    #[data(ignore)]
+    pub header_sizes: Vec<f64>,
 }
 
 impl TemplateData {
-    pub fn new() -> Self {
-        Self {
-            root: RootNodeData::new(),
-            save_path: None,
-        }
-    }
-}
-
-impl TemplateData {
-    pub fn build_widget() -> impl Widget<AppData> {
+    pub fn build_widget() -> impl Widget<TemplateData> {
         Tree::new(
             [
                 Label::new("Name").boxed(),
@@ -68,15 +66,52 @@ impl TemplateData {
             RootNodeData::selected,
         )
         .controller(ContextMenuController {})
-        .lens(AppData::template.then(TemplateData::root))
+        .lens(TemplateData::root)
+        .controller(SaveStateController)
     }
 
     pub fn node(&self, idx: &NodeIndex) -> &NodeData {
         self.root.node(idx)
     }
 
-    pub fn node_mut<V>(&mut self, idx: &NodeIndex, cb: impl FnOnce(&mut NodeData, usize) -> V) -> V {
+    pub fn node_mut<V>(
+        &mut self,
+        idx: &NodeIndex,
+        cb: impl FnOnce(&mut NodeData, usize) -> V,
+    ) -> V {
         self.root.node_mut(idx, cb)
+    }
+}
+
+pub struct SaveStateController;
+
+impl<L, S, W2, W1, const N: usize> Controller<TemplateData, W2> for SaveStateController
+where
+    W2: WidgetWrapper<Wrapped = W1> + Widget<TemplateData>,
+    W1: WidgetWrapper<Wrapped = Tree<RootNodeData, NodeData, L, S, N>>,
+    L: Lens<NodeData, bool> + Clone + 'static,
+    S: Lens<RootNodeData, Vector<DataNodeIndex>> + Clone + 'static,
+{
+    fn event(&mut self, child: &mut W2, ctx: &mut EventCtx, event: &Event, data: &mut TemplateData, env: &Env) {
+        if let Event::WindowCloseRequested = event {
+            data.header_sizes = child.wrapped().wrapped().get_sizes().to_vec()
+        }
+        child.event(ctx, event, data, env)
+    }
+    fn lifecycle(
+        &mut self,
+        child: &mut W2,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &TemplateData,
+        env: &Env,
+    ) {
+        if let LifeCycle::WidgetAdded = event {
+            if let Ok(sizes) = data.header_sizes.clone().try_into() {
+                child.wrapped_mut().wrapped_mut().set_sizes(sizes)
+            }
+        }
+        child.lifecycle(ctx, event, data, env)
     }
 }
 

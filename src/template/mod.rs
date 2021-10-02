@@ -4,25 +4,26 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 use config::{Config, ConfigEnum};
-use druid::widget::prelude::*;
-use druid::widget::Label;
 use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
+use druid::widget::Label;
+use druid::widget::prelude::*;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError};
 use crate::session::Session;
+use crate::site_modules::{Minimal, Polybox};
 use crate::site_modules::Mode as PolyboxMode;
 use crate::site_modules::Module;
-use crate::site_modules::{Minimal, Polybox};
 use crate::task::Task;
 use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
+use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
+use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
@@ -129,17 +130,11 @@ impl Template {
         Ok(())
     }
 
-    pub fn widget_data(&self) -> TemplateData {
-        TemplateData {
-            root: self.root.widget_data(),
-            save_path: self.save_path.clone().map(Arc::new),
-        }
+    pub fn widget_data(&self) -> (RootNodeData, Option<PathBuf>) {
+        (self.root.widget_data(), self.save_path.clone())
     }
 
-    pub fn widget_edit_data(&self) -> TemplateEditData {
-        TemplateEditData {
-            root: self.root.widget_edit_data(),
-            save_path: self.save_path.clone(),
-        }
+    pub fn widget_edit_data(&self) -> (RootNodeEditData, Option<PathBuf>) {
+        (self.root.widget_edit_data(), self.save_path.clone())
     }
 }

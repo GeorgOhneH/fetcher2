@@ -19,12 +19,12 @@ use soup::prelude::*;
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
+use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::ModuleExt;
 use crate::site_modules::utils::save_path;
 use crate::task::{Task, TaskBuilder};
-use crate::data::settings::DownloadSettings;
 
 static PROPFIND_DATA: &'static str = r#"<?xml version="1.0"?>
     <a:propfind xmlns:a="DAV:">
@@ -46,15 +46,14 @@ lazy_static! {
         let mut m = HeaderMap::with_capacity(3);
         m.insert(
             "Content-Type",
-            HeaderValue::from_str("application/xml; charset=utf-8").unwrap(),
+            HeaderValue::from_static("application/xml; charset=utf-8"),
         );
         m.insert("Depth", HeaderValue::from_str("infinity").unwrap());
         m.insert(
             "User-Agent",
-            HeaderValue::from_str(
+            HeaderValue::from_static(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/74.0",
-            )
-            .unwrap(),
+            ),
         );
         m
     };

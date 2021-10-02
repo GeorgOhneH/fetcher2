@@ -1,3 +1,8 @@
+use std::borrow::Cow;
+
+use lazy_static::lazy_static;
+use regex::Regex;
+
 use crate::{Result, TError};
 use crate::error::TErrorKind;
 
@@ -19,4 +24,11 @@ pub fn save_path(part: &str) -> Result<String> {
         .replace(">", "")
         .replace("*", "")
         .replace("\"", ""))
+}
+
+pub fn remove_vz_id(name: &str) -> Cow<str> {
+    lazy_static! {
+        static ref VZ_ID_RE: Regex = Regex::new(r"[0-9]{3}-[0-9]{4}-[0-9]{2}L\s*").unwrap();
+    }
+    VZ_ID_RE.replace(name, "")
 }

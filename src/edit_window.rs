@@ -1,35 +1,36 @@
+use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use config::CStruct;
-use config::Config;
 use config::{CEnum, ConfigEnum};
-use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
-use druid::im::Vector;
-use druid::widget::prelude::*;
-use druid::widget::{Button, Controller, ControllerHost, Flex, Label};
+use config::Config;
+use config::CStruct;
 use druid::{
-    commands, lens, Command, FileDialogOptions, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
+    Command, commands, FileDialogOptions, lens, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
 };
 use druid::{InternalEvent, LensExt};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
+use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
+use druid::im::Vector;
+use druid::widget::{Button, Controller, ControllerHost, Flex, Label, WidgetWrapper};
+use druid::widget::prelude::*;
 use druid_widget_nursery::selectors;
 use serde::{Deserialize, Serialize};
 
 use crate::controller::{Msg, MSG_THREAD};
-use crate::cstruct_window::{c_option_window, APPLY};
+use crate::cstruct_window::{APPLY, c_option_window};
+use crate::data::AppData;
 use crate::data::edit::EditWindowData;
 use crate::data::win::WindowState;
-use crate::data::AppData;
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::widget_edit_data::TemplateEditData;
 use crate::template::Template;
-use crate::widgets::tree::root::TreeNodeRoot;
+use crate::template::widget_edit_data::TemplateEditData;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::widgets::tree::root::TreeNodeRoot;
 
 selectors! {
     SAVE_EDIT,
@@ -113,9 +114,9 @@ impl Widget<EditWindowData> for DataBuffer {
             .event(ctx, event, self.data.as_mut().unwrap(), env);
         if !old_data.same(&self.data) {
             dbg!("CHANGEF");
-            let old_template = data.edit_template.clone();
+            let old_root = data.edit_template.root.clone();
             *data = self.data.clone().unwrap();
-            data.edit_template = old_template;
+            data.edit_template.root = old_root;
             ctx.request_update()
         }
     }
@@ -128,12 +129,10 @@ impl Widget<EditWindowData> for DataBuffer {
         env: &Env,
     ) {
         if let LifeCycle::WidgetAdded = event {
-            let new_template = match self.new {
-                true => TemplateEditData::new(),
-                false => data.edit_template.clone(),
-            };
             let mut new_data = data.clone();
-            new_data.edit_template = new_template;
+            if self.new {
+                new_data.edit_template.reset()
+            }
             self.data = Some(new_data)
         }
         self.child
@@ -307,7 +306,7 @@ pub fn edit_window(new: bool) -> impl Widget<EditWindowData> {
 
 fn tree() -> impl Widget<TemplateEditData> {
     Tree::new(
-        [Label::new("Hello")],
+        [Label::new("Name")],
         [Arc::new(|| {
             Label::dynamic(|data: &NodeEditData, _env| data.name()).boxed()
         })],
@@ -319,6 +318,54 @@ fn tree() -> impl Widget<TemplateEditData> {
     })
     .controller(NodeController::new())
     .lens(TemplateEditData::root)
+    .controller(SaveStateController)
+}
+
+pub struct SaveStateController;
+
+impl<L, S, W2, W1, const N: usize> Controller<TemplateEditData, W2> for SaveStateController
+where
+    W2: WidgetWrapper<Wrapped = W1> + Widget<TemplateEditData>,
+    W1: WidgetWrapper<Wrapped = Tree<RootNodeEditData, NodeEditData, L, S, N>>,
+    L: Lens<NodeEditData, bool> + Clone + 'static,
+    S: Lens<RootNodeEditData, Vector<DataNodeIndex>> + Clone + 'static,
+{
+    fn event(
+        &mut self,
+        child: &mut W2,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut TemplateEditData,
+        env: &Env,
+    ) {
+        if let Event::WindowCloseRequested = event {
+            data.header_sizes = child.wrapped().wrapped().get_sizes().to_vec().into();
+            dbg!(&data.header_sizes);
+        }
+        child.event(ctx, event, data, env)
+    }
+    fn lifecycle(
+        &mut self,
+        child: &mut W2,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &TemplateEditData,
+        env: &Env,
+    ) {
+        if let LifeCycle::WidgetAdded = event {
+            dbg!(&data.header_sizes);
+            if let Ok(sizes) = data
+                .header_sizes
+                .clone()
+                .into_iter()
+                .collect::<Vec<_>>()
+                .try_into()
+            {
+                child.wrapped_mut().wrapped_mut().set_sizes(sizes)
+            }
+        }
+        child.lifecycle(ctx, event, data, env)
+    }
 }
 
 fn _edit_window() -> impl Widget<EditWindowData> {

@@ -16,11 +16,11 @@ use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 
-use crate::TError;
 use crate::template::communication::NODE_EVENT;
 use crate::template::node_type::NodeTypeData;
 use crate::template::node_type::site_data::SiteState;
 use crate::template::nodes::node::{NodeEvent, PathEvent};
+use crate::TError;
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::NodeIndex;
 

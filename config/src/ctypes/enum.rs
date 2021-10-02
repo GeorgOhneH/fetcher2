@@ -1,19 +1,19 @@
-use druid::im::{OrdMap, Vector};
-use druid::widget::Label;
-use druid::widget::{Flex, ListIter, Maybe};
-use druid::Point;
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
 use druid::{Data, Lens};
 use druid::{Widget, WidgetExt, WidgetPod};
-
-use crate::widgets::warning_label::WarningLabel;
-use crate::widgets::ListSelect;
-use crate::{CType, InvalidError, State};
+use druid::im::{OrdMap, Vector};
 use druid::lens::Index;
 use druid::LensExt;
+use druid::Point;
+use druid::widget::{Flex, ListIter, Maybe};
+use druid::widget::Label;
+
+use crate::{CType, InvalidError, State};
+use crate::widgets::ListSelect;
+use crate::widgets::warning_label::WarningLabel;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {

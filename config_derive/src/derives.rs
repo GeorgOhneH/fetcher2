@@ -3,10 +3,9 @@ use proc_macro_error::abort_call_site;
 use quote::quote;
 use syn::{
     self, Attribute, Data, DataStruct, DeriveInput, Field, Fields, Generics,
-    Ident, Lifetime, Path, punctuated::Punctuated, token::Comma, TraitBound, TypeParamBound,
+    Ident, punctuated::Punctuated, token::Comma, TraitBound,
 };
-use syn::{DataEnum, LifetimeDef, PathSegment};
-use syn::GenericParam;
+use syn::{DataEnum};
 use syn::spanned::Spanned;
 use syn::TraitBoundModifier;
 
@@ -39,14 +38,7 @@ pub fn derive_config_enum(input: &DeriveInput) -> TokenStream {
     let ident = &input.ident;
 
     match input.data {
-        Data::Struct(DataStruct {
-            fields: Fields::Named(ref fields),
-            ..
-        }) => abort_call_site!("`#[derive(Config)]`"),
-        Data::Struct(DataStruct {
-            fields: Fields::Unit,
-            ..
-        }) => abort_call_site!("`#[derive(Config)]`"),
+        Data::Struct(_) => abort_call_site!("`#[derive(Config)]`"),
         Data::Enum(ref e) => gen_for_enum(ident, &input.attrs, e),
         _ => abort_call_site!("`#[derive(Config)]` only supports non-tuple structs and enums"),
     }

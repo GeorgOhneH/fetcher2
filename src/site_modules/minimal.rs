@@ -10,11 +10,11 @@ use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
+use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
 use crate::site_modules::module::ModuleExt;
 use crate::task::{Task, TaskBuilder};
-use crate::data::settings::DownloadSettings;
 
 #[derive(Config, Debug, Clone, Data, PartialEq)]
 pub struct Minimal {

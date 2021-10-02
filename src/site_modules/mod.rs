@@ -7,4 +7,5 @@ mod minimal;
 mod module;
 mod polybox;
 mod utils;
+mod moodle;
 

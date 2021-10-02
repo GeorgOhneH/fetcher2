@@ -101,7 +101,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
         self.child.lifecycle(ctx, event, &self.c_struct_data, env)
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &Option<T>, data: &Option<T>, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _: &Option<T>, _: &Option<T>, env: &Env) {
         self.child.update(ctx, &self.c_struct_data, env)
     }
 
@@ -133,13 +133,13 @@ pub fn c_option_window<T: Config + Data>(
             Flex::row()
                 .with_child(
                     Button::new("Save")
-                        .on_click(|ctx, data: &mut CStruct, env| {
+                        .on_click(|ctx, _: &mut CStruct, _| {
                             ctx.submit_command(APPLY.to(Target::Window(ctx.window_id())));
                         })
-                        .disabled_if(|data: &CStruct, env| data.state() != State::Valid),
+                        .disabled_if(|data: &CStruct, _| data.state() != State::Valid),
                 )
                 .with_child(
-                    Button::new("Cancel").on_click(|ctx, data: &mut CStruct, env| {
+                    Button::new("Cancel").on_click(|ctx, _: &mut CStruct, _| {
                         ctx.submit_command(CLOSE_WINDOW);
                     }),
                 ),

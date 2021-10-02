@@ -1,6 +1,5 @@
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
-use proc_macro_error::abort_call_site;
 use quote::quote;
 use syn::{
     self, AngleBracketedGenericArguments, Attribute, Data, DataStruct, DeriveInput,
@@ -55,7 +54,6 @@ pub fn gen_field_name_string(field: &Field) -> TokenStream {
 }
 
 pub fn bound_generics(mut generics: Generics, bound: TraitBound) -> Generics {
-    let span = generics.span();
     for param in generics.params.iter_mut() {
         match param {
             GenericParam::Type(ty_param) => {

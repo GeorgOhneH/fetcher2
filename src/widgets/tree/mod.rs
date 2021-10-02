@@ -1,27 +1,27 @@
-use itertools::Itertools;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 use std::marker::PhantomData;
 use std::ops::Mul;
 use std::sync::Arc;
+use std::time::Duration;
 
-use druid::im::Vector;
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::scroll_component::{ScrollComponent, ScrollbarsEnabled};
-use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
-use druid::{theme, Affine, Lens, LensExt, Rect, SingleUse, Vec2, WidgetExt};
+use druid::{Affine, Lens, LensExt, Rect, SingleUse, theme, Vec2, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::scroll_component::{ScrollbarsEnabled, ScrollComponent};
+use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
 use druid_widget_nursery::selectors;
+use itertools::Itertools;
 
 use crate::widgets::header::Header;
 use crate::widgets::tree::node::{OpenerFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;
 use crate::widgets::tree::root::{TreeNodeRoot, TreeNodeRootWidget};
-use std::time::Duration;
 
 pub mod node;
 pub mod opener;
@@ -96,14 +96,22 @@ where
         self
     }
 
-    pub fn set_sizes(mut self, sizes: [f64; N]) -> Self {
+    pub fn get_sizes(&self) -> [f64; N] {
+        self.header.widget().child().get_sizes()
+    }
+
+    pub fn sizes(mut self, sizes: [f64; N]) -> Self {
+        self.set_sizes(sizes);
+        self
+    }
+
+    pub fn set_sizes(&mut self, sizes: [f64; N]) {
         self.header.widget_mut().child_mut().sizes(sizes);
         let constrains = self.header.widget().child().constrains();
         self.root_node
             .widget_mut()
             .child_mut()
             .update_constrains(constrains);
-        self
     }
 
     pub fn node_at(&self, p: Point) -> Option<NodeIndex> {
@@ -247,7 +255,8 @@ where
         let current_selected = self.root_node.widget().child().get_selected();
         let current_selected_lens = self.selected_lens.get(data);
         if !is_selected_eq(&current_selected, &current_selected_lens) {
-            self.selected_lens.put(data, transform_selected(current_selected))
+            self.selected_lens
+                .put(data, transform_selected(current_selected))
         }
     }
 

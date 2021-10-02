@@ -1,29 +1,29 @@
+use std::{fs, io};
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
-use std::{fs, io};
 
 use crossbeam_channel::{Receiver, Select, Sender};
-use druid::im::Vector;
-use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
+use druid::im::Vector;
+use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::data::AppData;
+use crate::Result;
 use crate::template::node_type::site::{MsgKind, TaskMsg};
+use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
-use crate::widgets::tree::{DataNodeIndex, Tree};
-use crate::Result;
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Type {
@@ -176,7 +176,7 @@ impl History {
             Entry::expanded,
             EntryRoot::selected,
         )
-        .set_sizes([400., 400., 400.])
+        .sizes([400., 400., 400.])
         .on_activate(|ctx, root, env, idx| {
             let node = root.node(idx);
             open::that_in_background(&node.full_path);

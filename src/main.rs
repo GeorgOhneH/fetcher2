@@ -42,6 +42,7 @@ use futures::future::BoxFuture;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use log::{debug, error, info, Level, log_enabled};
+use self_update::cargo_crate_version;
 use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
@@ -51,18 +52,18 @@ pub use error::{Result, TError};
 use crate::background_thread::background_main;
 use crate::controller::{MainController, Msg};
 use crate::cstruct_window::CStructBuffer;
+use crate::data::AppData;
 use crate::data::win::WindowState;
 use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
+use crate::template::nodes::root::RawRootNode;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::ui::{build_ui, make_menu};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
-use crate::data::AppData;
-use crate::template::nodes::root::RawRootNode;
 
 mod background_thread;
 mod cstruct_window;
@@ -114,6 +115,17 @@ fn build_window(
 }
 
 pub fn main() {
+    let status = self_update::backends::github::Update::configure()
+        .repo_owner("GeorgOhneH")
+        .repo_name("fetcher2")
+        .bin_name("github")
+        .show_download_progress(true)
+        .no_confirm(true)
+        .current_version(cargo_crate_version!())
+        .build().unwrap()
+        .update().unwrap();
+    println!("Update status: `{}`!", status.version());
+
     let (tx, rx) = flume::unbounded();
     let (s, r) = crossbeam_channel::bounded(5);
     let handle = thread::spawn(move || {

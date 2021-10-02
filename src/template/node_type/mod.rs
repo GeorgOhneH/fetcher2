@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use config::{Config, ConfigEnum};
 use druid::Data;
-use serde::Serialize;
 use serde::Deserialize;
+use serde::Serialize;
 
 use crate::data::settings::DownloadSettings;
 use crate::error::Result;

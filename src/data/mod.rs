@@ -1,18 +1,18 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use config::{Config, ConfigEnum};
 use druid::{Data, Lens};
 use druid::im::Vector;
 
+use crate::data::edit::EditWindowData;
 use crate::data::settings::{OptionSettings, Settings};
 use crate::data::template_info::TemplateInfoSelect;
 use crate::data::win::{SubWindowInfo, WindowState};
-use crate::template::widget_data::TemplateData;
 use crate::template::node_type::NodeTypeData;
-use crate::data::edit::EditWindowData;
 use crate::template::node_type::site::TaskMsg;
 use crate::template::nodes::node_data::NodeData;
-use std::sync::Arc;
+use crate::template::widget_data::TemplateData;
 
 pub mod win;
 pub mod settings;
@@ -21,7 +21,7 @@ pub mod edit;
 
 #[derive(Clone, Lens, Debug, Data, Config)]
 pub struct AppData {
-    #[config(skip = TemplateData::new())]
+    #[config(ty = "struct")]
     pub template: TemplateData,
 
     #[config(ty = "Vec<_>")]
@@ -41,7 +41,10 @@ pub struct AppData {
     pub edit_window: SubWindowInfo<EditWindowData>,
 
     #[config(default = 0.5)]
-    pub split_point: f64
+    pub split_point: f64,
+
+    #[data(ignore)]
+    pub folder_header_sizes: Vec<f64>,
 }
 
 

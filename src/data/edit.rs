@@ -9,6 +9,6 @@ pub struct EditWindowData {
     #[config(ty = "_<struct>")]
     pub node_win_state: Option<WindowState>,
 
-    #[config(skip = TemplateEditData::new())]
+    #[config(ty = "struct")]
     pub edit_template: TemplateEditData,
 }

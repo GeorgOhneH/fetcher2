@@ -87,6 +87,10 @@ impl<T, const N: usize> Header<T, N> {
         self.wanted_size = size;
     }
 
+    pub fn get_sizes(&self) -> [f64; N] {
+        self.wanted_size
+    }
+
     /// Builder-style method to set the minimum size for both sides of the split axis.
     ///
     /// The value must be greater than or equal to `0.0`.

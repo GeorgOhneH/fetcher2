@@ -1,4 +1,3 @@
-
 use config::ConfigEnum;
 use druid::{Data, Lens};
 

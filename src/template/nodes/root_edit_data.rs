@@ -16,7 +16,7 @@ use druid_widget_nursery::{selectors, Wedge};
 
 use crate::edit_window::NodePosition;
 use crate::template::node_type::NodeTypeData;
-use crate::template::nodes::node::{RawNode};
+use crate::template::nodes::node::RawNode;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root::RawRootNode;

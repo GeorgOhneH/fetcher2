@@ -5,16 +5,6 @@ use syn::{self, DataEnum, Fields, FieldsUnnamed, LitByteStr, LitStr};
 
 pub fn gen_se_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
     let enum_name_str = LitStr::new(&enum_name.to_string(), enum_name.span());
-    let counts = 0u32..e.variants.len() as u32;
-    let names = e.variants.iter().map(|var| &var.ident).collect::<Vec<_>>();
-    let name_strs = e
-        .variants
-        .iter()
-        .map(|var| {
-            let name = &var.ident;
-            LitStr::new(&name.to_string(), name.span())
-        })
-        .collect::<Vec<_>>();
     let match_enums = e.variants.iter().enumerate().map(|(i, var)| {
         let name = &var.ident;
         let count = i as u32;

@@ -39,6 +39,7 @@ use crate::background_thread::{
 use crate::cstruct_window::c_option_window;
 use crate::data::AppData;
 use crate::data::settings::DownloadSettings;
+use crate::data::win::WindowState;
 use crate::edit_window::edit_window;
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
@@ -51,7 +52,6 @@ use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::WINDOW_STATE_DIR;
-use crate::data::win::WindowState;
 
 selectors! {
     MSG_THREAD: SingleUse<Msg>

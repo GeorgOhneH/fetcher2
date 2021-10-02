@@ -37,6 +37,7 @@ use crate::background_thread::{
     background_main, MSG_FROM_THREAD, NEW_EDIT_TEMPLATE, NEW_TEMPLATE, ThreadMsg,
 };
 use crate::cstruct_window::c_option_window;
+use crate::data::edit::EditWindowData;
 use crate::data::win::SubWindowInfo;
 use crate::edit_window::edit_window;
 use crate::template::communication::NODE_EVENT;
@@ -49,7 +50,6 @@ use crate::template::widget_edit_data::TemplateEditData;
 use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
-use crate::data::edit::EditWindowData;
 
 selectors! {
     OPEN_EDIT
@@ -99,8 +99,9 @@ for EditController
         match event {
             Event::Command(cmd) if cmd.is(NEW_EDIT_TEMPLATE) => {
                 ctx.set_handled();
-                let edit_data = cmd.get_unchecked(NEW_EDIT_TEMPLATE).take().unwrap();
-                data.data.edit_template = edit_data;
+                let (edit_root, path) = cmd.get_unchecked(NEW_EDIT_TEMPLATE).take().unwrap();
+                data.data.edit_template.root = edit_root;
+                data.data.edit_template.save_path = path;
                 return;
             }
             Event::Command(cmd) if cmd.is(OPEN_EDIT) => {

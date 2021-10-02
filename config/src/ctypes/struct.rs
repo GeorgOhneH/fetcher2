@@ -1,14 +1,14 @@
-use druid::im::Vector;
-use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
-use druid::{im, Color};
+use druid::{Color, im};
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
-use crate::widgets::warning_label::WarningLabel;
 use druid::{Data, Lens, Widget, WidgetExt};
+use druid::im::Vector;
+use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
 
 use crate::{CType, State};
+use crate::widgets::warning_label::WarningLabel;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {

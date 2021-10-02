@@ -33,7 +33,11 @@ macro_rules! impl_simple_tree_root {
                 &self.children[index]
             }
 
-            fn for_child_mut<V>(&mut self, index: usize, cb: impl FnOnce(&mut $node_name, usize) -> V) -> V {
+            fn for_child_mut<V>(
+                &mut self,
+                index: usize,
+                cb: impl FnOnce(&mut $node_name, usize) -> V,
+            ) -> V {
                 let mut new_child = self.children[index].to_owned();
                 let v = cb(&mut new_child, index);
                 if !new_child.same(&self.children[index]) {
@@ -49,7 +53,6 @@ macro_rules! impl_simple_tree_root {
     };
 }
 pub(crate) use impl_simple_tree_root;
-
 
 pub trait TreeNodeRoot<T: TreeNode>
 where

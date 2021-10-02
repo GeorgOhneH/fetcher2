@@ -1,8 +1,8 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::{
-    self, AngleBracketedGenericArguments, BoundLifetimes, Field, GenericArgument,
-    GenericParam, Generics, Lifetime, LifetimeDef, LitStr, Path, PathArguments, PathSegment,
+    self, Field,
+    GenericParam, Generics, LitStr, Path, PathArguments, PathSegment,
     punctuated::Punctuated, token::Comma, TraitBound, TraitBoundModifier,
 };
 use syn::spanned::Spanned;
@@ -55,7 +55,6 @@ pub fn gen_visitor(
     name: &Ident,
     name_generics: &Generics,
 ) -> TokenStream {
-    let name_str = LitStr::new(&name.to_string(), name.span());
     let field_names = gen_field_names(fields);
     let field_name_strings = gen_field_name_strs(fields);
 
@@ -67,11 +66,6 @@ pub fn gen_visitor(
             _ => None,
         })
         .collect();
-    let bound_name_strs: Vec<_> = bound_names
-        .iter()
-        .map(|name| LitStr::new(&name.to_string(), name.span()))
-        .collect();
-    let visit_generics = lifetime_generics(name_generics.clone(), "'de");
 
     let config_path = create_path(&[("config", None), ("Config", None)], name_generics.span());
     let config_bound = TraitBound {
@@ -263,7 +257,7 @@ fn gen_c_setter(
                 }
             }
         }
-        ConfigType::Wrapper(path, inner_ty, wrapper_ty) => {
+        ConfigType::Wrapper(_, inner_ty, _) => {
             let inner_setter =
                 gen_c_setter(field, *inner_ty, quote! {c_inner}, quote! {inner_value});
             // let inner_value_quote = match wrapper_ty {

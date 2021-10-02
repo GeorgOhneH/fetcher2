@@ -7,19 +7,21 @@ use config::Config;
 use config::ConfigEnum;
 use druid::Data;
 use enum_dispatch::enum_dispatch;
-use fetcher2_macro::{login_locks, LoginLock};
 use serde::Serialize;
 use strum_macros::Display;
 use tokio::sync::{Mutex, MutexGuard};
 use tokio::sync::mpsc::Sender;
 
+use fetcher2_macro::{login_locks, LoginLock};
+
+use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::minimal::Minimal;
+use crate::site_modules::moodle::Moodle;
 use crate::site_modules::polybox::Polybox;
 use crate::task::Task;
 use crate::template::communication::Communication;
-use crate::data::settings::DownloadSettings;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
@@ -30,6 +32,9 @@ pub enum Module {
 
     #[config(ty = "struct")]
     Polybox(Polybox),
+
+    #[config(ty = "struct")]
+    Moodle(Moodle),
 }
 
 impl Module {

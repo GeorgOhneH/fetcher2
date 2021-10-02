@@ -1,30 +1,31 @@
+use std::{fs, io};
+use std::cmp::Ordering;
+use std::ffi::OsStr;
+use std::fs::{DirEntry, Metadata};
+use std::ops::Index;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::mpsc::channel;
+use std::thread;
+use std::time::{Duration, SystemTime};
+
+use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, Select, Sender};
-use druid::im::{OrdMap, Vector};
-use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
+use druid::im::{OrdMap, Vector};
+use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
-use notify::{recommended_watcher, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use std::fs::{DirEntry, Metadata};
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, SystemTime};
-use std::{fs, io};
+use notify::{Config, EventKind, recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
+use crate::Result;
+use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
-use crate::widgets::tree::{DataNodeIndex, Tree};
-use crate::Result;
-use chrono::{DateTime, Local};
-use std::cmp::Ordering;
-use std::ffi::OsStr;
-use std::ops::Index;
 
 selectors! {
     NEW_ROOT: SingleUse<EntryRoot>,
@@ -290,7 +291,7 @@ impl EntryRoot {
                 return false;
             }
             match update {
-                EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data, path),
+                EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data),
                 EntryUpdate::Remove => self.remove(&components),
             }
         } else {
@@ -303,7 +304,6 @@ impl EntryRoot {
         components: &[&OsStr],
         ty: Type,
         data: UpdateData,
-        path: &PathBuf,
     ) -> bool {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
@@ -315,7 +315,7 @@ impl EntryRoot {
                 .unwrap()
                 .update_data(ty, data),
             (1, None) => {
-                let path = path.as_path().join(components[0]).to_path_buf();
+                let path = self.path.as_ref().unwrap().as_path().join(components[0]).to_path_buf();
                 self.children
                     .insert_ord(Entry::new(name, ty, data.size, data.created, path));
                 true
@@ -327,7 +327,7 @@ impl EntryRoot {
                     .update(&components[1..], ty, data)
             }
             (_, None) => {
-                let path = path.as_path().join(components[0]).to_path_buf();
+                let path = self.path.as_ref().unwrap().as_path().join(components[0]).to_path_buf();
                 let mut child = Entry::new(
                     name,
                     Type::Folder,
@@ -408,7 +408,7 @@ impl<T> FileWatcher<T> {
             Entry::expanded,
             EntryRoot::selected,
         )
-        .set_sizes([300., 300., 300.])
+        .sizes([300., 300., 300.])
         .on_activate(|ctx, root, env, idx| {
             let node = root.node(idx);
             open::that_in_background(&*node.path);
@@ -554,7 +554,6 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
             }
             i if i == notify_thread => match oper.recv(&notify_rx).unwrap() {
                 Ok(event) => {
-                    dbg!("EVENT");
                     for path in event.paths {
                         let update = if let Ok(metadata) = path.metadata() {
                             let ty = match metadata.is_file() {

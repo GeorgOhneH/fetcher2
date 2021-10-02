@@ -3,10 +3,10 @@ use regex::Regex;
 use serde::Serialize;
 use url::Url;
 
+use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::utils::unescape;
-use crate::data::settings::DownloadSettings;
 
 const SSO_URL: &str = "https://aai-logon.ethz.ch/idp/profile/SAML2/Redirect/SSO";
 const BASE_URL: &str = "https://aai-logon.ethz.ch";

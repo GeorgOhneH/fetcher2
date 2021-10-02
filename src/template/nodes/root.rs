@@ -8,9 +8,9 @@ use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use druid::im::Vector;
 use futures::future::{join_all, try_join_all};
 use futures::prelude::*;
+use serde::Deserialize;
 use serde::Serialize;
 use sha1::Digest;
-use serde::Deserialize;
 
 use crate::data::settings::DownloadSettings;
 use crate::error::Result;

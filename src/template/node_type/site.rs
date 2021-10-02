@@ -3,33 +3,33 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
+use std::sync::Arc;
 use std::task::Context;
 use std::time::Duration;
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
-use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
+use dashmap::mapref::entry::Entry;
+use druid::{Data, ExtEventSink, im, Widget};
 use druid::im::Vector;
-use druid::{im, Data, ExtEventSink, Widget};
 use enum_dispatch::enum_dispatch;
-use futures::future::try_join_all;
-use futures::prelude::*;
-use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
-use futures::task::Poll;
 use futures::{
     future::{Fuse, FusedFuture, FutureExt},
     pin_mut, select,
     stream::{FusedStream, Stream, StreamExt},
 };
+use futures::future::try_join_all;
+use futures::prelude::*;
+use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
+use futures::task::Poll;
 use lazy_static::lazy_static;
 use regex::Regex;
-use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Request, RequestBuilder};
-use serde::{Serialize, Deserialize};
+use reqwest::header::{HeaderMap, HeaderValue};
+use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -69,6 +69,7 @@ impl Site {
         session: &Session,
         dsettings: &DownloadSettings,
     ) -> Result<PathBuf> {
+        self.module.login(session, dsettings).await?;
         self.module.folder_name(session, dsettings).await
     }
 
