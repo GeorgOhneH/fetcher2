@@ -115,18 +115,19 @@ fn build_window(
 }
 
 pub fn main() {
-    let status = self_update::backends::github::Update::configure()
-        .repo_owner("GeorgOhneH")
-        .repo_name("fetcher2")
-        .bin_name("github")
-        .show_download_progress(true)
-        .no_confirm(true)
-        .current_version(cargo_crate_version!())
-        .build()
-        .unwrap()
-        .update()
-        .unwrap();
-    println!("Update status: `{}`!", status.version());
+    let update_thread = thread::spawn(|| {
+        let status = self_update::backends::github::Update::configure()
+            .repo_owner("GeorgOhneH")
+            .repo_name("fetcher2")
+            .bin_name("github")
+            .show_download_progress(true)
+            .no_confirm(true)
+            .current_version(cargo_crate_version!())
+            .build()
+            .unwrap()
+            .update();
+        println!("Update status: `{:?}`!", status);
+    });
 
     let (tx, rx) = flume::unbounded();
     let (s, r) = crossbeam_channel::bounded(5);
@@ -172,6 +173,7 @@ pub fn main() {
         .expect("launch failed");
 
     let _ = tx.send(Msg::ExitAndSave);
+    update_thread.join().expect("thread panicked");
     handle.join().expect("thread panicked");
 }
 
