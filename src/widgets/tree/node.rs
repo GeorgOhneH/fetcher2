@@ -4,19 +4,19 @@ use std::marker::PhantomData;
 use std::process::id;
 use std::sync::Arc;
 
-use druid::{Lens, LensExt, Rect, SingleUse, theme};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Label, SizedBox};
+use druid::{theme, Lens, LensExt, Rect, SingleUse};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Label, SizedBox};
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::{Header, HeaderConstrains};
-use crate::widgets::tree::NodeIndex;
 use crate::widgets::tree::opener::Opener;
+use crate::widgets::tree::NodeIndex;
 
 selectors! {
     /// Notification to send from the widget that requires removal
@@ -45,7 +45,11 @@ macro_rules! impl_simple_tree_node {
                 &self.children[index]
             }
 
-            fn for_child_mut<V>(&mut self, index: usize, cb: impl FnOnce(&mut Self, usize) -> V) -> V {
+            fn for_child_mut<V>(
+                &mut self,
+                index: usize,
+                cb: impl FnOnce(&mut Self, usize) -> V,
+            ) -> V {
                 let mut new_child = self.children[index].to_owned();
                 let v = cb(&mut new_child, index);
                 if !new_child.same(&self.children[index]) {
@@ -93,7 +97,7 @@ where
     fn rm_child(&mut self, index: usize);
 
     fn node(&self, idx: &[usize]) -> &Self {
-        if idx.len() == 0 {
+        if idx.is_empty() {
             self
         } else {
             self.get_child(idx[0]).node(&idx[1..])
@@ -132,7 +136,7 @@ where
     /// A factory closure for the user defined widget
     pub make_widget: TreeItemFactory<T, N>,
     /// A factory closure for the user defined opener
-    pub make_opener: Arc<Box<OpenerFactory<T>>>,
+    pub make_opener: Arc<OpenerFactory<T>>,
     /// The user must provide a Lens<T, bool> that tells if
     /// the node is expanded or not.
     pub expand_lens: L,
@@ -145,7 +149,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
     /// Create a TreeNodeWidget from a TreeNode.
     pub fn new(
         make_widget: TreeItemFactory<T, N>,
-        make_opener: Arc<Box<OpenerFactory<T>>>,
+        make_opener: Arc<OpenerFactory<T>>,
         index: usize,
         constrains: HeaderConstrains<N>,
         depth: usize,
@@ -225,7 +229,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         for child in self.children.iter_mut() {
             changed |= child.widget_mut().remove_highlights()
         }
-        changed |= self.is_content_hover != false;
+        changed |= self.is_content_hover;
         self.is_content_hover = false;
         changed
     }
@@ -255,7 +259,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
     }
 
     pub fn node(&self, idx: &[usize]) -> &Self {
-        if idx.len() == 0 {
+        if idx.is_empty() {
             self
         } else {
             self.children[idx[0]].widget().node(&idx[1..])
@@ -263,7 +267,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
     }
 
     pub fn node_mut(&mut self, idx: &[usize]) -> &mut Self {
-        if idx.len() == 0 {
+        if idx.is_empty() {
             self
         } else {
             self.children[idx[0]].widget_mut().node_mut(&idx[1..])

@@ -1,5 +1,5 @@
-use druid::{Data, Lens, Widget};
 use druid::widget::Label;
+use druid::{Data, Lens, Widget};
 
 use crate::{CType, State};
 

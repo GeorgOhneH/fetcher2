@@ -1,13 +1,12 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{
-    self, Field,
-    GenericParam, Generics, LitStr,
-    punctuated::Punctuated, token::Comma, TraitBound, TraitBoundModifier,
-};
 use syn::spanned::Spanned;
+use syn::{
+    self, punctuated::Punctuated, token::Comma, Field, GenericParam, Generics, LitStr, TraitBound,
+    TraitBoundModifier,
+};
 
-use crate::config_type::{ConfigType, parse_type};
+use crate::config_type::{parse_type, ConfigType};
 use crate::utils::{bound_generics, lifetime_generics};
 use crate::utils::{create_path, gen_field_name_strs, gen_field_names};
 
@@ -75,7 +74,7 @@ pub fn gen_visitor(
         path: config_path,
     };
     let de_path = create_path(
-        &[("serde", None), (&"Deserilize", Some("'inner_de"))],
+        &[("serde", None), ("Deserilize", Some("'inner_de"))],
         name_generics.span(),
     );
     let de_bound = TraitBound {

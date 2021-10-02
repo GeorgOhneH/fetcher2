@@ -17,18 +17,18 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use druid::{
-    Affine, BoxConstraints, Data, Env, Event, EventCtx, Insets, LayoutCtx, Lens, LensExt, LifeCycle,
-    LifeCycleCtx, LinearGradient, PaintCtx, Point, RenderContext, Size, theme, UnitPoint,
-    UpdateCtx, Widget, WidgetExt, WidgetPod,
-};
 use druid::commands::CLOSE_WINDOW;
 use druid::kurbo::BezPath;
 use druid::widget::{
     Controller, DefaultScopePolicy, Label, LabelText, LineBreaking, ListIter, Scope,
 };
-use druid_widget_nursery::{AutoFocus, Dropdown, Wedge, WidgetExt as _};
+use druid::{
+    theme, Affine, BoxConstraints, Data, Env, Event, EventCtx, Insets, LayoutCtx, Lens, LensExt,
+    LifeCycle, LifeCycleCtx, LinearGradient, PaintCtx, Point, RenderContext, Size, UnitPoint,
+    UpdateCtx, Widget, WidgetExt, WidgetPod,
+};
 use druid_widget_nursery::dropdown::{DROPDOWN_CLOSED, DROPDOWN_HIDE, DROPDOWN_SHOW};
+use druid_widget_nursery::{AutoFocus, Dropdown, Wedge, WidgetExt as _};
 
 use crate::widgets::ListSelect;
 

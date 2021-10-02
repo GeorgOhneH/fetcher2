@@ -14,11 +14,11 @@
 
 //! A widget which splits an area in two, with a settable ratio, and optional draggable resizing.
 
-use druid::{Color, Cursor, Data, Point, Rect, theme, WidgetPod};
 use druid::debug_state::DebugState;
 use druid::kurbo::Line;
-use druid::widget::Axis;
 use druid::widget::prelude::*;
+use druid::widget::Axis;
+use druid::{theme, Color, Cursor, Data, Point, Rect, WidgetPod};
 use tracing::{instrument, trace, warn};
 
 /// A container containing two other widgets, splitting the area either horizontally or vertically.

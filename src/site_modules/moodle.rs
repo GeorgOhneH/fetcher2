@@ -11,15 +11,14 @@ use url::Url;
 
 use crate::data::settings::DownloadSettings;
 use crate::error::TErrorFast;
-use crate::Result;
 use crate::session::Session;
 use crate::site_modules::aai_login::aai_login;
-use crate::site_modules::ModuleExt;
 use crate::site_modules::utils::remove_vz_id;
+use crate::site_modules::ModuleExt;
 use crate::task::Task;
+use crate::Result;
 
-static LOGIN_FORM: [(&'static str, &'static str); 1] =
-    [("idp", "https://aai-logon.ethz.ch/idp/shibboleth")];
+static LOGIN_FORM: [(&str, &str); 1] = [("idp", "https://aai-logon.ethz.ch/idp/shibboleth")];
 
 lazy_static! {
     static ref LOGIN_URL: Url =

@@ -22,11 +22,11 @@ use url::Url;
 use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
-use crate::site_modules::ModuleExt;
 use crate::site_modules::utils::save_path;
+use crate::site_modules::ModuleExt;
 use crate::task::{Task, TaskBuilder};
 
-static PROPFIND_DATA: &'static str = r#"<?xml version="1.0"?>
+static PROPFIND_DATA: &str = r#"<?xml version="1.0"?>
     <a:propfind xmlns:a="DAV:">
         <a:prop xmlns:oc="http://owncloud.org/ns">
             <oc:checksums/>
@@ -166,7 +166,7 @@ impl ModuleExt for Polybox {
                 let xml = response.text().await?;
 
                 let n_skip = 5 + dire_path
-                    .split("/")
+                    .split('/')
                     .map(|x| x.trim())
                     .filter(|x| !x.is_empty())
                     .count();
@@ -197,7 +197,7 @@ impl ModuleExt for Polybox {
         match &self.mode {
             Mode::Private => {
                 let dir_path = self.dire_path(session, dsettings).await?;
-                let folder_name = dir_path.split("/").last().wrong_format()?;
+                let folder_name = dir_path.split('/').last().wrong_format()?;
                 return Ok(PathBuf::from(folder_name));
             }
             Mode::Shared(password) => {
@@ -277,14 +277,14 @@ impl<'a> XmlReader<'a> {
     async fn parse(
         &mut self,
         sender: Sender<Task>,
-        username: &String,
+        username: &str,
         password: Option<&String>,
         n_skip: usize,
     ) -> Result<()> {
         loop {
             match self.read_event()? {
-                Event::Start(ref e) => match e.name() {
-                    b"d:response" => {
+                Event::Start(ref e) => {
+                    if let b"d:response" = e.name() {
                         let r = self.parse_response()?;
                         if r.status != "HTTP/1.1 200 OK" {
                             continue;
@@ -292,7 +292,7 @@ impl<'a> XmlReader<'a> {
 
                         let path = r
                             .href
-                            .split("/")
+                            .split('/')
                             .skip(n_skip)
                             .map(|part| save_path(part))
                             .collect::<Result<PathBuf>>()?;
@@ -301,13 +301,12 @@ impl<'a> XmlReader<'a> {
 
                         let task = TaskBuilder::new(path, url)
                             .checksum(r.checksum)
-                            .basic_auth(username.clone(), password.map(Clone::clone))
+                            .basic_auth(username.to_owned(), password.map(Clone::clone))
                             .build();
 
-                        sender.send(task).await?;
+                        sender.send(task).await.unwrap();
                     }
-                    _ => {}
-                },
+                }
                 Event::Eof => break,
                 _ => (),
             }
@@ -325,10 +324,11 @@ impl<'a> XmlReader<'a> {
                     b"oc:checksum" => resp.checksum = self.read_text()?,
                     _ => {}
                 },
-                Event::End(ref e) => match e.name() {
-                    b"d:response" => return Ok(resp),
-                    _ => {}
-                },
+                Event::End(ref e) => {
+                    if let b"d:response" = e.name() {
+                        return Ok(resp);
+                    }
+                }
                 _ => {}
             }
         }

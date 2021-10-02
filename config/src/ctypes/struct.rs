@@ -1,11 +1,11 @@
-use druid::{Color, im};
+use druid::{im, Color};
 
-use druid::{Data, Lens, Widget, WidgetExt};
 use druid::im::Vector;
 use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
+use druid::{Data, Lens, Widget, WidgetExt};
 
-use crate::{CType, State};
 use crate::widgets::warning_label::WarningLabel;
+use crate::{CType, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CStruct {
@@ -69,7 +69,7 @@ impl CStruct {
                     .lens(Self::name),
             )
             .with_child(
-                Container::new(List::new(|| CKwarg::widget()).with_spacing(5.).padding(5.))
+                Container::new(List::new(CKwarg::widget).with_spacing(5.).padding(5.))
                     .border(Color::GRAY, 2.),
             )
     }

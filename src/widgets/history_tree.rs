@@ -1,29 +1,30 @@
-use std::{fs, io};
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use std::{fs, io};
 
 use crossbeam_channel::{Receiver, Select, Sender};
+use druid::im::Vector;
+use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid::im::Vector;
-use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::data::AppData;
-use crate::Result;
 use crate::template::node_type::site::{MsgKind, TaskMsg};
-use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
+use crate::widgets::tree::{DataNodeIndex, Tree};
+use crate::Result;
+use std::fmt::{Display, Formatter};
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Type {
@@ -37,13 +38,28 @@ pub enum Type {
     InnerReplaced,
 }
 
+impl Display for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Self::AddedFile => "New File",
+            Self::ReplacedFile => "Replaced File",
+            Self::NotModified => "Not Modified",
+            Self::FileChecksumSame => "Same File Already on Disk",
+            Self::AlreadyExist => "Cached Checksum didn't Change",
+            Self::ForbiddenExtension(_) => "Extension is Forbidden",
+            Self::InnerReplaced => "Old File",
+        };
+        f.write_str(str)
+    }
+}
+
 impl Type {
-    fn from_msg(msg_kind: MsgKind, parent_path: &String) -> (Self, Vector<Entry>) {
+    fn from_msg(msg_kind: MsgKind, parent_path: &str) -> (Self, Vector<Entry>) {
         match msg_kind {
             MsgKind::AddedFile => (Type::AddedFile, Vector::new()),
             MsgKind::ReplacedFile(path) => (
                 Type::ReplacedFile,
-                vec![Entry::inner_replaced(path, parent_path.clone())].into(),
+                vec![Entry::inner_replaced(path, parent_path.to_owned())].into(),
             ),
             MsgKind::NotModified => (Type::NotModified, Vector::new()),
             MsgKind::FileChecksumSame => (Type::FileChecksumSame, Vector::new()),
@@ -51,18 +67,6 @@ impl Type {
             MsgKind::ForbiddenExtension(extension) => {
                 (Type::ForbiddenExtension(extension), Vector::new())
             }
-        }
-    }
-
-    fn to_string(&self) -> String {
-        match self {
-            Self::AddedFile => "New File".to_string(),
-            Self::ReplacedFile => "Replaced File".to_string(),
-            Self::NotModified => "Not Modified".to_string(),
-            Self::FileChecksumSame => "Same File Already on Disk".to_string(),
-            Self::AlreadyExist => "Cached Checksum didn't Change".to_string(),
-            Self::ForbiddenExtension(_) => "Extension is Forbidden".to_string(),
-            Self::InnerReplaced => "Old File".to_string(),
         }
     }
 }
@@ -86,13 +90,13 @@ impl Entry {
             .rel_path
             .parent()
             .map(|path| String::from(std::path::MAIN_SEPARATOR) + path.to_string_lossy().as_ref())
-            .unwrap_or(String::from(std::path::MAIN_SEPARATOR));
+            .unwrap_or_else(|| String::from(std::path::MAIN_SEPARATOR));
         let (ty, children) = Type::from_msg(task_msg.kind, &rel_path);
         let name = task_msg
             .full_path
             .file_name()
             .map(|os_str| os_str.to_string_lossy().to_string())
-            .unwrap_or("".to_owned());
+            .unwrap_or_else(|| "".to_owned());
         Self {
             expanded: false,
             full_path: task_msg.full_path,
@@ -107,7 +111,7 @@ impl Entry {
         let name = path
             .file_name()
             .map(|os_str| os_str.to_string_lossy().to_string())
-            .unwrap_or("".to_owned());
+            .unwrap_or_else(|| "".to_owned());
         Self {
             expanded: false,
             name,
@@ -196,7 +200,7 @@ impl Widget<AppData> for History {
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &AppData, env: &Env) {
         if let LifeCycle::WidgetAdded = event {
             if let Some(history) = data.get_selected_history() {
-                self.root = EntryRoot::new(history.clone())
+                self.root = EntryRoot::new(history)
             }
         };
         self.tree.lifecycle(ctx, event, &self.root, env)

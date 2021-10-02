@@ -3,32 +3,32 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Mutex, RwLock};
 use std::sync::Arc;
+use std::sync::{Mutex, RwLock};
 use std::task::Context;
 use std::time::Duration;
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
-use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
-use druid::{Data, ExtEventSink, im, Widget};
+use dashmap::DashMap;
 use druid::im::Vector;
+use druid::{im, Data, ExtEventSink, Widget};
 use enum_dispatch::enum_dispatch;
+use futures::future::try_join_all;
+use futures::prelude::*;
+use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
+use futures::task::Poll;
 use futures::{
     future::{Fuse, FusedFuture, FutureExt},
     pin_mut, select,
     stream::{FusedStream, Stream, StreamExt},
 };
-use futures::future::try_join_all;
-use futures::prelude::*;
-use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
-use futures::task::Poll;
 use lazy_static::lazy_static;
 use regex::Regex;
-use reqwest::{Request, RequestBuilder};
 use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{Request, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use tokio::io::AsyncReadExt;
@@ -54,7 +54,7 @@ use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Site {
     pub module: Module,
 
@@ -189,11 +189,10 @@ impl Site {
             }
         }
 
-        let final_path: PathBuf = dsettings
+        let final_path = dsettings
             .save_path
             .join(base_path.as_ref())
-            .join(&task_path)
-            .into();
+            .join(&task_path);
         // TODO use real temp file
         let temp_path = add_to_file_stem(&final_path, "-temp");
         let old_path = add_to_file_stem(&final_path, "-old");
@@ -240,15 +239,14 @@ impl Site {
             task_bearer_auth,
             task_basic_auth,
             &final_path,
-            action
+            action,
         )?;
 
         let mut response = session.execute(request).await?.error_for_status()?;
         if response.status() == reqwest::StatusCode::NOT_MODIFIED {
-            self.storage
-                .files
-                .get_mut(&final_path)
-                .map(|mut file_data| file_data.task_checksum = task_checksum);
+            if let Some(mut file_data) = self.storage.files.get_mut(&final_path) {
+                file_data.task_checksum = task_checksum
+            }
             return Ok(TaskMsg::new(final_path, task_path, MsgKind::NotModified));
         }
 
@@ -375,7 +373,7 @@ impl Site {
         task_headers: Option<HeaderMap>,
         task_bearer_auth: Option<String>,
         task_basic_auth: Option<(String, Option<String>)>,
-        final_path: &PathBuf,
+        final_path: &Path,
         action: Action,
     ) -> Result<Request> {
         let mut request_builder = session.get(task_url);
@@ -508,19 +506,18 @@ pub struct SiteStorage {
     pub history: Mutex<Vec<TaskMsg>>,
 }
 
-// TODO remove
-impl PartialEq for SiteStorage {
-    fn eq(&self, _other: &Self) -> bool {
-        return true;
-    }
-}
-
 impl SiteStorage {
     pub fn new() -> Self {
         Self {
             files: DashMap::new(),
             history: Mutex::new(Vec::new()),
         }
+    }
+}
+
+impl Default for SiteStorage {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

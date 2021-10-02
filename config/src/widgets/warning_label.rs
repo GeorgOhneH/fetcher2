@@ -1,13 +1,11 @@
-use druid::{Color};
+use druid::Color;
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
 use druid::{Data, Widget};
 
-use druid::widget::{Label};
-
-
+use druid::widget::Label;
 
 pub struct WarningLabel<T> {
     label: Label<()>,

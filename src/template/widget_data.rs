@@ -6,29 +6,29 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use config::Config;
-use druid::{ExtEventSink, Menu, MenuItem, Rect, Selector, SingleUse, theme, WidgetExt, WidgetId};
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Controller, Label, WidgetWrapper};
+use druid::LensExt;
+use druid::{theme, ExtEventSink, Menu, MenuItem, Rect, Selector, SingleUse, WidgetExt, WidgetId};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use druid::im::Vector;
-use druid::kurbo::{BezPath, Size};
-use druid::LensExt;
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Controller, Label, WidgetWrapper};
 use druid_widget_nursery::{selectors, Wedge};
 
 use crate::background_thread::NEW_TEMPLATE;
 use crate::controller::{Msg, MSG_THREAD};
 use crate::data::AppData;
-use crate::Result;
 use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::Template;
-use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::Result;
 
 #[derive(Debug, Clone, Data, Lens, Config)]
 pub struct TemplateData {
@@ -70,15 +70,11 @@ impl TemplateData {
         .controller(SaveStateController)
     }
 
-    pub fn node(&self, idx: &NodeIndex) -> &NodeData {
+    pub fn node(&self, idx: &[usize]) -> &NodeData {
         self.root.node(idx)
     }
 
-    pub fn node_mut<V>(
-        &mut self,
-        idx: &NodeIndex,
-        cb: impl FnOnce(&mut NodeData, usize) -> V,
-    ) -> V {
+    pub fn node_mut<V>(&mut self, idx: &[usize], cb: impl FnOnce(&mut NodeData, usize) -> V) -> V {
         self.root.node_mut(idx, cb)
     }
 }
@@ -92,7 +88,14 @@ where
     L: Lens<NodeData, bool> + Clone + 'static,
     S: Lens<RootNodeData, Vector<DataNodeIndex>> + Clone + 'static,
 {
-    fn event(&mut self, child: &mut W2, ctx: &mut EventCtx, event: &Event, data: &mut TemplateData, env: &Env) {
+    fn event(
+        &mut self,
+        child: &mut W2,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut TemplateData,
+        env: &Env,
+    ) {
         if let Event::WindowCloseRequested = event {
             data.header_sizes = child.wrapped().wrapped().get_sizes().to_vec()
         }
@@ -150,7 +153,7 @@ where
 fn make_node_menu(idx: NodeIndex, indexes: HashSet<NodeIndex>) -> Menu<AppData> {
     let idx1 = idx.clone();
     let idx2 = idx.clone();
-    let idx3 = idx.clone();
+    let idx3 = idx;
     Menu::empty()
         .entry(
             MenuItem::new("Run Recursive").on_activate(move |ctx, _data: &mut AppData, _env| {

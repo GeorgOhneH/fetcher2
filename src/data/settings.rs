@@ -12,7 +12,6 @@ pub struct OptionSettings {
     pub settings: Option<Settings>,
 }
 
-
 #[derive(Config, Debug, Data, Clone)]
 pub struct Settings {
     #[config(ty = "struct", name = "Download")]
@@ -45,11 +44,11 @@ impl DownloadSettings {
     pub fn try_username(&self) -> Result<&String> {
         self.username
             .as_ref()
-            .ok_or(TErrorKind::LoginDataRequired.into())
+            .ok_or_else(|| TErrorKind::LoginDataRequired.into())
     }
     pub fn try_password(&self) -> Result<&String> {
         self.password
             .as_ref()
-            .ok_or(TErrorKind::LoginDataRequired.into())
+            .ok_or_else(|| TErrorKind::LoginDataRequired.into())
     }
 }

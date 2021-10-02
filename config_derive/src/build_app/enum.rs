@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 use quote::{quote, quote_spanned};
-use syn::{self, DataEnum, Fields, FieldsUnnamed, LitStr};
 use syn::spanned::Spanned;
+use syn::{self, DataEnum, Fields, FieldsUnnamed, LitStr};
 
 use crate::build_app::utils::gen_type;
 use crate::config_attr::parse_config_attributes;

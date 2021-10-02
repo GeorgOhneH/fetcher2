@@ -166,7 +166,7 @@ pub fn gen_option_arg(
             }}
         }
         ConfigType::Enum(path) | ConfigType::OptionEnum(path) => {
-            let _enum_name_str = LitStr::new(&quote! {#path}.to_string(), span.clone());
+            let _enum_name_str = LitStr::new(&quote! {#path}.to_string(), span);
             quote! {{
                 match #match_arg {
                     ::config::CType::CEnum(cenum) => #path::parse_from_app(cenum),

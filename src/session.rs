@@ -3,8 +3,8 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Duration;
 
-use reqwest::{Body, Client, ClientBuilder, IntoUrl, Method, Request, RequestBuilder, Response};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use reqwest::{Body, Client, ClientBuilder, IntoUrl, Method, Request, RequestBuilder, Response};
 use serde::Serialize;
 
 use crate::error::Result;
@@ -19,6 +19,12 @@ pub struct Session {
 pub struct SRequestBuilder {
     inner: RequestBuilder,
     session: Session,
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Session {

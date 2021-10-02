@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Mutex, RwLock};
 use std::sync::Arc;
+use std::sync::{Mutex, RwLock};
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
@@ -45,7 +45,7 @@ pub async fn extension_from_url(session: &Session, url: &Url) -> Result<Option<O
             .flat_map(|mime_str| mime_guess::get_mime_extensions_str(mime_str).into_iter())
             .flatten()
             .next()
-            .map(|x| OsString::from(x));
+            .map(OsString::from);
         Ok(extension)
     }
 }
@@ -63,7 +63,7 @@ pub fn filename_from_headers(headers: &HeaderMap) -> Option<String> {
         .next()
 }
 
-pub fn add_to_file_stem(path: &PathBuf, name: &str) -> PathBuf {
+pub fn add_to_file_stem(path: &Path, name: &str) -> PathBuf {
     let mut file_name = path.file_stem().unwrap().to_os_string();
     file_name.push(name);
 

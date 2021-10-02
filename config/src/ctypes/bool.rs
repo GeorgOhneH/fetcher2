@@ -1,8 +1,8 @@
+use druid::widget::Checkbox;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx, Widget,
 };
-use druid::widget::Checkbox;
 
 use crate::State;
 

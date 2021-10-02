@@ -1,13 +1,13 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort_call_site;
 use quote::quote;
-use syn::{
-    self, Attribute, Data, DataStruct, DeriveInput, Field, Fields, Generics,
-    Ident, punctuated::Punctuated, token::Comma, TraitBound,
-};
-use syn::{DataEnum};
 use syn::spanned::Spanned;
+use syn::DataEnum;
 use syn::TraitBoundModifier;
+use syn::{
+    self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
+    Fields, Generics, Ident, TraitBound,
+};
 
 use crate::build_app::{gen_enum_build_app_fn, gen_struct_build_app_fn};
 use crate::utils::{bound_generics, create_path, lifetime_generics};
@@ -65,11 +65,11 @@ fn gen_for_struct(
         path: se_path,
     };
     let bounded_config_generics = bound_generics(name_generics.clone(), config_bound.clone());
-    let bounded_se_generics = bound_generics(name_generics.clone(), se_bound.clone());
+    let bounded_se_generics = bound_generics(name_generics.clone(), se_bound);
     let de_generics = lifetime_generics(name_generics.clone(), "'de");
     let de_generics = bound_generics(de_generics, config_bound);
     let de_path = create_path(
-        &[("serde", None), (&"Deserilize", Some("'de"))],
+        &[("serde", None), ("Deserilize", Some("'de"))],
         name_generics.span(),
     );
     let de_bound = TraitBound {
@@ -79,7 +79,6 @@ fn gen_for_struct(
         path: de_path,
     };
     let de_generics = bound_generics(de_generics, de_bound);
-
 
     let build_app_fn = gen_struct_build_app_fn(fields);
     let parse_fn = crate::parse_from_app::gen_struct_parse_fn(fields);
@@ -96,7 +95,6 @@ fn gen_for_struct(
             #update_app_fn
         }
 
-
         impl #bounded_se_generics serde::Serialize for #name #name_generics {
             fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
             where
@@ -106,6 +104,7 @@ fn gen_for_struct(
             }
         }
 
+        #[allow(non_snake_case)]
         impl #de_generics serde::Deserialize<'de> for #name #name_generics {
             fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
             where

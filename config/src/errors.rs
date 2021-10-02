@@ -31,7 +31,7 @@ impl InvalidError {
 }
 
 #[derive(Error, Debug)]
-#[error("Field {field:?} is required. Msg: {msg:?}")]
+#[error("got error at field {field:?} is required. Msg: {msg:?}")]
 pub struct RequiredError {
     pub field: &'static str,
     pub msg: &'static str,
@@ -45,9 +45,5 @@ impl RequiredError {
             msg,
             backtrace: Backtrace::capture(),
         }
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("got error at field: {}, msg: {}", self.field, self.msg)
     }
 }

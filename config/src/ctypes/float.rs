@@ -1,8 +1,7 @@
+use druid::widget::Label;
 use druid::{Data, Lens, Widget};
-use druid::widget::{Label};
 
 use crate::{InvalidError, State};
-
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CFloat {

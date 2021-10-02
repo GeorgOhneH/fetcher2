@@ -4,23 +4,23 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 use config::{Config, ConfigEnum};
-use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
-use druid::widget::Label;
 use druid::widget::prelude::*;
+use druid::widget::Label;
+use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError};
 use crate::session::Session;
-use crate::site_modules::{Minimal, Polybox};
 use crate::site_modules::Mode as PolyboxMode;
 use crate::site_modules::Module;
+use crate::site_modules::{Minimal, Polybox};
 use crate::task::Task;
 use crate::template::communication::{Communication, RawCommunication};
+use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
-use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
 use crate::template::nodes::root_data::RootNodeData;
@@ -66,9 +66,9 @@ impl Template {
 
     pub async fn load(path: &Path, comm: RawCommunication) -> Result<Self> {
         dbg!("load");
-        let x = String::from_utf8(fs::read(path).await?)?;
+        let x = fs::read(path).await?;
         dbg!("build");
-        let raw_root: RawRootNode = ron::from_str(&*x)?;
+        let raw_root: RawRootNode = ron::de::from_bytes(&x)?;
         dbg!("build finished");
         Ok(Self {
             root: raw_root.transform(comm),
@@ -111,21 +111,17 @@ impl Template {
 
     pub async fn save(&self) -> Result<()> {
         if let Some(save_path) = &self.save_path {
-            // TODO remove later
             let raw_root = self.root.clone().raw();
-            let template_str = ron::to_string(&raw_root)?;
+            let template_str = ron::ser::to_string(&raw_root)?;
             let mut f = fs::OpenOptions::new()
                 .write(true)
                 .truncate(true)
                 .create(true)
                 .open(save_path)
                 .await?;
-            f.write_all(&template_str.as_bytes()).await?;
+            f.write_all(template_str.as_bytes()).await?;
 
             f.shutdown().await?;
-
-            let test_raw_root: RawRootNode = ron::from_str(&template_str).unwrap();
-            assert_eq!(raw_root, test_raw_root);
         }
         Ok(())
     }

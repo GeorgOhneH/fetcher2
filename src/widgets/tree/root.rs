@@ -71,7 +71,7 @@ where
     fn rm_child(&mut self, index: usize);
 
     fn node(&self, idx: &[usize]) -> &T {
-        if idx.len() == 0 {
+        if idx.is_empty() {
             panic!("Can't access root node")
         } else {
             self.get_child(idx[0]).node(&idx[1..])
@@ -100,7 +100,7 @@ where
     /// A factory closure for the user defined widget
     make_widget: TreeItemFactory<T, N>,
     /// A factory closure for the user defined opener
-    make_opener: Arc<Box<OpenerFactory<T>>>,
+    make_opener: Arc<OpenerFactory<T>>,
     /// The user must provide a Lens<T, bool> that tells if
     /// the node is expanded or not.
     expand_lens: L,
@@ -113,7 +113,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
     //     /// Create a TreeNodeWidget from a TreeNode.
     pub fn new(
         make_widget: TreeItemFactory<T, N>,
-        make_opener: Arc<Box<OpenerFactory<T>>>,
+        make_opener: Arc<OpenerFactory<T>>,
         constrains: HeaderConstrains<N>,
         expand_lens: L, // expanded: bool,
     ) -> Self {
@@ -206,7 +206,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
     }
 
     pub fn node(&self, idx: &[usize]) -> &TreeNodeWidget<T, L, N> {
-        if idx.len() == 0 {
+        if idx.is_empty() {
             panic!("Empty idx")
         } else {
             self.children[idx[0]].widget().node(&idx[1..])
@@ -214,7 +214,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
     }
 
     pub fn node_mut(&mut self, idx: &[usize]) -> &mut TreeNodeWidget<T, L, N> {
-        if idx.len() == 0 {
+        if idx.is_empty() {
             panic!("Empty idx")
         } else {
             self.children[idx[0]].widget_mut().node_mut(&idx[1..])

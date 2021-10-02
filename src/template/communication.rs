@@ -3,22 +3,22 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use druid::{ExtEventSink, Selector, SingleUse, Target, theme, WidgetId};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::Label;
+use druid::{theme, ExtEventSink, Selector, SingleUse, Target, WidgetId};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::Label;
 use druid_widget_nursery::{selectors, Wedge};
 
-use crate::{Result, TError};
 use crate::template::node_type::site::TaskMsg;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::Template;
 use crate::widgets::tree::NodeIndex;
+use crate::{Result, TError};
 
 // TODO: use tokens for templates to make sure it will work correctly
 pub const NODE_EVENT: Selector<SingleUse<(NodeEvent, NodeIndex)>> =
@@ -41,7 +41,7 @@ impl RawCommunication {
 
 impl Debug for RawCommunication {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("RawCommunication",))
+        f.write_str("RawCommunication")
     }
 }
 
@@ -69,6 +69,6 @@ impl Communication {
 
 impl Debug for Communication {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("WidgetCommunication",))
+        f.write_str("WidgetCommunication")
     }
 }

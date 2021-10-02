@@ -2,11 +2,11 @@ use lazy_static::lazy_static;
 use proc_macro2::Span;
 use proc_macro_error::abort;
 use regex::Regex;
-use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 use syn::spanned::Spanned;
 use syn::Type;
+use syn::{self, Attribute, Expr, GenericArgument, Path, PathArguments, TypePath};
 
-use crate::config_attr::{ConfigAttr, parse_config_attributes};
+use crate::config_attr::{parse_config_attributes, ConfigAttr};
 
 pub enum ConfigHashType {
     String,
@@ -269,16 +269,16 @@ fn extract_value_from_ty_string(ty_str: &str, span: Span) -> TypeAnnotations {
     lazy_static! {
         static ref BRACKET_RE: Regex = Regex::new(r"<(.+)>").unwrap();
     }
-    let name = if let Some(idx) = ty_str.find("<") {
+    let name = if let Some(idx) = ty_str.find('<') {
         &ty_str[0..idx]
     } else {
-        return TypeAnnotations::raw_name(&ty_str.trim(), span);
+        return TypeAnnotations::raw_name(ty_str.trim(), span);
     };
 
     if let Some(caps) = BRACKET_RE.captures(ty_str) {
         let inner_ty: &str = caps.get(1).unwrap().as_str();
         let inner: Vec<_> = inner_ty
-            .split(",")
+            .split(',')
             .map(|raw_inner| raw_inner.trim())
             .map(|inner| extract_value_from_ty_string(inner, span))
             .collect();

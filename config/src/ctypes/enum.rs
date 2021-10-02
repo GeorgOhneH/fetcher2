@@ -1,19 +1,18 @@
+use druid::im::{OrdMap, Vector};
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
 use druid::{Data, Lens};
 use druid::{Widget, WidgetExt, WidgetPod};
-use druid::im::{OrdMap, Vector};
 
-use druid::LensExt;
-use druid::Point;
-use druid::widget::{Flex, ListIter, Maybe};
 use druid::widget::Label;
+use druid::widget::{Flex, ListIter, Maybe};
+use druid::Point;
 
-use crate::{CType, InvalidError, State};
-use crate::widgets::ListSelect;
 use crate::widgets::warning_label::WarningLabel;
+use crate::widgets::ListSelect;
+use crate::{CType, InvalidError, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {
@@ -224,7 +223,9 @@ impl CArg {
 
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
-            .with_child(Maybe::or_empty(|| CType::widget().lens(Parameter::ty)).lens(Self::parameter))
+            .with_child(
+                Maybe::or_empty(|| CType::widget().lens(Parameter::ty)).lens(Self::parameter),
+            )
             .with_child(WarningLabel::new(|data: &Self| data.error_msg()))
     }
 }
@@ -272,14 +273,12 @@ impl Widget<CEnum> for CEnumWidget {
                     data.inner[idx] = new_child
                 }
             }
-        } else {
-            if let Some(idx) = data.selected {
-                let widget = &mut self.widgets[idx];
-                let mut new_child = data.inner[idx].to_owned();
-                widget.event(ctx, event, &mut new_child, env);
-                if !new_child.same(&data.inner[idx]) {
-                    data.inner[idx] = new_child
-                }
+        } else if let Some(idx) = data.selected {
+            let widget = &mut self.widgets[idx];
+            let mut new_child = data.inner[idx].to_owned();
+            widget.event(ctx, event, &mut new_child, env);
+            if !new_child.same(&data.inner[idx]) {
+                data.inner[idx] = new_child
             }
         }
     }
@@ -296,11 +295,9 @@ impl Widget<CEnum> for CEnumWidget {
             for (idx, widget) in self.widgets.iter_mut().enumerate() {
                 widget.lifecycle(ctx, event, &data.inner[idx], env)
             }
-        } else {
-            if let Some(idx) = data.selected {
-                let widget = &mut self.widgets[idx];
-                widget.lifecycle(ctx, event, &data.inner[idx], env)
-            }
+        } else if let Some(idx) = data.selected {
+            let widget = &mut self.widgets[idx];
+            widget.lifecycle(ctx, event, &data.inner[idx], env)
         }
     }
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CEnum, data: &CEnum, env: &Env) {

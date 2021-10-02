@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use async_recursion::async_recursion;
 use config::{Config, ConfigEnum};
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use druid::im::Vector;
+use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use futures::future::try_join_all;
 use futures::prelude::*;
 use serde::Serialize;

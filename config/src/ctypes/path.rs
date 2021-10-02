@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use druid::{Data, Lens, LensExt, Widget, WidgetExt};
-use druid::{FileDialogOptions, FileSpec};
 use druid::im::Vector;
 use druid::widget::{Button, Flex, Label, Maybe, TextBox};
+use druid::{Data, Lens, LensExt, Widget, WidgetExt};
+use druid::{FileDialogOptions, FileSpec};
 use druid_widget_nursery::WidgetExt as _;
 
 use crate::{InvalidError, State};
@@ -39,7 +39,7 @@ impl CPath {
         }
     }
 
-    pub fn is_valid(&self, path: &PathBuf) -> Result<(), InvalidError> {
+    pub fn is_valid(&self, path: &Path) -> Result<(), InvalidError> {
         if self.must_absolute && path.is_relative() {
             return Err(InvalidError::new("Path must be absolute"));
         }
@@ -64,7 +64,7 @@ impl CPath {
                     if let Some(file_extension) = path.extension() {
                         let ex = file_extension
                             .to_str()
-                            .ok_or(InvalidError::new("Path must have a extension"))?;
+                            .ok_or_else(|| InvalidError::new("Path must have a extension"))?;
                         if extensions
                             .iter()
                             .any(|file_spec| file_spec.extensions.contains(&ex))
@@ -133,7 +133,7 @@ impl CPath {
                             .clone()
                             .into_os_string()
                             .into_string()
-                            .unwrap_or("".to_owned()),
+                            .unwrap_or_else(|_| "".to_owned()),
                         None => "".to_owned(),
                     }
                 },
@@ -161,7 +161,7 @@ impl CPath {
                                 .allowed_types(allowed.clone().into_iter().collect()),
                         };
                         ctx.submit_command(
-                            druid::commands::SHOW_OPEN_PANEL.with(open_dialog_options.clone()),
+                            druid::commands::SHOW_OPEN_PANEL.with(open_dialog_options),
                         )
                     })
                     .on_command(

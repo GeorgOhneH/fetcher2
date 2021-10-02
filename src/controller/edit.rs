@@ -1,4 +1,3 @@
-use std::{fs, thread};
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashSet;
@@ -9,32 +8,32 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
+use std::{fs, thread};
 
 use config::{Config, InvalidError, RequiredError};
 use directories::{BaseDirs, ProjectDirs, UserDirs};
+use druid::commands::{CLOSE_WINDOW, QUIT_APP};
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::{Controller, Label};
 use druid::{
-    Command, commands, ExtEventSink, HasRawWindowHandle, Menu, MenuItem, RawWindowHandle, Rect,
-    Scalable, Selector, SingleUse, Target, theme, WidgetExt, WidgetId, WindowConfig, WindowHandle,
+    commands, theme, Command, ExtEventSink, HasRawWindowHandle, Menu, MenuItem, RawWindowHandle,
+    Rect, Scalable, Selector, SingleUse, Target, WidgetExt, WidgetId, WindowConfig, WindowHandle,
     WindowLevel,
 };
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use druid::commands::{CLOSE_WINDOW, QUIT_APP};
-use druid::im::Vector;
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::{Controller, Label};
 use druid_widget_nursery::{selectors, Wedge};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use url::Position;
 
-use crate::{Result, TError};
 use crate::background_thread::{
-    background_main, MSG_FROM_THREAD, NEW_EDIT_TEMPLATE, NEW_TEMPLATE, ThreadMsg,
+    background_main, ThreadMsg, MSG_FROM_THREAD, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
 };
 use crate::cstruct_window::c_option_window;
 use crate::data::edit::EditWindowData;
@@ -44,24 +43,23 @@ use crate::template::communication::NODE_EVENT;
 use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::Template;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
+use crate::template::Template;
 use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::{Result, TError};
 
 selectors! {
     OPEN_EDIT
 }
 
-pub struct EditController {
-}
+pub struct EditController {}
 
 impl EditController {
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
     fn make_sub_window(
         &self,
@@ -86,7 +84,7 @@ impl EditController {
 }
 
 impl<W: Widget<SubWindowInfo<EditWindowData>>> Controller<SubWindowInfo<EditWindowData>, W>
-for EditController
+    for EditController
 {
     fn event(
         &mut self,
@@ -106,12 +104,12 @@ for EditController
             }
             Event::Command(cmd) if cmd.is(OPEN_EDIT) => {
                 ctx.set_handled();
-                self.make_sub_window(ctx, env, &data, false);
+                self.make_sub_window(ctx, env, data, false);
                 return;
             }
             Event::Command(cmd) if cmd.is(commands::NEW_FILE) => {
                 ctx.set_handled();
-                self.make_sub_window(ctx, env, &data, true);
+                self.make_sub_window(ctx, env, data, true);
                 return;
             }
             _ => (),

@@ -3,18 +3,18 @@ use std::fmt::Display;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use druid::{Lens, LensExt, Rect, SingleUse, theme};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::widget::Label;
+use druid::{theme, Lens, LensExt, Rect, SingleUse};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::widget::Label;
 use druid_widget_nursery::selectors;
 
 use crate::widgets::header::Header;
-use crate::widgets::tree::node::{TREE_ACTIVATE_NODE, TreeNode};
+use crate::widgets::tree::node::{TreeNode, TREE_ACTIVATE_NODE};
 use crate::widgets::tree::root::TreeNodeRoot;
 
 /// A tree widget for a collection of items organized in a hierarchical way.

@@ -1,8 +1,8 @@
+use druid::widget::{Flex, Label, Maybe, TextBox};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
-use druid::widget::{Flex, Label, Maybe, TextBox};
 
 use crate::State;
 

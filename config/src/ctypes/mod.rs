@@ -1,33 +1,33 @@
 use std::iter::FromIterator;
 
-use druid::{Data, lens, LensExt, Widget, WidgetExt};
+use druid::{lens, Data, LensExt, Widget, WidgetExt};
 use druid_enums::Matcher;
 
 pub use crate::ctypes::bool::*;
 pub use crate::ctypes::checkable_struct::*;
-use crate::ctypes::CWrapper;
 pub use crate::ctypes::float::*;
 pub use crate::ctypes::integer::*;
-pub use crate::ctypes::map::*;
 use crate::ctypes::map::CHashMap;
+pub use crate::ctypes::map::*;
 pub use crate::ctypes::path::*;
 pub use crate::ctypes::r#enum::*;
 pub use crate::ctypes::r#struct::*;
 pub use crate::ctypes::string::*;
 pub use crate::ctypes::vec::*;
 pub use crate::ctypes::wrapper::*;
+use crate::ctypes::CWrapper;
 use crate::InvalidError;
 
 mod bool;
 mod checkable_struct;
 mod r#enum;
+mod float;
 mod integer;
 mod map;
 mod path;
 mod string;
 mod r#struct;
 mod vec;
-mod float;
 mod wrapper;
 
 #[derive(Debug, PartialEq)]

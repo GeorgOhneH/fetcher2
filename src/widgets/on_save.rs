@@ -1,5 +1,5 @@
-use druid::{Data, Env, Event, EventCtx, LifeCycleCtx, UpdateCtx, Widget};
 use druid::widget::Controller;
+use druid::{Data, Env, Event, EventCtx, LifeCycleCtx, UpdateCtx, Widget};
 use tracing::{instrument, trace};
 
 pub struct Save<T, W> {

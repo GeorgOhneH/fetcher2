@@ -5,8 +5,8 @@ use config::ConfigEnum;
 use druid::Data;
 
 use crate::site_modules::Module;
-use crate::template::DownloadArgs;
 use crate::template::node_type::{Site, SiteStorage};
+use crate::template::DownloadArgs;
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct SiteEditData {
@@ -25,7 +25,7 @@ impl SiteEditData {
     pub fn raw(self) -> Site {
         Site {
             module: self.module,
-            storage: self.storage.unwrap_or(Arc::new(SiteStorage::new())),
+            storage: self.storage.unwrap_or_else(|| Arc::new(SiteStorage::new())),
             download_args: self.download_args,
         }
     }

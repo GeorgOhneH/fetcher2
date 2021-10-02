@@ -37,7 +37,7 @@ impl ModuleExt for Minimal {
             Url::parse("https://www.google.com/").unwrap(),
         )
         .build();
-        sender.send(task).await?;
+        sender.send(task).await.unwrap();
         let resp = session.get("https://www.google.com/").send().await?;
         println!("1{}", resp.status());
         let resp = session.get("https://www.google.com/").send().await?;
@@ -51,7 +51,7 @@ impl ModuleExt for Minimal {
         )
         .extension(false)
         .build();
-        sender.send(task).await?;
+        sender.send(task).await.unwrap();
         let task = TaskBuilder::new(
             PathBuf::from("rsgdrf.pdf"),
             Url::parse("http://www.orimi.com/pdf-test.pdf/").unwrap(),
@@ -64,7 +64,7 @@ impl ModuleExt for Minimal {
         )
         .extension(false)
         .build();
-        sender.send(task).await?;
+        sender.send(task).await.unwrap();
 
         for x in 0..10 {
             let task = TaskBuilder::new(
@@ -72,7 +72,7 @@ impl ModuleExt for Minimal {
                 Url::parse("https://www.google.com/").unwrap(),
             )
             .build();
-            sender.send(task).await?;
+            sender.send(task).await.unwrap();
             //tokio::time::sleep(Duration::from_millis(100)).await;
         }
 

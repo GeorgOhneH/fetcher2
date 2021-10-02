@@ -43,7 +43,7 @@ pub async fn aai_login<T: Serialize + ?Sized>(
 
     let sam_text = if !text.contains("SAMLResponse") {
         let local_storage_part = &ACTION_URL_RE.captures(&text).wrong_format()?[1];
-        let local_storage_url = Url::parse(&BASE_URL).unwrap().join(local_storage_part)?;
+        let local_storage_url = Url::parse(BASE_URL).unwrap().join(local_storage_part)?;
         let login_page = session
             .post(local_storage_url)
             .form(&LOCAL_STORAGE_FORM)
@@ -58,7 +58,7 @@ pub async fn aai_login<T: Serialize + ?Sized>(
             ("j_password", dsettings.try_password()?),
         ];
         let sso_part = &ACTION_URL_RE.captures(&login_page).wrong_format()?[1];
-        let sso_url = Url::parse(&BASE_URL).unwrap().join(sso_part)?;
+        let sso_url = Url::parse(BASE_URL).unwrap().join(sso_part)?;
         session
             .post(sso_url)
             .form(&sso_form)

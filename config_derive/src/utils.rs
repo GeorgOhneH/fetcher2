@@ -1,18 +1,16 @@
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{
-    self, AngleBracketedGenericArguments,
-    Field, GenericArgument, Generics, Ident, Lifetime, Path, PathArguments, punctuated::Punctuated,
-    token::Comma, TraitBound, TypeParamBound,
-};
-use syn::{LifetimeDef, PathSegment};
+use syn::spanned::Spanned;
 use syn::GenericParam;
 use syn::LitStr;
-use syn::spanned::Spanned;
+use syn::{
+    self, punctuated::Punctuated, token::Comma, AngleBracketedGenericArguments, Field,
+    GenericArgument, Generics, Ident, Lifetime, Path, PathArguments, TraitBound, TypeParamBound,
+};
+use syn::{LifetimeDef, PathSegment};
 
-
-use crate::config_type::{ConfigType, parse_type};
+use crate::config_type::{parse_type, ConfigType};
 
 pub fn gen_field_names(fields: &Punctuated<Field, Comma>) -> Vec<TokenStream> {
     fields
@@ -72,8 +70,7 @@ pub fn create_path(parts: &[(&str, Option<&str>)], span: Span) -> Path {
     };
     for (part, lifetime) in parts {
         let segment = if let Some(lifetime) = lifetime {
-            let lifetime =
-                GenericArgument::Lifetime(Lifetime::new(lifetime, span));
+            let lifetime = GenericArgument::Lifetime(Lifetime::new(lifetime, span));
             let mut p = Punctuated::new();
             p.push(lifetime);
             let x = AngleBracketedGenericArguments {

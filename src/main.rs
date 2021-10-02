@@ -4,8 +4,8 @@
 #![feature(backtrace)]
 #![feature(type_alias_impl_trait)]
 #![allow(unused_imports)]
+#![allow(clippy::new_without_default)]
 
-use std::{fs, io, thread};
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
@@ -19,17 +19,11 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
+use std::{fs, io, thread};
 
-use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
 use config::CStruct;
 use config::State;
-use druid::{
-    AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
-    ExtEventSink, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
-    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
-    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
-    WindowLevel,
-};
+use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
@@ -37,11 +31,17 @@ use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
     Maybe, Scroll, SizedBox, Spinner, Switch, TextBox,
 };
-use flume;
+use druid::{
+    im, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Env, Event,
+    EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString,
+    Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
+};
 use futures::future::BoxFuture;
 use futures::StreamExt;
 use lazy_static::lazy_static;
-use log::{debug, error, info, Level, log_enabled};
+use log::{debug, error, info, log_enabled, Level};
 use self_update::cargo_crate_version;
 use serde::Serialize;
 use tokio::time;
@@ -52,21 +52,23 @@ pub use error::{Result, TError};
 use crate::background_thread::background_main;
 use crate::controller::{MainController, Msg};
 use crate::cstruct_window::CStructBuffer;
-use crate::data::AppData;
 use crate::data::win::WindowState;
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
+use crate::data::AppData;
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root::RawRootNode;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::ui::{build_ui, make_menu};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
 
 mod background_thread;
+pub mod controller;
 mod cstruct_window;
+pub mod data;
 pub mod edit_window;
 mod error;
 mod session;
@@ -76,16 +78,14 @@ mod template;
 pub mod ui;
 mod utils;
 pub mod widgets;
-pub mod controller;
-pub mod data;
 
 lazy_static! {
-    pub static ref CONFIG_DIR: PathBuf = directories::ProjectDirs::from("ch", "fetcher2", "fetcher2")
-        .expect("Could not find a place to store the config files")
-        .config_dir()
-        .to_owned();
-    pub static ref WINDOW_STATE_DIR: PathBuf =
-        Path::join(CONFIG_DIR.as_path(), "window_state.ron");
+    pub static ref CONFIG_DIR: PathBuf =
+        directories::ProjectDirs::from("ch", "fetcher2", "fetcher2")
+            .expect("Could not find a place to store the config files")
+            .config_dir()
+            .to_owned();
+    pub static ref WINDOW_STATE_DIR: PathBuf = Path::join(CONFIG_DIR.as_path(), "window_state.ron");
 }
 
 fn load_window_state() -> Result<AppData> {
@@ -122,8 +122,10 @@ pub fn main() {
         .show_download_progress(true)
         .no_confirm(true)
         .current_version(cargo_crate_version!())
-        .build().unwrap()
-        .update().unwrap();
+        .build()
+        .unwrap()
+        .update()
+        .unwrap();
     println!("Update status: `{}`!", status.version());
 
     let (tx, rx) = flume::unbounded();
@@ -184,7 +186,6 @@ pub fn main() {
 // }
 
 //
-
 
 // use config::{CStruct, Config, ConfigEnum};
 // use ron::ser::PrettyConfig;

@@ -1,9 +1,9 @@
 use std::hash::Hash;
 use std::path::PathBuf;
 
-use druid::{Data, Widget};
 use druid::im;
 use druid::widget::{Label, ListIter};
+use druid::{Data, Widget};
 
 use crate::{CType, State};
 
@@ -18,13 +18,6 @@ impl HashKey {
         match self {
             Self::String(str) => *str = name.into().to_string_lossy().to_string(),
             Self::Path(path) => *path = name.into(),
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::String(str) => str.to_owned(),
-            Self::Path(path) => path.as_os_str().to_string_lossy().to_string(),
         }
     }
 }

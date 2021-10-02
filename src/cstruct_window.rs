@@ -6,15 +6,8 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::pin::Pin;
 
-use config::{Config, ConfigEnum, CStruct};
 use config::State;
-use druid::{
-    AppDelegate, AppLauncher, Application, BoxConstraints, Color, Command, Data, DelegateCtx, Env,
-    Event, EventCtx, ExtEventSink, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
-    LocalizedString, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
-    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
-    WindowLevel,
-};
+use config::{CStruct, Config, ConfigEnum};
 use druid::commands::CLOSE_WINDOW;
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
@@ -23,9 +16,15 @@ use druid::widget::{
     Button, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List, Maybe, Scroll,
     Spinner, Switch, TextBox,
 };
+use druid::{
+    im, AppDelegate, AppLauncher, Application, BoxConstraints, Color, Command, Data, DelegateCtx,
+    Env, Event, EventCtx, ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
+    LocalizedString, MouseButton, PaintCtx, Point, Screen, Selector, SingleUse, Size, Target,
+    UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId, WidgetPod, WindowConfig, WindowDesc,
+    WindowLevel,
+};
 use druid_widget_nursery::selectors;
 use druid_widget_nursery::Tree;
-use flume;
 use futures::future::BoxFuture;
 use tokio::time;
 use tokio::time::Duration;
@@ -36,10 +35,12 @@ selectors! {
     APPLY
 }
 
+type OnChangeFn<T> = Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>;
+
 pub struct CStructBuffer<T> {
     pub child: WidgetPod<CStruct, Box<dyn Widget<CStruct>>>,
     pub c_struct_data: CStruct,
-    pub on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>>,
+    pub on_change_fn: Option<OnChangeFn<T>>,
 }
 
 impl<T: Config + Data> CStructBuffer<T> {
@@ -55,7 +56,7 @@ impl<T: Config + Data> CStructBuffer<T> {
         }
     }
 
-    pub fn on_change(&mut self, on_change_fn: Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>) {
+    pub fn on_change(&mut self, on_change_fn: OnChangeFn<T>) {
         self.on_change_fn = Some(on_change_fn)
     }
 }
@@ -125,7 +126,7 @@ impl<T: Config + Data> Widget<Option<T>> for CStructBuffer<T> {
 
 pub fn c_option_window<T: Config + Data>(
     name: Option<&str>,
-    on_change_fn: Option<Box<dyn Fn(&mut EventCtx, &Option<T>, &mut T, &Env)>>,
+    on_change_fn: Option<OnChangeFn<T>>,
 ) -> impl Widget<Option<T>> {
     let child = Flex::column()
         .with_flex_child(CStruct::widget().scroll(), 1.0)
@@ -138,11 +139,9 @@ pub fn c_option_window<T: Config + Data>(
                         })
                         .disabled_if(|data: &CStruct, _| data.state() != State::Valid),
                 )
-                .with_child(
-                    Button::new("Cancel").on_click(|ctx, _: &mut CStruct, _| {
-                        ctx.submit_command(CLOSE_WINDOW);
-                    }),
-                ),
+                .with_child(Button::new("Cancel").on_click(|ctx, _: &mut CStruct, _| {
+                    ctx.submit_command(CLOSE_WINDOW);
+                })),
         );
     let mut buffer = CStructBuffer::new(child, name);
     if let Some(on_change) = on_change_fn {

@@ -7,4 +7,3 @@ mod edit;
 mod main;
 mod settings;
 mod template;
-

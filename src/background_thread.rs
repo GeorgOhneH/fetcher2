@@ -1,4 +1,3 @@
-use std::{io, thread};
 use std::any::Any;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -10,30 +9,30 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
+use std::{io, thread};
 
-use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
 use config::CStruct;
-use druid::{
-    AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx, ExtEventSink,
-    Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx,
-    Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod,
-    WindowDesc,
-};
+use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
 use druid::widget::{
     Button, CrossAxisAlignment, Flex, Label, LineBreaking, List, Scroll, Spinner, Switch, TextBox,
 };
+use druid::{
+    im, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, Event, EventCtx,
+    ExtEventSink, Handled, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, LocalizedString, PaintCtx,
+    Selector, SingleUse, Target, UnitPoint, UpdateCtx, Widget, WidgetExt, WidgetId, WidgetPod,
+    WindowDesc,
+};
 use druid_widget_nursery::selectors;
 use druid_widget_nursery::Tree;
-use flume;
-use futures::{FutureExt, StreamExt};
-use futures::future::{Abortable, Aborted, AbortHandle};
 use futures::future::BoxFuture;
+use futures::future::{AbortHandle, Abortable, Aborted};
 use futures::prelude::stream::FuturesUnordered;
 use futures::stream::FuturesOrdered;
-use log::{debug, error, info, Level, log_enabled};
+use futures::{FutureExt, StreamExt};
+use log::{debug, error, info, log_enabled, Level};
 use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
@@ -41,11 +40,11 @@ use tokio::time::Duration;
 use crate::controller::Msg;
 use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError};
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node::Status;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::widgets::tree::NodeIndex;
 
 selectors! {
@@ -160,7 +159,7 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
         }
     }
 
-    while let Some(_) = futs.next().await {}
+    while futs.next().await.is_some() {}
     // We use write so we are sure the other operations are finished
     template.write().await.save().await.unwrap();
 
@@ -180,10 +179,10 @@ fn handle_post_cmd<'a>(
         PostCommand::RunPrepare => {
             with_settings(
                 |settings| prepare_template(template, settings),
-                dsettings.clone(),
+                dsettings,
                 &mut futs,
                 &mut abort_handles,
-                sink.clone(),
+                sink,
             );
         }
     }
@@ -197,7 +196,7 @@ fn with_settings<'a, T: Future<Output = PostCommand> + Send + 'a>(
     sink: ExtEventSink,
 ) {
     if let Some(dsettings) = dsettings {
-        add_new_future(fut(dsettings.clone()), futs, abort_handles);
+        add_new_future(fut(dsettings), futs, abort_handles);
     } else {
         sink.submit_command(
             MSG_FROM_THREAD,

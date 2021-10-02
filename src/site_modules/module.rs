@@ -9,8 +9,8 @@ use druid::Data;
 use enum_dispatch::enum_dispatch;
 use serde::Serialize;
 use strum_macros::Display;
-use tokio::sync::{Mutex, MutexGuard};
 use tokio::sync::mpsc::Sender;
+use tokio::sync::{Mutex, MutexGuard};
 
 use fetcher2_macro::{login_locks, LoginLock};
 
@@ -61,8 +61,7 @@ impl Module {
         sender: Sender<Task>,
         dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
-        self.fetch_urls_impl(session, sender, dsettings)
-            .await
+        self.fetch_urls_impl(session, sender, dsettings).await
     }
 
     pub async fn folder_name(

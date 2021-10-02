@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::{Result, TError};
 use crate::error::TErrorKind;
+use crate::{Result, TError};
 
 pub fn unescape(str: &str) -> String {
     let mut r = String::new();

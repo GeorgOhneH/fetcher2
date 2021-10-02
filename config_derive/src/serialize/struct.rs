@@ -1,9 +1,8 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{self, token::Comma};
-use syn::Field;
 use syn::punctuated::Punctuated;
-
+use syn::Field;
+use syn::{self, token::Comma};
 
 use crate::utils::{gen_field_name_strs, gen_field_names};
 

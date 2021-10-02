@@ -94,7 +94,7 @@ pub fn gen_type(
         }
         ConfigType::Struct(path) => {
             let segment = &path.segments.iter().next().unwrap();
-            let generics =  match &segment.arguments {
+            let generics = match &segment.arguments {
                 PathArguments::AngleBracketed(inner) => quote! {::#inner},
                 _ => quote! {},
             };
@@ -110,7 +110,7 @@ pub fn gen_type(
         }
         ConfigType::CheckableStruct(path) => {
             let segment = &path.segments.iter().next().unwrap();
-            let generics =  match &segment.arguments {
+            let generics = match &segment.arguments {
                 PathArguments::AngleBracketed(inner) => quote! {::#inner},
                 _ => quote! {},
             };

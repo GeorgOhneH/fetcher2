@@ -5,21 +5,21 @@ use std::ops::Mul;
 use std::sync::Arc;
 use std::time::Duration;
 
-use druid::{Affine, Lens, LensExt, Rect, SingleUse, theme, Vec2, WidgetExt};
+use druid::im::Vector;
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::scroll_component::{ScrollComponent, ScrollbarsEnabled};
+use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
+use druid::{theme, Affine, Lens, LensExt, Rect, SingleUse, Vec2, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetId, WidgetPod,
 };
-use druid::im::Vector;
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
-use druid::scroll_component::{ScrollbarsEnabled, ScrollComponent};
-use druid::widget::{Axis, ClipBox, Label, Scroll, Viewport};
 use druid_widget_nursery::selectors;
 use itertools::Itertools;
 
 use crate::widgets::header::Header;
-use crate::widgets::tree::node::{OpenerFactory, TreeNode};
+use crate::widgets::tree::node::{OpenerFactory, TreeItemFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;
 use crate::widgets::tree::root::{TreeNodeRoot, TreeNodeRootWidget};
 
@@ -40,6 +40,7 @@ enum SelectUpdateMode {
 
 pub type NodeIndex = Vec<usize>;
 pub type DataNodeIndex = Vector<usize>;
+type ActivateFn<T> = Box<dyn Fn(&mut EventCtx, &mut T, &Env, &NodeIndex)>;
 
 pub struct Tree<R, T, L, S, const N: usize>
 where
@@ -53,7 +54,7 @@ where
     selected_lens: S,
     selection_mode: SelectionMode,
 
-    on_activate_fn: Option<Box<dyn Fn(&mut EventCtx, &mut R, &Env, &NodeIndex)>>,
+    on_activate_fn: Option<ActivateFn<R>>,
 }
 
 /// Tree Implementation
@@ -66,13 +67,12 @@ where
 {
     pub fn new(
         header_widgets: [impl Widget<R> + 'static; N],
-        make_widgets: [Arc<dyn Fn() -> Box<dyn Widget<T>>>; N],
+        make_widgets: TreeItemFactory<T, N>,
         expand_lens: L,
         selected_lens: S,
     ) -> Self {
         let el = expand_lens.clone();
-        let make_opener: Arc<Box<OpenerFactory<T>>> =
-            Arc::new(Box::new(move || Box::new(make_wedge(el.clone()))));
+        let make_opener: Arc<OpenerFactory<T>> = Arc::new(move || Box::new(make_wedge(el.clone())));
         let header = Header::columns(header_widgets).draggable(true);
         let constrains = header.constrains();
 
@@ -139,7 +139,7 @@ where
         }
     }
 
-    fn update_selection(&mut self, new_node: &NodeIndex, mode: SelectUpdateMode) -> bool {
+    fn update_selection(&mut self, new_node: &[usize], mode: SelectUpdateMode) -> bool {
         let current_selected = self.root_node.widget().child().get_selected();
         match mode {
             SelectUpdateMode::Single => {
@@ -154,12 +154,12 @@ where
                         .node_mut(selected_child_idx);
                     node.selected = false;
                 }
-                let node = self.root_node.widget_mut().child_mut().node_mut(&new_node);
+                let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
                 node.selected = true;
                 true
             }
             SelectUpdateMode::Add => {
-                if current_selected.contains(new_node) {
+                if current_selected.iter().any(|idx| idx == new_node) {
                     return false;
                 }
                 let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
@@ -167,7 +167,7 @@ where
                 true
             }
             SelectUpdateMode::Sub => {
-                if !current_selected.contains(new_node) {
+                if !current_selected.iter().any(|idx| idx == new_node) {
                     return false;
                 }
                 let node = self.root_node.widget_mut().child_mut().node_mut(new_node);
@@ -190,11 +190,10 @@ where
     S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
-        let _t = std::time::Instant::now();
         self.root_node.event(ctx, event, data, env);
 
         let header_offset = self.header_offset();
-        if self.header.widget_mut().viewport_origin().x != header_offset {
+        if self.header.widget_mut().viewport_origin().x - header_offset > f64::EPSILON {
             ctx.request_layout()
         }
         self.header
@@ -340,7 +339,7 @@ where
     }
 }
 
-fn is_selected_eq(vec: &Vec<NodeIndex>, vector: &Vector<DataNodeIndex>) -> bool {
+fn is_selected_eq(vec: &[NodeIndex], vector: &Vector<DataNodeIndex>) -> bool {
     if vec.len() != vector.len() {
         return false;
     }

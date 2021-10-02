@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{self, Field, LitStr, punctuated::Punctuated, token::Comma};
+use syn::{self, punctuated::Punctuated, token::Comma, Field, LitStr};
 
-use crate::config_type::{ConfigType, parse_type};
+use crate::config_type::{parse_type, ConfigType};
 use crate::update_app::utils::gen_set;
 
 pub fn gen_struct_update_app_fn(fields: &Punctuated<Field, Comma>) -> TokenStream {

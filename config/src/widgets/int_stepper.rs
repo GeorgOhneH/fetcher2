@@ -16,10 +16,10 @@
 
 use std::time::Duration;
 
-use druid::{Point, Rect, theme, TimerToken};
 use druid::kurbo::BezPath;
 use druid::piet::{LinearGradient, RenderContext, UnitPoint};
 use druid::widget::prelude::*;
+use druid::{theme, Point, Rect, TimerToken};
 
 // Delay until stepper starts automatically changing valued when one of the button is held down.
 const STEPPER_REPEAT_DELAY: Duration = Duration::from_millis(500);
@@ -202,11 +202,10 @@ impl Widget<Option<isize>> for IntStepper {
         _data: &Option<isize>,
         env: &Env,
     ) -> Size {
-        let size = bc.constrain(Size::new(
+        bc.constrain(Size::new(
             env.get(theme::BASIC_WIDGET_HEIGHT),
             env.get(theme::BORDERED_WIDGET_HEIGHT),
-        ));
-        size
+        ))
     }
 
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Option<isize>, env: &Env) {

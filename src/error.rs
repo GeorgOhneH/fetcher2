@@ -70,20 +70,8 @@ pub enum TErrorKind {
     #[error("Serde Error")]
     SerdeError(#[from] ron::Error),
 
-    #[error("Utf8 Error")]
-    Utf8Error(#[from] std::string::FromUtf8Error),
-
     #[error("Config Error")]
     ConfigError(#[from] config::ConfigError),
-
-    #[error("Join Error")]
-    JoinError(#[from] tokio::task::JoinError),
-
-    #[error("Send Error")]
-    SendError(#[from] tokio::sync::mpsc::error::SendError<Task>),
-
-    #[error("Druid ExtEvent Error")]
-    ExtEventError(#[from] ExtEventError),
 }
 
 pub trait TErrorFast<T> {

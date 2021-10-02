@@ -2,13 +2,13 @@ use std::cmp::Ordering;
 use std::f64;
 use std::marker::PhantomData;
 
-use druid::{LensExt, RenderContext, theme, WidgetExt};
-use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
-    PaintCtx, UpdateCtx, Widget, widget::Axis, WidgetPod,
-};
 use druid::kurbo::{Point, Rect, Size};
 use druid::widget::ListIter;
+use druid::{theme, LensExt, RenderContext, WidgetExt};
+use druid::{
+    widget::Axis, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle,
+    LifeCycleCtx, PaintCtx, UpdateCtx, Widget, WidgetPod,
+};
 
 enum UpdateSource {
     Event(Option<usize>),
@@ -170,10 +170,10 @@ where
             ctx.children_changed();
         }
 
-        if self.currently_selected() != self.selected_lens.get(data) {
-            if self.update_selection(self.selected_lens.get(data)) {
-                ctx.request_paint();
-            }
+        if self.currently_selected() != self.selected_lens.get(data)
+            && self.update_selection(self.selected_lens.get(data))
+        {
+            ctx.request_paint();
         }
     }
 
@@ -268,14 +268,12 @@ impl<T: Data> Widget<T> for ListItem<T> {
             } else {
                 ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
             }
+        } else if self.selected {
+            ctx.fill(rect, &env.get(theme::PRIMARY_DARK));
+        } else if ctx.is_hot() {
+            ctx.fill(rect, &env.get(theme::PRIMARY_LIGHT));
         } else {
-            if self.selected {
-                ctx.fill(rect, &env.get(theme::PRIMARY_DARK));
-            } else if ctx.is_hot() {
-                ctx.fill(rect, &env.get(theme::PRIMARY_LIGHT));
-            } else {
-                ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
-            }
+            ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
         }
         self.child.paint(ctx, data, env)
     }

@@ -1,31 +1,31 @@
-use std::{fs, io};
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::fs::{DirEntry, Metadata};
 use std::ops::Index;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime};
+use std::{fs, io};
 
 use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, Select, Sender};
+use druid::im::{OrdMap, Vector};
+use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid::im::{OrdMap, Vector};
-use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
-use notify::{Config, EventKind, recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
-use crate::Result;
-use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
+use crate::widgets::tree::{DataNodeIndex, Tree};
+use crate::Result;
 
 selectors! {
     NEW_ROOT: SingleUse<EntryRoot>,
@@ -36,15 +36,7 @@ fn find_child_by_name(children: &Vector<Entry>, name: &str) -> Option<usize> {
     let all: Vec<_> = children
         .iter()
         .enumerate()
-        .filter_map(
-            |(i, child)| {
-                if &child.name == name {
-                    Some(i)
-                } else {
-                    None
-                }
-            },
-        )
+        .filter_map(|(i, child)| if child.name == name { Some(i) } else { None })
         .collect();
     match all.len() {
         0 => None,
@@ -89,7 +81,7 @@ impl UpdateData {
             created: metadata
                 .created()
                 .map(format_time)
-                .unwrap_or("".to_string()),
+                .unwrap_or_else(|_| "".to_string()),
         }
     }
 }
@@ -145,7 +137,7 @@ impl Entry {
                 created: meta_data
                     .created()
                     .map(format_time)
-                    .unwrap_or("".to_string()),
+                    .unwrap_or_else(|_| "".to_string()),
                 children: Vector::new(),
                 path: Arc::new(entry.path()),
                 expanded: false,
@@ -162,7 +154,7 @@ impl Entry {
                 created: meta_data
                     .created()
                     .map(format_time)
-                    .unwrap_or("".to_string()),
+                    .unwrap_or_else(|_| "".to_string()),
                 children,
                 path: Arc::new(entry.path()),
                 expanded: false,
@@ -173,7 +165,7 @@ impl Entry {
     }
 
     fn update_data(&mut self, ty: Type, data: UpdateData) -> bool {
-        if &self.ty == &ty && &self.size == &data.size && &self.created == &data.created {
+        if self.ty == ty && self.size == data.size && self.created == data.created {
             return false;
         }
         self.ty = ty;
@@ -193,7 +185,7 @@ impl Entry {
                 .unwrap()
                 .update_data(ty, data),
             (1, None) => {
-                let path = Path::join(self.path.as_path(), components[0]).to_path_buf();
+                let path = Path::join(self.path.as_path(), components[0]);
                 self.children
                     .insert_ord(Entry::new(name, ty, data.size, data.created, path));
                 true
@@ -205,7 +197,7 @@ impl Entry {
                     .update(&components[1..], ty, data)
             }
             (_, None) => {
-                let path = Path::join(self.path.as_path(), components[0]).to_path_buf();
+                let path = Path::join(self.path.as_path(), components[0]);
                 let mut child = Entry::new(
                     name,
                     Type::Folder,
@@ -270,14 +262,14 @@ impl EntryRoot {
         })
     }
 
-    pub fn build(path: &PathBuf) -> io::Result<Self> {
+    pub fn build(path: &Path) -> io::Result<Self> {
         let mut children = fs::read_dir(&path)?
             .map(|child_entry| Entry::build(&child_entry?))
             .collect::<io::Result<Vector<_>>>()?;
         children.sort();
         Ok(Self {
             children,
-            path: Some(path.clone()),
+            path: Some(path.to_owned()),
             selected: Vector::new(),
         })
     }
@@ -299,12 +291,7 @@ impl EntryRoot {
         }
     }
 
-    fn _update(
-        &mut self,
-        components: &[&OsStr],
-        ty: Type,
-        data: UpdateData,
-    ) -> bool {
+    fn _update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) -> bool {
         let name = components[0].to_string_lossy().to_string();
         let child_idx = find_child_by_name(&self.children, name.as_str());
         match (components.len(), child_idx) {
@@ -315,7 +302,7 @@ impl EntryRoot {
                 .unwrap()
                 .update_data(ty, data),
             (1, None) => {
-                let path = self.path.as_ref().unwrap().as_path().join(components[0]).to_path_buf();
+                let path = self.path.as_ref().unwrap().as_path().join(components[0]);
                 self.children
                     .insert_ord(Entry::new(name, ty, data.size, data.created, path));
                 true
@@ -327,7 +314,7 @@ impl EntryRoot {
                     .update(&components[1..], ty, data)
             }
             (_, None) => {
-                let path = self.path.as_ref().unwrap().as_path().join(components[0]).to_path_buf();
+                let path = self.path.as_ref().unwrap().as_path().join(components[0]);
                 let mut child = Entry::new(
                     name,
                     Type::Folder,
@@ -587,7 +574,7 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
 
 fn get_parent_exit(path: &Path) -> Option<&Path> {
     if path.exists() {
-        return Some(path);
+        Some(path)
     } else {
         path.parent().map(get_parent_exit).flatten()
     }

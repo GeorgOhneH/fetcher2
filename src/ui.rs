@@ -1,4 +1,3 @@
-use std::{io, thread};
 use std::any::Any;
 use std::cmp::max;
 use std::collections::HashMap;
@@ -12,18 +11,12 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
+use std::{io, thread};
 
-use config::{CBool, CInteger, CKwarg, Config, CPath, CString, CType};
-use config::ConfigEnum;
 use config::CStruct;
+use config::ConfigEnum;
 use config::State;
-use druid::{
-    AppDelegate, AppLauncher, Application, Color, Command, commands, Data, DelegateCtx, Env, Event,
-    EventCtx, ExtEventSink, FileInfo, Handled, im, LayoutCtx, Lens, LifeCycle, LifeCycleCtx,
-    LocalizedString, menu, Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector,
-    SingleUse, Size, SysMods, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId,
-    WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel,
-};
+use config::{CBool, CInteger, CKwarg, CPath, CString, CType, Config};
 use druid::im::{vector, Vector};
 use druid::lens::{self, InArc, LensExt};
 use druid::text::{Formatter, ParseFormatter, Selection, Validation, ValidationError};
@@ -31,30 +24,37 @@ use druid::widget::{
     Button, Checkbox, Controller, CrossAxisAlignment, Either, Flex, Label, LineBreaking, List,
     Maybe, Padding, Scroll, SizedBox, Spinner, Switch, TextBox, ViewSwitcher,
 };
+use druid::{
+    commands, im, menu, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx,
+    Env, Event, EventCtx, ExtEventSink, FileInfo, Handled, LayoutCtx, Lens, LifeCycle,
+    LifeCycleCtx, LocalizedString, Menu, MenuItem, MouseButton, PaintCtx, Point, Screen, Selector,
+    SingleUse, Size, SysMods, Target, UnitPoint, UpdateCtx, Vec2, Widget, WidgetExt, WidgetId,
+    WidgetPod, WindowConfig, WindowDesc, WindowId, WindowLevel,
+};
 use druid_widget_nursery::WidgetExt as _;
 use flume;
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use log::{debug, error, info, Level, log_enabled};
+use log::{debug, error, info, log_enabled, Level};
 use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
 
 use crate::controller::{
-    EditController, MainController, Msg, MSG_THREAD, OPEN_EDIT, SettingController,
-    TemplateController,
+    EditController, MainController, Msg, SettingController, TemplateController, MSG_THREAD,
+    OPEN_EDIT,
 };
 use crate::cstruct_window::{c_option_window, CStructBuffer};
-use crate::data::AppData;
 use crate::data::template_info::TemplateInfoSelect;
+use crate::data::AppData;
 use crate::edit_window::edit_window;
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::template::communication::RawCommunication;
-use crate::template::node_type::NodeTypeData;
 use crate::template::node_type::site::TaskMsg;
+use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
+use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::history_tree::History;
@@ -159,7 +159,9 @@ fn template_ui() -> impl Widget<AppData> {
     Flex::column()
         .with_flex_child(
             Split::rows(
-                TemplateData::build_widget().border(Color::WHITE, 1.).lens(AppData::template),
+                TemplateData::build_widget()
+                    .border(Color::WHITE, 1.)
+                    .lens(AppData::template),
                 info_view_ui(),
             )
             .draggable(true)
@@ -204,13 +206,21 @@ fn info_folder() -> impl Widget<AppData> {
                 .map(|path| settings.download.save_path.join(path)),
             _ => None,
         },
-    ).controller(FolderController)
+    )
+    .controller(FolderController)
 }
 
 struct FolderController;
 
-impl Controller<AppData, FileWatcher<AppData>> for FolderController  {
-    fn event(&mut self, child: &mut FileWatcher<AppData>, ctx: &mut EventCtx, event: &Event, data: &mut AppData, env: &Env) {
+impl Controller<AppData, FileWatcher<AppData>> for FolderController {
+    fn event(
+        &mut self,
+        child: &mut FileWatcher<AppData>,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut AppData,
+        env: &Env,
+    ) {
         dbg!(event);
         if TemplateInfoSelect::Folder == data.template_info_select {
             dbg!("Folder")

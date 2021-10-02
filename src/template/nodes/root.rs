@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use async_recursion::async_recursion;
 use config::{Config, ConfigEnum};
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use druid::im::Vector;
+use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use futures::future::{join_all, try_join_all};
 use futures::prelude::*;
 use serde::Deserialize;
@@ -22,7 +22,7 @@ use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::widgets::tree::NodeIndex;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RawRootNode {
     pub children: Vec<RawNode>,
 }

@@ -1,7 +1,7 @@
-use druid::{Env, Event, EventCtx, im, Selector, Widget};
-use druid::{Data, Lens, WidgetExt};
 use druid::im::Vector;
 use druid::widget::{Button, Controller, Flex, ListIter};
+use druid::{im, Env, Event, EventCtx, Selector, Widget};
+use druid::{Data, Lens, WidgetExt};
 
 use crate::{CType, State};
 

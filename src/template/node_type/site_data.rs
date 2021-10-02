@@ -3,8 +3,8 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Mutex, RwLock};
 use std::sync::Arc;
+use std::sync::{Mutex, RwLock};
 use std::task::Context;
 use std::time::Duration;
 
@@ -12,22 +12,22 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use config::{Config, ConfigEnum};
 use dashmap::mapref::entry::Entry;
-use druid::{Data, ExtEventSink, im, Widget};
 use druid::im::Vector;
+use druid::{im, Data, ExtEventSink, Widget};
 use enum_dispatch::enum_dispatch;
+use futures::future::try_join_all;
+use futures::prelude::*;
+use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
+use futures::task::Poll;
 use futures::{
     future::{Fuse, FusedFuture, FutureExt},
     pin_mut, select,
     stream::{FusedStream, Stream, StreamExt},
 };
-use futures::future::try_join_all;
-use futures::prelude::*;
-use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
-use futures::task::Poll;
 use lazy_static::lazy_static;
 use regex::Regex;
-use reqwest::{Request, RequestBuilder};
 use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{Request, RequestBuilder};
 use serde::Serialize;
 use sha1::{Digest, Sha1};
 use tokio::io::AsyncWriteExt;
@@ -43,12 +43,12 @@ use crate::site_modules::Module;
 use crate::site_modules::ModuleExt;
 use crate::task::Task;
 use crate::template::communication::Communication;
-use crate::template::DownloadArgs;
 use crate::template::node_type::site::{MsgKind, TaskMsg};
-use crate::template::node_type::Site;
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
+use crate::template::node_type::Site;
 use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
+use crate::template::DownloadArgs;
 use crate::utils::spawn_drop;
 
 #[derive(Debug, Clone, Data)]
@@ -85,10 +85,7 @@ pub enum SiteEvent {
 
 impl SiteEvent {
     pub fn is_start(&self) -> bool {
-        match self {
-            Self::Run(RunEvent::Start) => true,
-            _ => false,
-        }
+        matches!(self, Self::Run(RunEvent::Start))
     }
 }
 
@@ -220,6 +217,12 @@ pub struct SiteState {
     pub download: DownloadState,
 }
 
+impl Default for SiteState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SiteState {
     pub fn new() -> Self {
         Self {
@@ -291,7 +294,7 @@ impl LoginState {
     pub fn current_state(&self) -> CurrentState {
         if self.count != 0 {
             CurrentState::Active("Logging in".into())
-        } else if self.errs.len() != 0 {
+        } else if !self.errs.is_empty() {
             CurrentState::Error("Error while logging in".into())
         } else {
             CurrentState::Idle
@@ -332,7 +335,7 @@ impl FetchState {
     pub fn current_state(&self) -> CurrentState {
         if self.count != 0 {
             CurrentState::Active("Fetching Urls".into())
-        } else if self.errs.len() != 0 {
+        } else if !self.errs.is_empty() {
             CurrentState::Error("Error while fetching Urls".into())
         } else {
             CurrentState::Idle
@@ -402,7 +405,7 @@ impl DownloadState {
             CurrentState::Active(
                 format!("Processing {}/{}", self.total - self.count, self.total).into(),
             )
-        } else if self.errs.len() != 0 {
+        } else if !self.errs.is_empty() {
             CurrentState::Error("Error while downloading files".into())
         } else {
             CurrentState::Idle

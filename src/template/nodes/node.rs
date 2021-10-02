@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use async_recursion::async_recursion;
 use config::{Config, ConfigEnum};
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use druid::im::Vector;
+use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
 use futures::future::{join_all, try_join_all};
 use futures::prelude::*;
 use serde::Deserialize;
@@ -16,13 +16,13 @@ use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
 use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::node_type::site_data::SiteEvent;
+use crate::template::node_type::{NodeType, NodeTypeData};
 use crate::template::nodes::node_data::{NodeData, NodeState};
 use crate::template::nodes::node_edit_data::NodeEditData;
-use crate::TError;
 use crate::utils::spawn_drop;
 use crate::widgets::tree::NodeIndex;
+use crate::TError;
 
 #[derive(Debug, PartialEq)]
 pub enum Status {
@@ -30,7 +30,7 @@ pub enum Status {
     Failure,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RawNode {
     pub ty: NodeType,
     pub children: Vec<RawNode>,
@@ -97,7 +97,7 @@ impl Node {
             match PathEvent::wrapper(
                 async {
                     self.ty
-                        .path_segment(&session, &dsettings)
+                        .path_segment(session, &dsettings)
                         .await
                         .map(|segment| {
                             if segment.is_absolute() {
@@ -237,10 +237,7 @@ pub enum PathEvent {
 
 impl PathEvent {
     pub fn is_start(&self) -> bool {
-        match self {
-            Self::Start | Self::Cached(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Start | Self::Cached(_))
     }
     pub async fn wrapper(
         inner_fn: impl Future<Output = Result<PathBuf>>,

@@ -2,8 +2,7 @@
 #![feature(backtrace)]
 #![feature(int_roundings)]
 #![feature(box_patterns)]
-
-
+#![allow(clippy::new_without_default)]
 
 pub use config_derive::{Config, ConfigEnum};
 
@@ -28,4 +27,3 @@ pub trait ConfigEnum: Sized + Send {
     fn builder() -> CEnumBuilder;
     fn update_app(self, app: &mut CEnum) -> Result<(), InvalidError>;
 }
-

@@ -1,8 +1,8 @@
-use druid::{Data, Lens, Widget, WidgetExt};
 use druid::widget::{Flex, Label, Maybe};
+use druid::{Data, Lens, Widget, WidgetExt};
 
-use crate::{InvalidError, State};
 use crate::widgets::IntStepper;
+use crate::{InvalidError, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CInteger {

@@ -9,12 +9,12 @@ use serde::Serialize;
 use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
-use crate::template::node_type::folder::{FolderData, FolderEditData};
 pub use crate::template::node_type::folder::Folder;
-pub use crate::template::node_type::site::{DownloadArgs, Extensions};
+use crate::template::node_type::folder::{FolderData, FolderEditData};
 pub use crate::template::node_type::site::Mode;
 pub use crate::template::node_type::site::Site;
 pub use crate::template::node_type::site::SiteStorage;
+pub use crate::template::node_type::site::{DownloadArgs, Extensions};
 use crate::template::node_type::site_data::{SiteData, SiteState};
 use crate::template::node_type::site_edit_data::SiteEditData;
 
@@ -24,7 +24,7 @@ pub mod site_data;
 pub mod site_edit_data;
 mod utils;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NodeType {
     Folder(Folder),
     Site(Arc<Site>),

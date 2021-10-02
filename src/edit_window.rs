@@ -3,34 +3,34 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use config::{CEnum, ConfigEnum};
-use config::Config;
 use config::CStruct;
+use config::Config;
+use config::{CEnum, ConfigEnum};
+use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
+use druid::im::Vector;
+use druid::widget::prelude::*;
+use druid::widget::{Button, Controller, ControllerHost, Flex, Label, WidgetWrapper};
 use druid::{
-    Command, commands, FileDialogOptions, lens, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
+    commands, lens, Command, FileDialogOptions, Menu, MenuItem, SingleUse, UnitPoint, WindowId,
 };
 use druid::{InternalEvent, LensExt};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
-use druid::commands::{CLOSE_WINDOW, SAVE_FILE, SAVE_FILE_AS};
-use druid::im::Vector;
-use druid::widget::{Button, Controller, ControllerHost, Flex, Label, WidgetWrapper};
-use druid::widget::prelude::*;
 use druid_widget_nursery::selectors;
 use serde::{Deserialize, Serialize};
 
 use crate::controller::{Msg, MSG_THREAD};
-use crate::cstruct_window::{APPLY, c_option_window};
-use crate::data::AppData;
+use crate::cstruct_window::{c_option_window, APPLY};
 use crate::data::edit::EditWindowData;
 use crate::data::win::WindowState;
+use crate::data::AppData;
 use crate::template::communication::RawCommunication;
 use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::Template;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::template::Template;
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 
 selectors! {
     SAVE_EDIT,
@@ -167,13 +167,7 @@ impl Widget<EditWindowData> for DataBuffer {
     }
 }
 
-pub struct NodeController {}
-
-impl NodeController {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+pub struct NodeController;
 
 impl<L, S, const N: usize>
     Controller<RootNodeEditData, Tree<RootNodeEditData, NodeEditData, L, S, N>> for NodeController
@@ -191,7 +185,7 @@ where
     ) {
         match event {
             Event::WindowConnected => {
-                if data.children.len() == 0 {
+                if data.children.is_empty() {
                     data.children.push_back(NodeEditData::new(true))
                 }
             }
@@ -205,7 +199,7 @@ where
                 ctx.set_handled();
                 let idx = cmd.get_unchecked(DELETE_NODE);
                 data.remove(idx);
-                if data.children.len() == 0 {
+                if data.children.is_empty() {
                     data.children.push_back(NodeEditData::new(true))
                 }
                 ctx.request_update();
@@ -270,7 +264,7 @@ fn make_node_menu(idx: NodeIndex) -> Menu<AppData> {
     let idx2 = idx.clone();
     let idx3 = idx.clone();
     let idx4 = idx.clone();
-    let idx5 = idx.clone();
+    let idx5 = idx;
     Menu::empty()
         .entry(
             MenuItem::new("Edit").on_activate(move |ctx, _data: &mut AppData, _env| {
@@ -316,7 +310,7 @@ fn tree() -> impl Widget<TemplateEditData> {
     .on_activate(|ctx, _data: &mut RootNodeEditData, _env, idx| {
         ctx.submit_command(OPEN_NODE.with(idx.clone()));
     })
-    .controller(NodeController::new())
+    .controller(NodeController)
     .lens(TemplateEditData::root)
     .controller(SaveStateController)
 }
@@ -400,20 +394,23 @@ fn _edit_window() -> impl Widget<EditWindowData> {
         )
 }
 
-fn node_window(idx: &NodeIndex) -> impl Widget<EditWindowData> {
+fn node_window(idx: &[usize]) -> impl Widget<EditWindowData> {
     c_option_window(
         Some("Node"),
-        Some(Box::new(|_ctx, old_data, data: &mut NodeTypeEditData, _| {
-            if let Some(old) = old_data {
-                if !old.same(data) {
-                    data.invalidate_cache();
+        Some(Box::new(
+            |_ctx, old_data, data: &mut NodeTypeEditData, _| {
+                if let Some(old) = old_data {
+                    if !old.same(data) {
+                        data.invalidate_cache();
+                    }
                 }
-            }
-        })),
+            },
+        )),
     )
     .lens(
-        EditWindowData::edit_template
-            .then(TemplateEditData::root.then(NodeLens::new(idx.clone()).then(NodeEditData::ty))),
+        EditWindowData::edit_template.then(
+            TemplateEditData::root.then(NodeLens::new(idx.to_owned()).then(NodeEditData::ty)),
+        ),
     )
     .controller(NodeWindowSaveController)
 }
