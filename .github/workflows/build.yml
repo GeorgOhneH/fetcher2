@@ -137,7 +137,6 @@ jobs:
       - version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
       - id: get_repository_name
         run: echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
         shell: bash

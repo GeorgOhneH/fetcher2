@@ -63,8 +63,6 @@ use crate::widgets::tree::Tree;
 use crate::widgets::widget_ext::WidgetExt as _;
 
 pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> {
-    let mut base = Menu::empty();
-
     let mut open_recent = Menu::new("Open Recent");
     for path in data.recent_templates.iter() {
         if let Some(file_name) = path.file_name() {
@@ -83,8 +81,8 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
     }
 
     #[cfg(target_os = "macos")]
-    {
-        base = Menu::new(LocalizedString::new(""))
+    let base = {
+        Menu::new(LocalizedString::new(""))
             .entry(
                 Menu::new(LocalizedString::new("macos-menu-application-menu"))
                     .entry(menu::sys::mac::application::preferences())
@@ -103,11 +101,11 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
                             .command(OPEN_EDIT)
                             .hotkey(SysMods::Cmd, "e"),
                     ),
-            );
-    }
+            )
+    };
     #[cfg(any(target_os = "windows", target_os = "linux"))]
-    {
-        base = base.entry(
+    let base = {
+        Menu::empty().entry(
             Menu::new("File")
                 .entry(menu::sys::win::file::new())
                 .entry(menu::sys::win::file::open())
@@ -124,8 +122,8 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
                         .command(commands::SHOW_PREFERENCES)
                         .hotkey(SysMods::Cmd, "d"),
                 ),
-        );
-    }
+        )
+    };
 
     base.rebuild_on(|old_data, data, _env| old_data.recent_templates != data.recent_templates)
 }
