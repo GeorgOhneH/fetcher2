@@ -67,7 +67,6 @@ jobs:
       current_version: ${{ steps.current_version.outputs.CURRENT_VERSION }}
     steps:
       - uses: actions/checkout@master
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - id: latest_version
         run: echo ::set-output name=LATEST_VERSION::$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')
         shell: bash
