@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, TokenStream};
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{self, DataEnum, Fields, FieldsUnnamed, LitByteStr, LitStr};
+use syn::{self, DataEnum, Fields, FieldsUnnamed, LitStr};
 
 pub fn gen_se_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
     let enum_name_str = LitStr::new(&enum_name.to_string(), enum_name.span());

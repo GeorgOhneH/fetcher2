@@ -1,13 +1,13 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{self, LitStr, token::Comma};
+use syn::{self, token::Comma};
 use syn::Field;
 use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
+
 
 use crate::utils::{gen_field_name_strs, gen_field_names};
 
-pub fn gen_se(fields: &Punctuated<Field, Comma>, name: &Ident) -> TokenStream {
+pub fn gen_se(fields: &Punctuated<Field, Comma>, _name: &Ident) -> TokenStream {
     let field_names = gen_field_names(fields);
     let field_name_strings = gen_field_name_strs(fields);
     let num_fields = field_names.len();

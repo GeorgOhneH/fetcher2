@@ -2,15 +2,15 @@ use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    self, AngleBracketedGenericArguments, Attribute, Data, DataStruct, DeriveInput,
-    Field, Fields, GenericArgument, Generics, Ident, Lifetime, Path, PathArguments, punctuated::Punctuated,
+    self, AngleBracketedGenericArguments,
+    Field, GenericArgument, Generics, Ident, Lifetime, Path, PathArguments, punctuated::Punctuated,
     token::Comma, TraitBound, TypeParamBound,
 };
-use syn::{DataEnum, LifetimeDef, PathSegment};
+use syn::{LifetimeDef, PathSegment};
 use syn::GenericParam;
 use syn::LitStr;
 use syn::spanned::Spanned;
-use syn::TraitBoundModifier;
+
 
 use crate::config_type::{ConfigType, parse_type};
 
