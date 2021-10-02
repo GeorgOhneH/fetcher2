@@ -80,7 +80,6 @@ jobs:
     needs:
       - version
       - lints
-      - test
       - check
     if: (needs.version.outputs.latest_release != needs.version.outputs.current_version)
     runs-on: '${{ matrix.os }}'
@@ -98,8 +97,6 @@ jobs:
             suffix: .exe
     steps:
       - uses: actions/checkout@master
-        with:
-          lfs: true
       - id: get_repository_name
         run: echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
         shell: bash
