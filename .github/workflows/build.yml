@@ -68,14 +68,14 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - id: latest_version
-        run: echo ::set-output name=LATEST_VERSION::$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')
+        run: echo ::set-output name=LATEST_VERSION::$(curl -s https://api.github.com/repos/GeorgOhneH/fetcher2/releases/latest | jq -r '.tag_name')
         shell: bash
       - uses: actions-rs/cargo@v1
         with:
           command: install
           args: 'cargo-get'
       - id: current_version
-        run: echo ::set-output name=CURRENT_VERSION::$(cargo get version --pretty)")
+        run: echo ::set-output name=CURRENT_VERSION::$(cargo get version --pretty)
         shell: bash
   build:
     needs:
