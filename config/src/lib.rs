@@ -3,7 +3,7 @@
 #![feature(int_roundings)]
 #![feature(box_patterns)]
 
-use std::fmt::Debug;
+
 
 pub use config_derive::{Config, ConfigEnum};
 

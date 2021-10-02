@@ -1,13 +1,13 @@
-use druid::{Color, im};
+use druid::{Color};
 use druid::{
     BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx,
 };
-use druid::{Data, Lens, Widget, WidgetExt};
-use druid::im::Vector;
-use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
+use druid::{Data, Widget};
 
-use crate::{CType, State};
+use druid::widget::{Label};
+
+
 
 pub struct WarningLabel<T> {
     label: Label<()>,

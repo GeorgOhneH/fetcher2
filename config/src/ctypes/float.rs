@@ -1,8 +1,8 @@
-use druid::{Data, Lens, Widget, WidgetExt};
-use druid::widget::{Flex, Label, Maybe, Stepper};
+use druid::{Data, Lens, Widget};
+use druid::widget::{Label};
 
 use crate::{InvalidError, State};
-use crate::widgets::IntStepper;
+
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CFloat {

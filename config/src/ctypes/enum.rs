@@ -5,7 +5,7 @@ use druid::{
 use druid::{Data, Lens};
 use druid::{Widget, WidgetExt, WidgetPod};
 use druid::im::{OrdMap, Vector};
-use druid::lens::Index;
+
 use druid::LensExt;
 use druid::Point;
 use druid::widget::{Flex, ListIter, Maybe};
