@@ -167,7 +167,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./fetcher2-x86_64-unknown-linux-gnu/fetcher2
+          asset_path: ./fetcher2-x86_64-unknown-linux-gnu/fetcher2_gui
           asset_name: fetcher2-x86_64-unknown-linux-gnu
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1.0.1
@@ -175,7 +175,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./fetcher2-x86_64-apple-darwin/fetcher2
+          asset_path: ./fetcher2-x86_64-apple-darwin/fetcher2_gui
           asset_name: fetcher2-x86_64-apple-darwin
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1.0.1
@@ -183,7 +183,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./fetcher2-x86_64-pc-windows-msvc/fetcher2.exe
+          asset_path: ./fetcher2-x86_64-pc-windows-msvc/fetcher2_gui.exe
           asset_name: fetcher2-x86_64-pc-windows-msvc.exe
           asset_content_type: application/octet-stream
 
@@ -192,6 +192,6 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./fetcher2-x86_64/
+          asset_path: ./fetcher2-x86_64/fetcher2-x86_64.dmg
           asset_name: fetcher2-x86_64.dmg
           asset_content_type: application/octet-stream
