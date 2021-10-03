@@ -1,27 +1,30 @@
-use std::cmp::Ordering;
-use std::ffi::OsStr;
-use std::fs::Metadata;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::thread;
-use std::time::SystemTime;
-use std::{fs, io};
-
-use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, Select, Sender};
-use druid::im::Vector;
+use druid::im::{OrdMap, Vector};
 use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid_widget_nursery::selectors;
-use notify::{RecursiveMode, Watcher};
+use druid_widget_nursery::{selectors, WidgetExt as _};
+use futures::SinkExt;
+use notify::{recommended_watcher, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::fs::{DirEntry, Metadata};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::channel;
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, SystemTime};
+use std::{fs, io};
 
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 use crate::widgets::tree::{DataNodeIndex, Tree};
+use crate::Result;
+use chrono::{DateTime, Local};
+use std::cmp::Ordering;
+use std::ffi::OsStr;
+use std::ops::Index;
 
 selectors! {
     NEW_ROOT: SingleUse<EntryRoot>,
@@ -32,7 +35,15 @@ fn find_child_by_name(children: &Vector<Entry>, name: &str) -> Option<usize> {
     let all: Vec<_> = children
         .iter()
         .enumerate()
-        .filter_map(|(i, child)| if child.name == name { Some(i) } else { None })
+        .filter_map(
+            |(i, child)| {
+                if &child.name == name {
+                    Some(i)
+                } else {
+                    None
+                }
+            },
+        )
         .collect();
     match all.len() {
         0 => None,
@@ -77,7 +88,7 @@ impl UpdateData {
             created: metadata
                 .created()
                 .map(format_time)
-                .unwrap_or_else(|_| "".to_string()),
+                .unwrap_or("".to_string()),
         }
     }
 }
@@ -133,7 +144,7 @@ impl Entry {
                 created: meta_data
                     .created()
                     .map(format_time)
-                    .unwrap_or_else(|_| "".to_string()),
+                    .unwrap_or("".to_string()),
                 children: Vector::new(),
                 path: Arc::new(entry.path()),
                 expanded: false,
@@ -150,7 +161,7 @@ impl Entry {
                 created: meta_data
                     .created()
                     .map(format_time)
-                    .unwrap_or_else(|_| "".to_string()),
+                    .unwrap_or("".to_string()),
                 children,
                 path: Arc::new(entry.path()),
                 expanded: false,
@@ -161,73 +172,13 @@ impl Entry {
     }
 
     fn update_data(&mut self, ty: Type, data: UpdateData) -> bool {
-        if self.ty == ty && self.size == data.size && self.created == data.created {
+        if &self.ty == &ty && &self.size == &data.size && &self.created == &data.created {
             return false;
         }
         self.ty = ty;
         self.size = data.size;
         self.created = data.created;
         true
-    }
-
-    fn update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) -> bool {
-        let name = components[0].to_string_lossy().to_string();
-        let child_idx = find_child_by_name(&self.children, name.as_str());
-        match (components.len(), child_idx) {
-            (0, _) => unreachable!(),
-            (1, Some(child_idx)) => self
-                .children
-                .get_mut(child_idx)
-                .unwrap()
-                .update_data(ty, data),
-            (1, None) => {
-                let path = Path::join(self.path.as_path(), components[0]);
-                self.children
-                    .insert_ord(Entry::new(name, ty, data.size, data.created, path));
-                true
-            }
-            (_, Some(child_idx)) => {
-                self.children
-                    .get_mut(child_idx)
-                    .unwrap()
-                    .update(&components[1..], ty, data)
-            }
-            (_, None) => {
-                let path = Path::join(self.path.as_path(), components[0]);
-                let mut child = Entry::new(
-                    name,
-                    Type::Folder,
-                    "".to_string(),
-                    format_time(SystemTime::now()),
-                    path,
-                );
-                child.update(&components[1..], ty, data);
-                self.children.insert_ord(child);
-                true
-            }
-        }
-    }
-
-    fn remove(&mut self, components: &[&OsStr]) -> bool {
-        let name = components[0].to_string_lossy();
-        if let Some(to_remove) = find_child_by_name(&self.children, name.as_ref()) {
-            match components.len() {
-                0 => unreachable!(),
-                1 => {
-                    self.children.remove(to_remove);
-                    true
-                }
-                _ => {
-                    if let Some(child) = self.children.get_mut(to_remove) {
-                        child.remove(&components[1..])
-                    } else {
-                        false
-                    }
-                }
-            }
-        } else {
-            false
-        }
     }
 }
 
@@ -258,14 +209,14 @@ impl EntryRoot {
         })
     }
 
-    pub fn build(path: &Path) -> io::Result<Self> {
+    pub fn build(path: &PathBuf) -> io::Result<Self> {
         let mut children = fs::read_dir(&path)?
             .map(|child_entry| Entry::build(&child_entry?))
             .collect::<io::Result<Vector<_>>>()?;
         children.sort();
         Ok(Self {
             children,
-            path: Some(path.to_owned()),
+            path: Some(path.clone()),
             selected: Vector::new(),
         })
     }
@@ -279,68 +230,10 @@ impl EntryRoot {
                 return false;
             }
             match update {
-                EntryUpdate::CreateUpdate(ty, data) => self._update(&components, ty, data),
-                EntryUpdate::Remove => self.remove(&components),
-            }
-        } else {
-            false
-        }
-    }
-
-    fn _update(&mut self, components: &[&OsStr], ty: Type, data: UpdateData) -> bool {
-        let name = components[0].to_string_lossy().to_string();
-        let child_idx = find_child_by_name(&self.children, name.as_str());
-        match (components.len(), child_idx) {
-            (0, _) => unreachable!(),
-            (1, Some(child_idx)) => self
-                .children
-                .get_mut(child_idx)
-                .unwrap()
-                .update_data(ty, data),
-            (1, None) => {
-                let path = self.path.as_ref().unwrap().as_path().join(components[0]);
-                self.children
-                    .insert_ord(Entry::new(name, ty, data.size, data.created, path));
-                true
-            }
-            (_, Some(child_idx)) => {
-                self.children
-                    .get_mut(child_idx)
-                    .unwrap()
-                    .update(&components[1..], ty, data)
-            }
-            (_, None) => {
-                let path = self.path.as_ref().unwrap().as_path().join(components[0]);
-                let mut child = Entry::new(
-                    name,
-                    Type::Folder,
-                    "".to_string(),
-                    format_time(SystemTime::now()),
-                    path,
-                );
-                child.update(&components[1..], ty, data);
-                self.children.insert_ord(child);
-                true
-            }
-        }
-    }
-
-    fn remove(&mut self, components: &[&OsStr]) -> bool {
-        let name = components[0].to_string_lossy();
-        if let Some(to_remove) = find_child_by_name(&self.children, name.as_ref()) {
-            match components.len() {
-                0 => unreachable!(),
-                1 => {
-                    self.children.remove(to_remove);
-                    true
+                EntryUpdate::CreateUpdate(ty, data) => {
+                    update_children(&mut self.children, &components, ty, data, path)
                 }
-                _ => {
-                    if let Some(child) = self.children.get_mut(to_remove) {
-                        child.remove(&components[1..])
-                    } else {
-                        false
-                    }
-                }
+                EntryUpdate::Remove => remove_children(&mut self.children, &components),
             }
         } else {
             false
@@ -392,7 +285,7 @@ impl<T> FileWatcher<T> {
             EntryRoot::selected,
         )
         .sizes([300., 300., 300.])
-        .on_activate(|_ctx, root, _env, idx| {
+        .on_activate(|ctx, root, env, idx| {
             let node = root.node(idx);
             open::that_in_background(&*node.path);
         });
@@ -570,7 +463,7 @@ fn msg_thread(rx: Receiver<Msg>, widget_id: WidgetId, sink: ExtEventSink) {
 
 fn get_parent_exit(path: &Path) -> Option<&Path> {
     if path.exists() {
-        Some(path)
+        return Some(path);
     } else {
         path.parent().map(get_parent_exit).flatten()
     }
@@ -583,4 +476,76 @@ fn format_size(size: u64) -> String {
 fn format_time(time: SystemTime) -> String {
     let datetime: DateTime<Local> = time.into();
     datetime.format("%d.%m.%Y %T").to_string()
+}
+
+fn update_children(
+    children: &mut Vector<Entry>,
+    components: &[&OsStr],
+    ty: Type,
+    data: UpdateData,
+    path: &PathBuf,
+) -> bool {
+    let name = components[0].to_string_lossy().to_string();
+    let child_idx = find_child_by_name(children, name.as_str());
+    match (components.len(), child_idx) {
+        (0, _) => unreachable!(),
+        (1, Some(child_idx)) => children.get_mut(child_idx).unwrap().update_data(ty, data),
+        (1, None) => {
+            let path = path.as_path().join(components[0]).to_path_buf();
+            children.insert_ord(Entry::new(name, ty, data.size, data.created, path));
+            true
+        }
+        (_, Some(child_idx)) => {
+            let child = children.get_mut(child_idx).unwrap();
+
+            update_children(
+                &mut child.children,
+                &components[1..],
+                ty,
+                data,
+                &mut child.path,
+            )
+        }
+        (_, None) => {
+            let path = path.as_path().join(components[0]).to_path_buf();
+            let mut child = Entry::new(
+                name,
+                Type::Folder,
+                "".to_string(),
+                format_time(SystemTime::now()),
+                path,
+            );
+            update_children(
+                &mut child.children,
+                &components[1..],
+                ty,
+                data,
+                &mut child.path,
+            );
+            children.insert_ord(child);
+            true
+        }
+    }
+}
+
+fn remove_children(children: &mut Vector<Entry>, components: &[&OsStr]) -> bool {
+    let name = components[0].to_string_lossy();
+    if let Some(to_remove) = find_child_by_name(children, name.as_ref()) {
+        match components.len() {
+            0 => unreachable!(),
+            1 => {
+                children.remove(to_remove);
+                true
+            }
+            _ => {
+                if let Some(child) = children.get_mut(to_remove) {
+                    remove_children(&mut child.children, &components[1..])
+                } else {
+                    false
+                }
+            }
+        }
+    } else {
+        false
+    }
 }

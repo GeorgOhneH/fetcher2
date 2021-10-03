@@ -108,7 +108,7 @@ impl Site {
                     let handel: std::result::Result<_, JoinError> = handle;
                     handel.unwrap();
                 },
-                Some(task) = receiver.recv(), if futs.len() < 64 => {
+                Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
                     let handle = spawn_drop(
                         DownloadEvent::wrapper(
