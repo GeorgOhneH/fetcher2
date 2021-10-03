@@ -2,16 +2,17 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use config::Config;
 use druid::Data;
 use lazy_static::lazy_static;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use crate::settings::DownloadSettings;
+use config::Config;
+
 use crate::error::TErrorFast;
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::site_modules::aai_login::aai_login;
 use crate::site_modules::utils::remove_vz_id;
 use crate::site_modules::ModuleExt;

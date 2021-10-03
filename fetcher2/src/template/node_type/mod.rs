@@ -1,19 +1,17 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use config::{Config, ConfigEnum};
-use druid::Data;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::error::Result;
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 pub use crate::template::node_type::folder::Folder;
 pub use crate::template::node_type::site::Mode;
 pub use crate::template::node_type::site::Site;
 pub use crate::template::node_type::site::SiteStorage;
 pub use crate::template::node_type::site::{DownloadArgs, Extensions};
-use crate::settings::DownloadSettings;
 
 pub mod folder;
 pub mod site;

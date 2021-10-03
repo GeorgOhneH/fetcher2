@@ -3,20 +3,19 @@ use std::string::ToString;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use config::Config;
-use config::ConfigEnum;
 use druid::Data;
 use enum_dispatch::enum_dispatch;
-use serde::Serialize;
 use strum_macros::Display;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, MutexGuard};
 
+use config::Config;
+use config::ConfigEnum;
 use fetcher2_macro::{login_locks, LoginLock};
 
-use crate::settings::DownloadSettings;
 use crate::error::{Result, TErrorKind};
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::site_modules::minimal::Minimal;
 use crate::site_modules::moodle::Moodle;
 use crate::site_modules::polybox::Polybox;

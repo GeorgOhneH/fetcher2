@@ -3,24 +3,20 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_recursion::async_recursion;
-use config::{Config, ConfigEnum};
-use druid::im::Vector;
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
-use futures::future::{join_all, try_join_all};
+use futures::future::join_all;
 use futures::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
-use sha1::Digest;
 
 use crate::error::Result;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::template::communication::{CommunicationExt, RawCommunicationExt};
-use crate::template::node_type::{NodeType};
+use crate::template::node_type::site::SiteEvent;
+use crate::template::node_type::NodeType;
 use crate::template::NodeIndex;
 use crate::utils::spawn_drop;
 use crate::TError;
-use crate::template::node_type::site::SiteEvent;
 
 #[derive(Debug, PartialEq)]
 pub enum Status {

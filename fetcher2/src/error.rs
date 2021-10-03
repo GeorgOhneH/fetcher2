@@ -1,12 +1,7 @@
 use std::backtrace::Backtrace;
-use std::convert::Infallible;
-use std::ops::FromResidual;
 
-use druid::ExtEventError;
 use thiserror::Error;
 use tokio::time::error::Elapsed;
-
-use crate::task::Task;
 
 pub type Result<T> = std::result::Result<T, TError>;
 

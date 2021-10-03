@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
+use druid::Data;
+
 use config::Config;
-use druid::{Data, Lens};
 
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;

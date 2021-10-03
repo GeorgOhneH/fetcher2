@@ -155,7 +155,7 @@ pub fn gen_hash_type(
     }
 }
 
-pub fn attrs_to_args(config_attrs: &Vec<ConfigAttr>) -> TokenStream {
+pub fn attrs_to_args(config_attrs: &[ConfigAttr]) -> TokenStream {
     use ConfigAttr::*;
 
     let args: Vec<TokenStream> = config_attrs

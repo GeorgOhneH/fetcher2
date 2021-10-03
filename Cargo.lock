@@ -684,6 +684,57 @@ dependencies = [
 ]
 
 [[package]]
+name = "fetcher2_gui"
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "async-trait",
+ "atomic-counter",
+ "bytesize",
+ "chrono",
+ "config",
+ "crossbeam-channel",
+ "dashmap",
+ "directories",
+ "druid",
+ "druid-enums",
+ "druid-widget-nursery",
+ "enum_dispatch",
+ "fern",
+ "fetcher2",
+ "fetcher2_macro",
+ "flume",
+ "futures",
+ "html-escape",
+ "html5ever",
+ "http",
+ "itertools",
+ "lazy_static",
+ "log",
+ "mime_guess",
+ "notify",
+ "open",
+ "pulldown-cmark",
+ "quick-xml 0.22.0",
+ "regex",
+ "reqwest",
+ "ron",
+ "self_update",
+ "serde",
+ "sha-1",
+ "soup",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "timer",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "urlencoding",
+]
+
+[[package]]
 name = "fetcher2_macro"
 version = "0.1.0"
 dependencies = [
@@ -1143,57 +1194,6 @@ dependencies = [
  "proc-macro2 1.0.29",
  "quote 1.0.9",
  "syn 1.0.77",
-]
-
-[[package]]
-name = "gui"
-version = "0.1.0"
-dependencies = [
- "async-recursion",
- "async-trait",
- "atomic-counter",
- "bytesize",
- "chrono",
- "config",
- "crossbeam-channel",
- "dashmap",
- "directories",
- "druid",
- "druid-enums",
- "druid-widget-nursery",
- "enum_dispatch",
- "fern",
- "fetcher2",
- "fetcher2_macro",
- "flume",
- "futures",
- "html-escape",
- "html5ever",
- "http",
- "itertools",
- "lazy_static",
- "log",
- "mime_guess",
- "notify",
- "open",
- "pulldown-cmark",
- "quick-xml 0.22.0",
- "regex",
- "reqwest",
- "ron",
- "self_update",
- "serde",
- "sha-1",
- "soup",
- "strum",
- "strum_macros",
- "thiserror",
- "timer",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "url",
- "urlencoding",
 ]
 
 [[package]]

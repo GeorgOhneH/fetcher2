@@ -5,8 +5,8 @@ use convert_case::{Case, Casing};
 use once_cell::sync::Lazy;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{self, DeriveInput, Field, Fields, parse_macro_input, Item};
 use syn::parse::Parser;
+use syn::{self, parse_macro_input, DeriveInput, Field, Fields, Item};
 
 static ENUM_DEFS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
@@ -27,9 +27,11 @@ pub fn login_locks(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     let lock = ENUM_DEFS.lock().unwrap();
                     for x in lock.iter() {
                         let lock_name = Ident::new(&x.to_case(Case::Snake), Span::call_site());
-                        fields
-                            .named
-                            .push(Field::parse_named.parse2(quote! { pub #lock_name: Mutex<LoginState> }).unwrap());
+                        fields.named.push(
+                            Field::parse_named
+                                .parse2(quote! { pub #lock_name: Mutex<LoginState> })
+                                .unwrap(),
+                        );
                     }
                 }
                 _ => (),

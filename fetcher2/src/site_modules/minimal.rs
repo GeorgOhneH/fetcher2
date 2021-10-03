@@ -3,16 +3,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use config::Config;
 use druid::Data;
-use futures::stream::StreamExt;
-use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use crate::settings::DownloadSettings;
+use config::Config;
+
 use crate::error::Result;
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::site_modules::module::ModuleExt;
 use crate::task::{Task, TaskBuilder};
 

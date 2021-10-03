@@ -2,21 +2,13 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use async_recursion::async_recursion;
-use config::{Config, ConfigEnum};
-use druid::im::Vector;
-use druid::{Data, ExtEventSink, Widget, WidgetExt, WidgetId};
-use futures::future::{join_all, try_join_all};
-use futures::prelude::*;
+use futures::future::join_all;
 use serde::Deserialize;
 use serde::Serialize;
-use sha1::Digest;
 
-use crate::error::Result;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::template::communication::{CommunicationExt, RawCommunicationExt};
-use crate::template::node_type::NodeType;
 use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::NodeIndex;
 

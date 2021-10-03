@@ -1,27 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Formatter};
+use std::collections::HashSet;
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
 
-use config::{Config, ConfigEnum};
-use druid::widget::prelude::*;
-use druid::widget::Label;
-use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::error::{Result, TError};
+use crate::error::Result;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
-use crate::site_modules::Mode as PolyboxMode;
-use crate::site_modules::Module;
-use crate::site_modules::{Minimal, Polybox};
-use crate::task::Task;
 use crate::template::communication::{CommunicationExt, RawCommunicationExt};
-use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
-use crate::template::node_type::{NodeType, Site, SiteStorage};
-use crate::template::nodes::node::{Node, RawNode, Status};
+use crate::template::nodes::node::Status;
 use crate::template::nodes::root::{RawRootNode, RootNode};
 
 pub mod communication;

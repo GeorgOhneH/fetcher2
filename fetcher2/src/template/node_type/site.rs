@@ -1,34 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::{Mutex, RwLock};
-use std::task::Context;
+use std::sync::Mutex;
 use std::time::Duration;
 
-use async_recursion::async_recursion;
-use async_trait::async_trait;
-use config::{Config, ConfigEnum};
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
-use druid::im::Vector;
-use druid::{im, Data, ExtEventSink, Widget};
-use enum_dispatch::enum_dispatch;
-use futures::future::try_join_all;
+use druid::{im, Data};
 use futures::prelude::*;
-use futures::stream::{FuturesUnordered, TryForEachConcurrent, TryStreamExt};
-use futures::task::Poll;
-use futures::{
-    future::{Fuse, FusedFuture, FutureExt},
-    pin_mut, select,
-    stream::{FusedStream, Stream, StreamExt},
-};
-use lazy_static::lazy_static;
-use regex::Regex;
+use futures::stream::FuturesUnordered;
+use futures::stream::StreamExt;
 use reqwest::header::{HeaderMap, HeaderValue};
-use reqwest::{Request, RequestBuilder};
+use reqwest::Request;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use tokio::io::AsyncReadExt;
@@ -38,16 +21,17 @@ use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinError;
 use url::Url;
 
+use config::{Config, ConfigEnum};
+
 use crate::error::{Result, TError, TErrorKind};
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::site_modules::Module;
-use crate::site_modules::ModuleExt;
 use crate::task::Task;
+use crate::template::communication::CommunicationExt;
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::nodes::node::Status;
 use crate::utils::spawn_drop;
-use crate::settings::DownloadSettings;
-use crate::template::communication::CommunicationExt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Site {
@@ -515,8 +499,6 @@ impl FileData {
         }
     }
 }
-
-
 
 #[derive(Debug)]
 pub enum SiteEvent {

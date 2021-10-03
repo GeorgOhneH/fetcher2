@@ -3,25 +3,23 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use config::Config;
-use config::ConfigEnum;
-use druid::{Data, LensExt};
-use futures::stream::{StreamExt, TryStreamExt};
-use html5ever::rcdom::NodeData;
+use druid::Data;
 use lazy_static::lazy_static;
 use quick_xml::events::Event;
 use quick_xml::Reader;
-use regex::{Regex, RegexBuilder};
+use regex::Regex;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Method;
-use serde::Serialize;
 use soup::prelude::*;
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use crate::settings::DownloadSettings;
+use config::Config;
+use config::ConfigEnum;
+
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::site_modules::utils::save_path;
 use crate::site_modules::ModuleExt;
 use crate::task::{Task, TaskBuilder};

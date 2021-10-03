@@ -1,7 +1,6 @@
-use druid::{im, Color};
-
 use druid::im::Vector;
 use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
+use druid::{im, Color};
 use druid::{Data, Lens, Widget, WidgetExt};
 
 use crate::widgets::warning_label::WarningLabel;

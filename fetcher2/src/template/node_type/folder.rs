@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
 use config::Config;
-use druid::Data;
-use serde::Serialize;
 
 use crate::error::Result;
 
@@ -16,4 +14,3 @@ impl Folder {
         Ok(PathBuf::from(&self.name))
     }
 }
-

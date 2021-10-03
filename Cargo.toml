@@ -5,5 +5,5 @@ members = [
     "config_derive",
     "fetcher2",
     "fetcher2_macro",
-    "gui",
+    "fetcher2_gui",
 ]
