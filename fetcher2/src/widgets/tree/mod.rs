@@ -193,7 +193,7 @@ where
         self.root_node.event(ctx, event, data, env);
 
         let header_offset = self.header_offset();
-        if self.header.widget_mut().viewport_origin().x - header_offset > f64::EPSILON {
+        if !self.header.widget_mut().viewport_origin().x.same(&header_offset) {
             ctx.request_layout()
         }
         self.header
