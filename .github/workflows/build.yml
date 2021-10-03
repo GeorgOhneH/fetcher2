@@ -79,9 +79,6 @@ jobs:
         with:
           command: install
           args: 'cargo-get'
-      - id: current_version
-        run: echo ::set-output name=CURRENT_VERSION::$(cargo get version --pretty)
-        shell: bash
       - id: release_info
         run: |
           LATEST_RELEASE="$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')"
@@ -89,7 +86,7 @@ jobs:
 
           echo "::set-output name=latest_release::$LATEST_RELEASE"
           echo "::set-output name=current_version::$CURRENT_VERSION"
-        shell: shell
+        shell: bash
   build:
     needs:
       - version
