@@ -35,16 +35,16 @@ pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> 
 
     #[cfg(target_os = "macos")]
     let base = {
-        Menu::new(LocalizedString::new(""))
+        Menu::new(druid::LocalizedString::new(""))
             .entry(
-                Menu::new(LocalizedString::new("macos-menu-application-menu"))
+                Menu::new(druid::LocalizedString::new("macos-menu-application-menu"))
                     .entry(menu::sys::mac::application::preferences())
                     .separator()
                     .entry(menu::sys::mac::application::hide())
                     .entry(menu::sys::mac::application::hide_others()),
             )
             .entry(
-                Menu::new(LocalizedString::new("common-menu-file-menu"))
+                Menu::new(druid::LocalizedString::new("common-menu-file-menu"))
                     .entry(menu::sys::mac::file::new_file())
                     .entry(menu::sys::mac::file::open_file())
                     .entry(open_recent)
