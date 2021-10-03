@@ -1,13 +1,21 @@
 [package]
-name = "fetcher2"
+name = "gui"
 version = "0.1.0"
+authors = ["GeorgOhneH <georg.schwan@vtxnet.ch>"]
+description = "A fetcher Application"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[package.metadata.bundle]
+identifier = "com.fetcher2.fetcher2"
+icon = ["./assets/logo.png"]
+
 [dependencies]
+fetcher2 = { path = "../fetcher2" }
 config = { path = "../config" }
 fetcher2_macro = { path = "../fetcher2_macro" }
+#clap = "3.0.0-beta.2"
 serde = { version = "1.0", features = ["derive", "rc"] }
 async-trait = "0.1"
 enum_dispatch = "0.3"

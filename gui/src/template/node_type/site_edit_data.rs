@@ -4,9 +4,9 @@ use config::Config;
 use config::ConfigEnum;
 use druid::Data;
 
-use crate::site_modules::Module;
-use crate::template::node_type::{Site, SiteStorage};
-use crate::template::DownloadArgs;
+use fetcher2::site_modules::Module;
+use fetcher2::template::DownloadArgs;
+use fetcher2::template::node_type::{SiteStorage, Site};
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct SiteEditData {
@@ -22,6 +22,13 @@ pub struct SiteEditData {
 }
 
 impl SiteEditData {
+    pub fn new(site: Site) -> Self {
+        Self {
+            module: site.module,
+            download_args: site.download_args,
+            storage: Some(site.storage),
+        }
+    }
     pub fn raw(self) -> Site {
         Site {
             module: self.module,

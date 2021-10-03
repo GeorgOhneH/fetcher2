@@ -35,85 +35,94 @@ use url::Position;
 use crate::background_thread::{
     background_main, ThreadMsg, MSG_FROM_THREAD, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
 };
+use crate::controller::{Msg, MSG_THREAD};
 use crate::cstruct_window::c_option_window;
-use crate::data::edit::EditWindowData;
+use crate::data::settings::{OptionSettings, Settings};
 use crate::data::win::SubWindowInfo;
 use crate::edit_window::edit_window;
 use crate::template::communication::NODE_EVENT;
-use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::template::Template;
 use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{Result, TError};
 
-selectors! {
-    OPEN_EDIT
-}
+pub struct SettingController {}
 
-pub struct EditController {}
-
-impl EditController {
+impl SettingController {
     pub fn new() -> Self {
         Self {}
     }
-    fn make_sub_window(
-        &self,
-        ctx: &mut EventCtx,
-        env: &Env,
-        data: &SubWindowInfo<EditWindowData>,
-        new: bool,
-    ) {
+
+    fn show_settings(&self, ctx: &mut EventCtx, data: &SubWindowInfo<OptionSettings>, env: &Env) {
         let (size, pos) = data.get_size_pos(ctx.window());
-        let window = edit_window(new);
+        let main_win_id = ctx.window_id();
+        let c_window = c_option_window(
+            Some("Settings"),
+            Some(Box::new(
+                move |inner_ctx: &mut EventCtx, _old_data, data: &mut Settings, _env| {
+                    inner_ctx.submit_command(
+                        MSG_THREAD
+                            .with(SingleUse::new(Msg::NewSettings(data.download.clone())))
+                            .to(main_win_id),
+                    );
+                },
+            )),
+        )
+        .lens(OptionSettings::settings);
         ctx.new_sub_window(
             WindowConfig::default()
                 .show_titlebar(true)
                 .window_size(size)
                 .set_position(pos)
                 .set_level(WindowLevel::Modal),
-            SubWindow::new(window),
+            SubWindow::new(c_window),
             data.clone(),
             env.clone(),
         );
     }
 }
 
-impl<W: Widget<SubWindowInfo<EditWindowData>>> Controller<SubWindowInfo<EditWindowData>, W>
-    for EditController
+impl<W: Widget<SubWindowInfo<OptionSettings>>> Controller<SubWindowInfo<OptionSettings>, W>
+    for SettingController
 {
     fn event(
         &mut self,
         child: &mut W,
         ctx: &mut EventCtx,
         event: &Event,
-        data: &mut SubWindowInfo<EditWindowData>,
+        data: &mut SubWindowInfo<OptionSettings>,
         env: &Env,
     ) {
         match event {
-            Event::Command(cmd) if cmd.is(NEW_EDIT_TEMPLATE) => {
+            Event::Command(cmd) if cmd.is(commands::SHOW_PREFERENCES) => {
                 ctx.set_handled();
-                let (edit_root, path) = cmd.get_unchecked(NEW_EDIT_TEMPLATE).take().unwrap();
-                data.data.edit_template.root = edit_root;
-                data.data.edit_template.save_path = path;
-                return;
-            }
-            Event::Command(cmd) if cmd.is(OPEN_EDIT) => {
-                ctx.set_handled();
-                self.make_sub_window(ctx, env, data, false);
-                return;
-            }
-            Event::Command(cmd) if cmd.is(commands::NEW_FILE) => {
-                ctx.set_handled();
-                self.make_sub_window(ctx, env, data, true);
+                self.show_settings(ctx, data, env);
                 return;
             }
             _ => (),
         }
         child.event(ctx, event, data, env)
+    }
+
+    fn lifecycle(
+        &mut self,
+        child: &mut W,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &SubWindowInfo<OptionSettings>,
+        env: &Env,
+    ) {
+        if let LifeCycle::WidgetAdded = event {
+            if let Some(settings) = &data.data.settings {
+                ctx.submit_command(
+                    MSG_THREAD.with(SingleUse::new(Msg::NewSettings(settings.download.clone()))),
+                );
+            }
+        }
+        child.lifecycle(ctx, event, data, env)
     }
 }

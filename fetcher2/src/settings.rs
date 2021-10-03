@@ -6,18 +6,6 @@ use druid::{Data, Lens};
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
 
-#[derive(Clone, Lens, Debug, Data, Config)]
-pub struct OptionSettings {
-    #[config(ty = "_<struct>")]
-    pub settings: Option<Settings>,
-}
-
-#[derive(Config, Debug, Data, Clone)]
-pub struct Settings {
-    #[config(ty = "struct", name = "Download")]
-    pub download: DownloadSettings,
-}
-
 #[derive(Config, Debug, Data, Clone)]
 pub struct DownloadSettings {
     #[config(name = "Username")]

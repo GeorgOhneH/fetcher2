@@ -36,22 +36,21 @@ use crate::background_thread::{
     background_main, ThreadMsg, MSG_FROM_THREAD, NEW_EDIT_TEMPLATE, NEW_TEMPLATE,
 };
 use crate::cstruct_window::c_option_window;
-use crate::data::settings::DownloadSettings;
 use crate::data::win::WindowState;
 use crate::data::AppData;
 use crate::edit_window::edit_window;
-use crate::template::communication::NODE_EVENT;
-use crate::template::nodes::node::NodeEvent;
+use crate::template::communication::{NODE_EVENT, Communication};
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::template::Template;
 use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::WINDOW_STATE_DIR;
 use crate::{Result, TError};
+use fetcher2::settings::DownloadSettings;
+use fetcher2::template::Template;
 
 selectors! {
     MSG_THREAD: SingleUse<Msg>
@@ -63,7 +62,7 @@ pub enum Msg {
     StartByIndex(HashSet<NodeIndex>),
     Cancel,
     NewSettings(DownloadSettings),
-    NewTemplate(Template),
+    NewTemplate(Template<Communication>),
     NewTemplateByPath(PathBuf),
     ExitAndSave,
 }

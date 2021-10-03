@@ -10,9 +10,8 @@ use futures::prelude::*;
 use serde::Serialize;
 use sha1::Digest;
 
-use crate::error::Result;
-use crate::session::Session;
-use crate::template::node_type::{NodeType};
 
-pub mod node;
-pub mod root;
+pub mod node_data;
+pub mod node_edit_data;
+pub mod root_data;
+pub mod root_edit_data;

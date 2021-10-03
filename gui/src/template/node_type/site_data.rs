@@ -36,20 +36,13 @@ use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinError;
 use url::Url;
 
-use crate::data::settings::DownloadSettings;
-use crate::error::{Result, TError, TErrorKind};
-use crate::session::Session;
-use crate::site_modules::Module;
-use crate::site_modules::ModuleExt;
-use crate::task::Task;
 use crate::template::communication::Communication;
-use crate::template::node_type::site::{MsgKind, TaskMsg};
-use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::node_type::Site;
-use crate::template::nodes::node::Status;
 use crate::template::nodes::node_data::CurrentState;
-use crate::template::DownloadArgs;
-use crate::utils::spawn_drop;
+use fetcher2::template::node_type::site::{TaskMsg, SiteEvent, RunEvent, LoginEvent, UrlFetchEvent, DownloadEvent, MsgKind};
+use fetcher2::site_modules::Module;
+use fetcher2::template::DownloadArgs;
+use fetcher2::TError;
 
 #[derive(Debug, Clone, Data)]
 pub struct SiteData {
@@ -63,6 +56,15 @@ pub struct SiteData {
 }
 
 impl SiteData {
+    pub fn new(site: Site) -> Self {
+        Self {
+            module: site.module,
+            download_args: site.download_args,
+            history: site.storage.history.lock().unwrap().clone().into(),
+            state: SiteState::new(),
+        }
+    }
+
     pub fn name(&self) -> String {
         self.module.name()
     }
@@ -75,139 +77,6 @@ impl SiteData {
     }
 }
 
-#[derive(Debug)]
-pub enum SiteEvent {
-    Run(RunEvent),
-    Login(LoginEvent),
-    UrlFetch(UrlFetchEvent),
-    Download(DownloadEvent),
-}
-
-impl SiteEvent {
-    pub fn is_start(&self) -> bool {
-        matches!(self, Self::Run(RunEvent::Start))
-    }
-}
-
-impl From<RunEvent> for SiteEvent {
-    fn from(run_event: RunEvent) -> Self {
-        SiteEvent::Run(run_event)
-    }
-}
-
-impl From<LoginEvent> for SiteEvent {
-    fn from(login_status: LoginEvent) -> Self {
-        SiteEvent::Login(login_status)
-    }
-}
-
-impl From<UrlFetchEvent> for SiteEvent {
-    fn from(fetch_status: UrlFetchEvent) -> Self {
-        SiteEvent::UrlFetch(fetch_status)
-    }
-}
-
-impl From<DownloadEvent> for SiteEvent {
-    fn from(download_status: DownloadEvent) -> Self {
-        SiteEvent::Download(download_status)
-    }
-}
-
-#[derive(Debug)]
-pub enum RunEvent {
-    Start,
-    Finish,
-}
-
-impl RunEvent {
-    pub async fn wrapper<T>(inner_fn: impl Future<Output = T>, comm: &Communication) -> T {
-        comm.send_event(Self::Start);
-        let r = inner_fn.await;
-        comm.send_event(Self::Finish);
-        r
-    }
-}
-
-#[derive(Debug)]
-pub enum LoginEvent {
-    Start,
-    Finish,
-    Err(TError),
-}
-
-impl LoginEvent {
-    pub async fn wrapper<T>(
-        inner_fn: impl Future<Output = Result<T>>,
-        comm: &Communication,
-    ) -> Option<T> {
-        comm.send_event(Self::Start);
-        match inner_fn.await {
-            Ok(r) => {
-                comm.send_event(Self::Finish);
-                Some(r)
-            }
-            Err(err) => {
-                comm.send_event(Self::Err(err));
-                None
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum UrlFetchEvent {
-    Start,
-    Finish,
-    Err(TError),
-}
-
-impl UrlFetchEvent {
-    pub async fn wrapper<T>(
-        inner_fn: impl Future<Output = Result<T>>,
-        comm: &Communication,
-    ) -> Option<T> {
-        comm.send_event(Self::Start);
-        match inner_fn.await {
-            Ok(r) => {
-                comm.send_event(Self::Finish);
-                Some(r)
-            }
-            Err(err) => {
-                comm.send_event(Self::Err(err));
-                None
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum DownloadEvent {
-    Start,
-    Finish(TaskMsg),
-    Err(TError),
-}
-
-impl DownloadEvent {
-    pub async fn wrapper(
-        inner_fn: impl Future<Output = Result<TaskMsg>>,
-        comm: Communication,
-        site: Arc<Site>,
-    ) -> Status {
-        comm.send_event(Self::Start);
-        match inner_fn.await {
-            Ok(msg) => {
-                site.storage.history.lock().unwrap().push(msg.clone());
-                println!("{:?}", msg);
-                comm.send_event(Self::Finish(msg));
-                Status::Success
-            }
-            Err(err) => {
-                comm.send_event(Self::Err(err));
-                Status::Failure
-            }
-        }
-    }
-}
 
 #[derive(Debug, Clone, Data)]
 pub struct SiteState {

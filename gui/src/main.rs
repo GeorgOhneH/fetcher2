@@ -3,7 +3,6 @@
 #![feature(control_flow_enum)]
 #![feature(backtrace)]
 #![feature(type_alias_impl_trait)]
-#![allow(unused_imports)]
 #![allow(clippy::new_without_default)]
 
 use std::any::Any;
@@ -47,7 +46,6 @@ use serde::Serialize;
 use tokio::time;
 use tokio::time::Duration;
 
-pub use error::{Result, TError};
 
 use crate::background_thread::background_main;
 use crate::controller::{MainController, Msg};
@@ -56,24 +54,19 @@ use crate::data::win::WindowState;
 use crate::data::AppData;
 use crate::template::communication::RawCommunication;
 use crate::template::nodes::node_data::NodeData;
-use crate::template::nodes::root::RawRootNode;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::ui::{build_ui, make_menu};
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::header::Header;
 use crate::widgets::tree::Tree;
+use fetcher2::{TError, Result};
 
 mod background_thread;
 pub mod controller;
 mod cstruct_window;
 pub mod data;
 pub mod edit_window;
-mod error;
-mod session;
-mod site_modules;
-mod task;
 mod template;
 pub mod ui;
 mod utils;

@@ -14,14 +14,13 @@ use tokio::sync::{Mutex, MutexGuard};
 
 use fetcher2_macro::{login_locks, LoginLock};
 
-use crate::data::settings::DownloadSettings;
+use crate::settings::DownloadSettings;
 use crate::error::{Result, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::minimal::Minimal;
 use crate::site_modules::moodle::Moodle;
 use crate::site_modules::polybox::Polybox;
 use crate::task::Task;
-use crate::template::communication::Communication;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]

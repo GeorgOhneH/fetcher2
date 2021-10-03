@@ -12,15 +12,13 @@ use serde::Deserialize;
 use serde::Serialize;
 use sha1::Digest;
 
-use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
-use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::{NodeType, NodeTypeData};
+use crate::settings::DownloadSettings;
+use crate::template::communication::{CommunicationExt, RawCommunicationExt};
+use crate::template::node_type::NodeType;
 use crate::template::nodes::node::{Node, RawNode, Status};
-use crate::template::nodes::root_data::RootNodeData;
-use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::widgets::tree::NodeIndex;
+use crate::template::NodeIndex;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RawRootNode {
@@ -28,7 +26,7 @@ pub struct RawRootNode {
 }
 
 impl RawRootNode {
-    pub fn transform(self, comm: RawCommunication) -> RootNode {
+    pub fn transform<T: CommunicationExt>(self, comm: impl RawCommunicationExt<T>) -> RootNode<T> {
         RootNode {
             children: self
                 .children
@@ -41,11 +39,11 @@ impl RawRootNode {
 }
 
 #[derive(Debug, Clone)]
-pub struct RootNode {
-    pub children: Vec<Node>,
+pub struct RootNode<T> {
+    pub children: Vec<Node<T>>,
 }
 
-impl RootNode {
+impl<T: CommunicationExt> RootNode<T> {
     pub fn new() -> Self {
         Self {
             children: Vec::new(),
@@ -95,32 +93,6 @@ impl RootNode {
     pub fn inform_of_cancel(&self) {
         for child in &self.children {
             child.inform_of_cancel()
-        }
-    }
-
-    pub fn widget_data(&self) -> RootNodeData {
-        let children: Vector<_> = self
-            .children
-            .iter()
-            .map(|node| node.widget_data())
-            .collect();
-
-        RootNodeData {
-            children,
-            selected: Vector::new(),
-        }
-    }
-
-    pub fn widget_edit_data(&self) -> RootNodeEditData {
-        let children: Vector<_> = self
-            .children
-            .iter()
-            .map(|node| node.widget_edit_data())
-            .collect();
-
-        RootNodeEditData {
-            children,
-            selected: Vector::new(),
         }
     }
 }

@@ -37,72 +37,58 @@ use crate::background_thread::{
 };
 use crate::controller::{Msg, MSG_THREAD};
 use crate::cstruct_window::c_option_window;
-use crate::data::settings::{OptionSettings, Settings};
-use crate::data::win::SubWindowInfo;
+use crate::data::AppData;
 use crate::edit_window::edit_window;
 use crate::template::communication::NODE_EVENT;
-use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::template::Template;
 use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::{Result, TError};
 
-pub struct SettingController {}
+pub struct TemplateController {}
 
-impl SettingController {
+impl TemplateController {
     pub fn new() -> Self {
         Self {}
     }
 
-    fn show_settings(&self, ctx: &mut EventCtx, data: &SubWindowInfo<OptionSettings>, env: &Env) {
-        let (size, pos) = data.get_size_pos(ctx.window());
-        let main_win_id = ctx.window_id();
-        let c_window = c_option_window(
-            Some("Settings"),
-            Some(Box::new(
-                move |inner_ctx: &mut EventCtx, _old_data, data: &mut Settings, _env| {
-                    inner_ctx.submit_command(
-                        MSG_THREAD
-                            .with(SingleUse::new(Msg::NewSettings(data.download.clone())))
-                            .to(main_win_id),
-                    );
-                },
-            )),
-        )
-        .lens(OptionSettings::settings);
-        ctx.new_sub_window(
-            WindowConfig::default()
-                .show_titlebar(true)
-                .window_size(size)
-                .set_position(pos)
-                .set_level(WindowLevel::Modal),
-            SubWindow::new(c_window),
-            data.clone(),
-            env.clone(),
-        );
+    fn new_root(data: &mut AppData, root: RootNodeData, path: Option<PathBuf>) {
+        let arc_path = path.map(Arc::new);
+        if let Some(new_path) = &arc_path {
+            data.recent_templates.retain(|path| path != new_path);
+            data.recent_templates.push_front(new_path.clone());
+        }
+        data.template.root = root;
+        data.template.save_path = arc_path;
     }
 }
 
-impl<W: Widget<SubWindowInfo<OptionSettings>>> Controller<SubWindowInfo<OptionSettings>, W>
-    for SettingController
-{
+impl<W: Widget<AppData>> Controller<AppData, W> for TemplateController {
     fn event(
         &mut self,
         child: &mut W,
         ctx: &mut EventCtx,
         event: &Event,
-        data: &mut SubWindowInfo<OptionSettings>,
+        data: &mut AppData,
         env: &Env,
     ) {
         match event {
-            Event::Command(cmd) if cmd.is(commands::SHOW_PREFERENCES) => {
+            Event::Command(cmd) if cmd.is(NODE_EVENT) => {
                 ctx.set_handled();
-                self.show_settings(ctx, data, env);
+                let (node_event, idx) = cmd.get_unchecked(NODE_EVENT).take().unwrap();
+                data.template
+                    .node_mut(&idx, |node, _| node.update_node(node_event));
+                return;
+            }
+            Event::Command(cmd) if cmd.is(NEW_TEMPLATE) => {
+                ctx.set_handled();
+                let (template_root, path) = cmd.get_unchecked(NEW_TEMPLATE).take().unwrap();
+                Self::new_root(data, template_root, path);
+                ctx.request_update();
                 return;
             }
             _ => (),
@@ -115,14 +101,14 @@ impl<W: Widget<SubWindowInfo<OptionSettings>>> Controller<SubWindowInfo<OptionSe
         child: &mut W,
         ctx: &mut LifeCycleCtx,
         event: &LifeCycle,
-        data: &SubWindowInfo<OptionSettings>,
+        data: &AppData,
         env: &Env,
     ) {
         if let LifeCycle::WidgetAdded = event {
-            if let Some(settings) = &data.data.settings {
-                ctx.submit_command(
-                    MSG_THREAD.with(SingleUse::new(Msg::NewSettings(settings.download.clone()))),
-                );
+            if let Some(last) = data.recent_templates.iter().next() {
+                ctx.submit_command(MSG_THREAD.with(SingleUse::new(Msg::NewTemplateByPath(
+                    (*last.clone()).clone(),
+                ))))
             }
         }
         child.lifecycle(ctx, event, data, env)

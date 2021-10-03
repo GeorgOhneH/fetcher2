@@ -18,6 +18,8 @@ use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 use crate::widgets::tree::DataNodeIndex;
+use fetcher2::template::nodes::root::RootNode;
+use crate::template::communication::Communication;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct RootNodeData {
@@ -28,7 +30,15 @@ pub struct RootNodeData {
 impl_simple_tree_root! {RootNodeData, NodeData}
 
 impl RootNodeData {
-    pub fn new() -> Self {
+    pub fn new(root: RootNode<Communication>) -> Self {
+        let children: Vector<_> = root.children.into_iter().map(NodeData::new).collect();
+
+        Self {
+            children,
+            selected: Vector::new(),
+        }
+    }
+    pub fn empty() -> Self {
         Self {
             children: Vector::new(),
             selected: Vector::new(),

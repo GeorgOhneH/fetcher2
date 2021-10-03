@@ -22,17 +22,15 @@ use crate::background_thread::NEW_TEMPLATE;
 use crate::controller::{Msg, MSG_THREAD};
 use crate::data::AppData;
 use crate::template::communication::NODE_EVENT;
-use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
-use crate::template::Template;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::Result;
 
 #[derive(Debug, Clone, Data, Lens, Config)]
 pub struct TemplateData {
-    #[config(skip = RootNodeData::new())]
+    #[config(skip = RootNodeData::empty())]
     pub root: RootNodeData,
 
     #[config(skip = None)]

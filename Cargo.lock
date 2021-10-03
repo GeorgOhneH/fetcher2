@@ -1146,6 +1146,57 @@ dependencies = [
 ]
 
 [[package]]
+name = "gui"
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "async-trait",
+ "atomic-counter",
+ "bytesize",
+ "chrono",
+ "config",
+ "crossbeam-channel",
+ "dashmap",
+ "directories",
+ "druid",
+ "druid-enums",
+ "druid-widget-nursery",
+ "enum_dispatch",
+ "fern",
+ "fetcher2",
+ "fetcher2_macro",
+ "flume",
+ "futures",
+ "html-escape",
+ "html5ever",
+ "http",
+ "itertools",
+ "lazy_static",
+ "log",
+ "mime_guess",
+ "notify",
+ "open",
+ "pulldown-cmark",
+ "quick-xml 0.22.0",
+ "regex",
+ "reqwest",
+ "ron",
+ "self_update",
+ "serde",
+ "sha-1",
+ "soup",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "timer",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "urlencoding",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

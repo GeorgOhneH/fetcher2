@@ -28,9 +28,10 @@ use crate::template::node_type::{NodeTypeEditData, NodeTypeEditKindData};
 use crate::template::nodes::node_edit_data::NodeEditData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::template::Template;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use fetcher2::template::Template;
+use fetcher2::template::nodes::root::RawRootNode;
 
 selectors! {
     SAVE_EDIT,
@@ -66,7 +67,7 @@ impl DataBuffer {
 
     fn send_update_msg(ctx: &mut EventCtx, root: RootNodeEditData, save_path: PathBuf) {
         let comm = RawCommunication::new(ctx.get_external_handle());
-        let template = Template::from_raw(root, comm, save_path);
+        let template = Template::new(root.raw().transform(comm.clone()), save_path);
 
         ctx.submit_command(Command::new(
             MSG_THREAD,
@@ -186,7 +187,7 @@ where
         match event {
             Event::WindowConnected => {
                 if data.children.is_empty() {
-                    data.children.push_back(NodeEditData::new(true))
+                    data.children.push_back(NodeEditData::empty(true))
                 }
             }
             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
@@ -200,7 +201,7 @@ where
                 let idx = cmd.get_unchecked(DELETE_NODE);
                 data.remove(idx);
                 if data.children.is_empty() {
-                    data.children.push_back(NodeEditData::new(true))
+                    data.children.push_back(NodeEditData::empty(true))
                 }
                 ctx.request_update();
                 ctx.request_paint();

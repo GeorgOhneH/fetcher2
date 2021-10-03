@@ -18,17 +18,15 @@ use druid::{
 use druid_widget_nursery::{selectors, Wedge};
 
 use crate::template::communication::NODE_EVENT;
-use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::Template;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
 use crate::Result;
 
 #[derive(Debug, Clone, Data, Lens, Config)]
 pub struct TemplateEditData {
-    #[config(skip = RootNodeEditData::new())]
+    #[config(skip = RootNodeEditData::empty())]
     pub root: RootNodeEditData,
 
     #[data(eq)]
@@ -42,6 +40,6 @@ pub struct TemplateEditData {
 impl TemplateEditData {
     pub fn reset(&mut self) {
         self.save_path = None;
-        self.root = RootNodeEditData::new();
+        self.root = RootNodeEditData::empty();
     }
 }

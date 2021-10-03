@@ -9,7 +9,7 @@ use soup::{NodeExt, QueryBuilderExt, Soup};
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use crate::data::settings::DownloadSettings;
+use crate::settings::DownloadSettings;
 use crate::error::TErrorFast;
 use crate::session::Session;
 use crate::site_modules::aai_login::aai_login;

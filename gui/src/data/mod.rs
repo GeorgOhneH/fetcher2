@@ -9,10 +9,10 @@ use crate::data::edit::EditWindowData;
 use crate::data::settings::{OptionSettings, Settings};
 use crate::data::template_info::TemplateInfoSelect;
 use crate::data::win::{SubWindowInfo, WindowState};
-use crate::template::node_type::site::TaskMsg;
 use crate::template::node_type::NodeTypeData;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::widget_data::TemplateData;
+use fetcher2::template::node_type::site::TaskMsg;
 
 pub mod edit;
 pub mod settings;

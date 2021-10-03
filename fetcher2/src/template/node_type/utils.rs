@@ -23,7 +23,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::try_join;
 use url::Url;
 
-use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError};
 use crate::session::Session;
 use crate::site_modules::Module;

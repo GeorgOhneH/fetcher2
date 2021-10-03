@@ -38,23 +38,18 @@ use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinError;
 use url::Url;
 
-use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::Module;
 use crate::site_modules::ModuleExt;
 use crate::task::Task;
-use crate::template::communication::Communication;
-use crate::template::node_type::site_data::{
-    DownloadEvent, LoginEvent, RunEvent, SiteData, SiteState, UrlFetchEvent,
-};
-use crate::template::node_type::site_edit_data::SiteEditData;
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::nodes::node::Status;
-use crate::template::nodes::node_data::CurrentState;
 use crate::utils::spawn_drop;
+use crate::settings::DownloadSettings;
+use crate::template::communication::CommunicationExt;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Site {
     pub module: Module,
 
@@ -78,7 +73,7 @@ impl Site {
         session: Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
-        comm: Communication,
+        comm: impl CommunicationExt,
     ) {
         RunEvent::wrapper(
             async {
@@ -118,7 +113,7 @@ impl Site {
         mut receiver: Receiver<Task>,
         base_path: Arc<PathBuf>,
         dsettings: Arc<DownloadSettings>,
-        comm: Communication,
+        comm: impl CommunicationExt,
     ) {
         let mut futs = FuturesUnordered::new();
         loop {
@@ -401,23 +396,6 @@ impl Site {
         let request = request_builder.build()?;
         Ok(request)
     }
-
-    pub fn widget_data(&self) -> SiteData {
-        SiteData {
-            module: self.module.clone(),
-            download_args: self.download_args.clone(),
-            history: self.storage.history.lock().unwrap().clone().into(),
-            state: SiteState::new(),
-        }
-    }
-
-    pub fn widget_edit_data(&self) -> SiteEditData {
-        SiteEditData {
-            module: self.module.clone(),
-            download_args: self.download_args.clone(),
-            storage: Some(Arc::clone(&self.storage)),
-        }
-    }
 }
 
 fn format_etag(etag: &HeaderValue) -> Result<String> {
@@ -534,6 +512,142 @@ impl FileData {
             task_checksum,
             file_checksum,
             etag,
+        }
+    }
+}
+
+
+
+#[derive(Debug)]
+pub enum SiteEvent {
+    Run(RunEvent),
+    Login(LoginEvent),
+    UrlFetch(UrlFetchEvent),
+    Download(DownloadEvent),
+}
+
+impl SiteEvent {
+    pub fn is_start(&self) -> bool {
+        matches!(self, Self::Run(RunEvent::Start))
+    }
+}
+
+impl From<RunEvent> for SiteEvent {
+    fn from(run_event: RunEvent) -> Self {
+        SiteEvent::Run(run_event)
+    }
+}
+
+impl From<LoginEvent> for SiteEvent {
+    fn from(login_status: LoginEvent) -> Self {
+        SiteEvent::Login(login_status)
+    }
+}
+
+impl From<UrlFetchEvent> for SiteEvent {
+    fn from(fetch_status: UrlFetchEvent) -> Self {
+        SiteEvent::UrlFetch(fetch_status)
+    }
+}
+
+impl From<DownloadEvent> for SiteEvent {
+    fn from(download_status: DownloadEvent) -> Self {
+        SiteEvent::Download(download_status)
+    }
+}
+
+#[derive(Debug)]
+pub enum RunEvent {
+    Start,
+    Finish,
+}
+
+impl RunEvent {
+    pub async fn wrapper<T>(inner_fn: impl Future<Output = T>, comm: &impl CommunicationExt) -> T {
+        comm.send_event(Self::Start);
+        let r = inner_fn.await;
+        comm.send_event(Self::Finish);
+        r
+    }
+}
+
+#[derive(Debug)]
+pub enum LoginEvent {
+    Start,
+    Finish,
+    Err(TError),
+}
+
+impl LoginEvent {
+    pub async fn wrapper<T>(
+        inner_fn: impl Future<Output = Result<T>>,
+        comm: &impl CommunicationExt,
+    ) -> Option<T> {
+        comm.send_event(Self::Start);
+        match inner_fn.await {
+            Ok(r) => {
+                comm.send_event(Self::Finish);
+                Some(r)
+            }
+            Err(err) => {
+                comm.send_event(Self::Err(err));
+                None
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum UrlFetchEvent {
+    Start,
+    Finish,
+    Err(TError),
+}
+
+impl UrlFetchEvent {
+    pub async fn wrapper<T>(
+        inner_fn: impl Future<Output = Result<T>>,
+        comm: &impl CommunicationExt,
+    ) -> Option<T> {
+        comm.send_event(Self::Start);
+        match inner_fn.await {
+            Ok(r) => {
+                comm.send_event(Self::Finish);
+                Some(r)
+            }
+            Err(err) => {
+                comm.send_event(Self::Err(err));
+                None
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum DownloadEvent {
+    Start,
+    Finish(TaskMsg),
+    Err(TError),
+}
+
+impl DownloadEvent {
+    pub async fn wrapper(
+        inner_fn: impl Future<Output = Result<TaskMsg>>,
+        comm: impl CommunicationExt,
+        site: Arc<Site>,
+    ) -> Status {
+        comm.send_event(Self::Start);
+        match inner_fn.await {
+            Ok(msg) => {
+                site.storage.history.lock().unwrap().push(msg.clone());
+                println!("{:?}", msg);
+                comm.send_event(Self::Finish(msg));
+                Status::Success
+            }
+            Err(err) => {
+                comm.send_event(Self::Err(err));
+                Status::Failure
+            }
         }
     }
 }

@@ -16,13 +16,13 @@ use druid::{
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 
-use crate::template::communication::NODE_EVENT;
+use crate::template::communication::{NODE_EVENT, Communication};
 use crate::template::node_type::site_data::SiteState;
 use crate::template::node_type::NodeTypeData;
-use crate::template::nodes::node::{NodeEvent, PathEvent};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::NodeIndex;
-use crate::TError;
+use fetcher2::template::nodes::node::{NodeEvent, PathEvent, Node};
+use fetcher2::TError;
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeData {
@@ -41,6 +41,21 @@ pub struct NodeData {
 impl_simple_tree_node! {NodeData}
 
 impl NodeData {
+    pub fn new(node: Node<Communication>) -> Self {
+        let children: Vector<_> = node
+            .children
+            .into_iter()
+            .map(NodeData::new)
+            .collect();
+        Self {
+            expanded: true,
+            children,
+            cached_path_segment: node.cached_path_segment,
+            ty: NodeTypeData::new(node.ty),
+            state: NodeState::new(),
+            path: None,
+        }
+    }
     pub fn child_indexes(
         &self,
         current_idx: NodeIndex,

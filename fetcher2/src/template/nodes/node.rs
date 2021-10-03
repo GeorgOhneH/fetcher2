@@ -12,17 +12,15 @@ use serde::Deserialize;
 use serde::Serialize;
 use sha1::Digest;
 
-use crate::data::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
-use crate::template::communication::{Communication, RawCommunication};
-use crate::template::node_type::site_data::SiteEvent;
-use crate::template::node_type::{NodeType, NodeTypeData};
-use crate::template::nodes::node_data::{NodeData, NodeState};
-use crate::template::nodes::node_edit_data::NodeEditData;
+use crate::settings::DownloadSettings;
+use crate::template::communication::{CommunicationExt, RawCommunicationExt};
+use crate::template::node_type::{NodeType};
+use crate::template::NodeIndex;
 use crate::utils::spawn_drop;
-use crate::widgets::tree::NodeIndex;
 use crate::TError;
+use crate::template::node_type::site::SiteEvent;
 
 #[derive(Debug, PartialEq)]
 pub enum Status {
@@ -39,7 +37,11 @@ pub struct RawNode {
 }
 
 impl RawNode {
-    pub fn transform(self, index: NodeIndex, comm: RawCommunication) -> Node {
+    pub fn transform<T: CommunicationExt>(
+        self,
+        index: NodeIndex,
+        comm: impl RawCommunicationExt<T>,
+    ) -> Node<T> {
         Node {
             ty: self.ty,
             children: self
@@ -61,16 +63,16 @@ impl RawNode {
 }
 
 #[derive(Debug, Clone)]
-pub struct Node {
+pub struct Node<T> {
     pub ty: NodeType,
-    pub children: Vec<Node>,
+    pub children: Vec<Node<T>>,
     pub cached_path_segment: Option<PathBuf>,
-    pub comm: Communication,
+    pub comm: T,
     pub index: NodeIndex,
     pub path: Option<PathBuf>,
 }
 
-impl Node {
+impl<T: CommunicationExt> Node<T> {
     pub fn raw(self) -> RawNode {
         RawNode {
             ty: self.ty,
@@ -174,35 +176,6 @@ impl Node {
         }
         self.comm.send_event(NodeEvent::Canceled)
     }
-
-    pub fn widget_data(&self) -> NodeData {
-        let children: Vector<_> = self
-            .children
-            .iter()
-            .map(|node| node.widget_data())
-            .collect();
-        NodeData {
-            expanded: true,
-            children,
-            cached_path_segment: self.cached_path_segment.clone(),
-            ty: self.ty.widget_data(),
-            state: NodeState::new(),
-            path: None,
-        }
-    }
-
-    pub fn widget_edit_data(&self) -> NodeEditData {
-        let children: Vector<_> = self
-            .children
-            .iter()
-            .map(|node| node.widget_edit_data())
-            .collect();
-        NodeEditData {
-            expanded: true,
-            children,
-            ty: Some(self.ty.widget_edit_data()),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -241,7 +214,7 @@ impl PathEvent {
     }
     pub async fn wrapper(
         inner_fn: impl Future<Output = Result<PathBuf>>,
-        comm: &Communication,
+        comm: &impl CommunicationExt,
     ) -> Option<PathBuf> {
         comm.send_event(Self::Start);
         match inner_fn.await {

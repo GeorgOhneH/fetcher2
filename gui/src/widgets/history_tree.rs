@@ -19,12 +19,12 @@ use futures::SinkExt;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::data::AppData;
-use crate::template::node_type::site::{MsgKind, TaskMsg};
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
 use crate::widgets::tree::{DataNodeIndex, Tree};
 use crate::Result;
 use std::fmt::{Display, Formatter};
+use fetcher2::template::node_type::site::{MsgKind, TaskMsg};
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Type {

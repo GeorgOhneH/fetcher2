@@ -10,7 +10,7 @@ use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use crate::data::settings::DownloadSettings;
+use crate::settings::DownloadSettings;
 use crate::error::Result;
 use crate::session::Session;
 use crate::site_modules::module::ModuleExt;

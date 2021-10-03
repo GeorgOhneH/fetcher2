@@ -10,40 +10,35 @@ use druid::{Data, ExtEventSink, Lens, WidgetExt, WidgetId};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::data::settings::DownloadSettings;
 use crate::error::{Result, TError};
 use crate::session::Session;
+use crate::settings::DownloadSettings;
 use crate::site_modules::Mode as PolyboxMode;
 use crate::site_modules::Module;
 use crate::site_modules::{Minimal, Polybox};
 use crate::task::Task;
-use crate::template::communication::{Communication, RawCommunication};
+use crate::template::communication::{CommunicationExt, RawCommunicationExt};
 use crate::template::node_type::site::{FileData, MsgKind, TaskMsg};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
 use crate::template::node_type::{NodeType, Site, SiteStorage};
 use crate::template::nodes::node::{Node, RawNode, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
-use crate::template::nodes::root_data::RootNodeData;
-use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::widget_data::TemplateData;
-use crate::template::widget_edit_data::TemplateEditData;
-use crate::widgets::tree::NodeIndex;
 
 pub mod communication;
 pub mod node_type;
 pub mod nodes;
-pub mod widget_data;
-pub mod widget_edit_data;
+
+pub type NodeIndex = Vec<usize>;
 
 #[derive(Debug)]
-pub struct Template {
-    pub root: RootNode,
-    save_path: Option<PathBuf>,
+pub struct Template<T> {
+    pub root: RootNode<T>,
+    pub save_path: Option<PathBuf>,
     is_prepared: bool,
 }
 
-impl Template {
-    pub fn new() -> Self {
+impl<T: CommunicationExt> Template<T> {
+    pub fn empty() -> Self {
         Self {
             root: RootNode::new(),
             is_prepared: false,
@@ -51,25 +46,17 @@ impl Template {
         }
     }
 
-    pub fn from_raw(
-        edit_data: RootNodeEditData,
-        comm: RawCommunication,
-        save_path: PathBuf,
-    ) -> Self {
-        let raw_root = edit_data.raw();
+    pub fn new(root: RootNode<T>, save_path: PathBuf) -> Self {
         Self {
-            root: raw_root.transform(comm),
+            root,
             is_prepared: false,
             save_path: Some(save_path),
         }
     }
 
-    pub async fn load(path: &Path, comm: RawCommunication) -> Result<Self> {
-        dbg!("load");
+    pub async fn load(path: &Path, comm: impl RawCommunicationExt<T>) -> Result<Self> {
         let x = fs::read(path).await?;
-        dbg!("build");
         let raw_root: RawRootNode = ron::de::from_bytes(&x)?;
-        dbg!("build finished");
         Ok(Self {
             root: raw_root.transform(comm),
             is_prepared: false,
@@ -124,13 +111,5 @@ impl Template {
             f.shutdown().await?;
         }
         Ok(())
-    }
-
-    pub fn widget_data(&self) -> (RootNodeData, Option<PathBuf>) {
-        (self.root.widget_data(), self.save_path.clone())
-    }
-
-    pub fn widget_edit_data(&self) -> (RootNodeEditData, Option<PathBuf>) {
-        (self.root.widget_edit_data(), self.save_path.clone())
     }
 }

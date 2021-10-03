@@ -15,13 +15,13 @@ use druid::{
 use druid_widget_nursery::{selectors, Wedge};
 use futures::StreamExt;
 
-use crate::template::communication::NODE_EVENT;
+use crate::template::communication::{NODE_EVENT, Communication};
 use crate::template::node_type::{NodeTypeData, NodeTypeEditData, NodeTypeEditKindData};
-use crate::template::nodes::node::{NodeEvent, PathEvent, RawNode};
 use crate::template::nodes::node_data::NodeData;
 use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::widgets::tree::NodeIndex;
 use crate::TError;
+use fetcher2::template::nodes::node::{Node, RawNode};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeEditData {
@@ -33,7 +33,19 @@ pub struct NodeEditData {
 impl_simple_tree_node! {NodeEditData}
 
 impl NodeEditData {
-    pub fn new(expanded: bool) -> Self {
+    pub fn new(node: Node<Communication>) -> Self {
+        let children: Vector<_> = node
+            .children
+            .into_iter()
+            .map(NodeEditData::new)
+            .collect();
+        NodeEditData {
+            expanded: true,
+            children,
+            ty: Some(NodeTypeEditData::new(node.ty)),
+        }
+    }
+    pub fn empty(expanded: bool) -> Self {
         Self {
             expanded,
             ty: None,
@@ -78,14 +90,14 @@ impl NodeEditData {
             0 => unreachable!(),
             1 => self
                 .children
-                .insert(idx[0] + offset, NodeEditData::new(true)),
+                .insert(idx[0] + offset, NodeEditData::empty(true)),
             _ => self.children[idx[0]].insert_sibling(&idx[1..], offset),
         }
     }
 
     pub fn insert_child(&mut self, idx: &[usize]) {
         match idx.len() {
-            0 => self.children.push_front(NodeEditData::new(true)),
+            0 => self.children.push_front(NodeEditData::empty(true)),
             _ => self.children[idx[0]].insert_child(&idx[1..]),
         }
     }

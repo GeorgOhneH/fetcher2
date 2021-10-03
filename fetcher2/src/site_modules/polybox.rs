@@ -19,7 +19,7 @@ use soup::prelude::*;
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use crate::data::settings::DownloadSettings;
+use crate::settings::DownloadSettings;
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
 use crate::site_modules::utils::save_path;

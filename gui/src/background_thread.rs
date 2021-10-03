@@ -38,14 +38,14 @@ use tokio::time;
 use tokio::time::Duration;
 
 use crate::controller::Msg;
-use crate::data::settings::DownloadSettings;
-use crate::error::{Result, TError};
-use crate::template::communication::RawCommunication;
-use crate::template::nodes::node::Status;
+use crate::template::communication::{Communication, RawCommunication};
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::nodes::root_edit_data::RootNodeEditData;
-use crate::template::{DownloadArgs, Extensions, Mode, Template};
 use crate::widgets::tree::NodeIndex;
+use fetcher2::settings::DownloadSettings;
+use fetcher2::template::nodes::node::Status;
+use fetcher2::template::Template;
+use fetcher2::TError;
 
 selectors! {
     NEW_TEMPLATE: SingleUse<(RootNodeData, Option<PathBuf>)>,
@@ -80,7 +80,7 @@ pub fn background_main(rx: flume::Receiver<Msg>, r: crossbeam_channel::Receiver<
 }
 
 async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
-    let template = tokio::sync::RwLock::new(Template::new());
+    let template = tokio::sync::RwLock::new(Template::empty());
     let mut dsettings: Option<Arc<DownloadSettings>> = None;
 
     let mut futs = FuturesUnordered::new();
@@ -168,7 +168,7 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
 
 fn handle_post_cmd<'a>(
     cmd: PostCommand,
-    template: &'a tokio::sync::RwLock<Template>,
+    template: &'a tokio::sync::RwLock<Template<Communication>>,
     dsettings: Option<Arc<DownloadSettings>>,
     mut futs: &mut FuturesUnordered<BoxFuture<'a, std::result::Result<PostCommand, Aborted>>>,
     mut abort_handles: &mut Vec<AbortHandle>,
@@ -226,7 +226,7 @@ fn cancel_all(abort_handles: &mut Vec<AbortHandle>) {
 }
 
 async fn replace_template_by_path(
-    old_template: &tokio::sync::RwLock<Template>,
+    old_template: &tokio::sync::RwLock<Template<Communication>>,
     path: PathBuf,
     sink: ExtEventSink,
 ) -> PostCommand {
@@ -247,8 +247,8 @@ async fn replace_template_by_path(
 }
 
 async fn replace_template(
-    old_template: &tokio::sync::RwLock<Template>,
-    new_template: Template,
+    old_template: &tokio::sync::RwLock<Template<Communication>>,
+    new_template: Template<Communication>,
     sink: ExtEventSink,
 ) -> PostCommand {
     dbg!("replace load");
@@ -256,13 +256,19 @@ async fn replace_template(
     let mut wl = old_template.write().await;
     sink.submit_command(
         NEW_TEMPLATE,
-        SingleUse::new(new_template.widget_data()),
+        SingleUse::new((
+            RootNodeData::new(new_template.root.clone()),
+            new_template.save_path.clone(),
+        )),
         Target::Global,
     )
     .unwrap();
     sink.submit_command(
         NEW_EDIT_TEMPLATE,
-        SingleUse::new(new_template.widget_edit_data()),
+        SingleUse::new((
+            RootNodeEditData::new(new_template.root.clone()),
+            new_template.save_path.clone(),
+        )),
         Target::Global,
     )
     .unwrap();
@@ -288,7 +294,7 @@ async fn replace_template(
 }
 
 async fn run_template(
-    template: &tokio::sync::RwLock<Template>,
+    template: &tokio::sync::RwLock<Template<Communication>>,
     dsettings: Arc<DownloadSettings>,
     ty: RunType,
 ) -> PostCommand {
@@ -313,7 +319,7 @@ async fn run_template(
     }
 }
 async fn prepare_template(
-    template: &tokio::sync::RwLock<Template>,
+    template: &tokio::sync::RwLock<Template<Communication>>,
     dsettings: Arc<DownloadSettings>,
 ) -> PostCommand {
     dbg!("start prepare");

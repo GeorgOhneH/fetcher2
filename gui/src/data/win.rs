@@ -38,12 +38,10 @@ use crate::background_thread::{
 use crate::cstruct_window::c_option_window;
 use crate::edit_window::edit_window;
 use crate::template::communication::NODE_EVENT;
-use crate::template::nodes::node::NodeEvent;
 use crate::template::nodes::node_data::NodeData;
 use crate::template::nodes::root_data::RootNodeData;
 use crate::template::widget_data::TemplateData;
 use crate::template::widget_edit_data::TemplateEditData;
-use crate::template::Template;
 use crate::utils::show_err;
 use crate::widgets::sub_window_widget::SubWindow;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
