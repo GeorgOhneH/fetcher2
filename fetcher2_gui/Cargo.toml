@@ -9,7 +9,7 @@ edition = "2021"
 
 [package.metadata.bundle]
 identifier = "com.fetcher2.fetcher2_gui"
-icon = ["./assets/logo.png"]
+icon = ["assets/logo.ico"]
 
 [dependencies]
 fetcher2 = { path = "../fetcher2" }
