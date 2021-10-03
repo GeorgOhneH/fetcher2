@@ -82,6 +82,7 @@ jobs:
       - id: release_info
         run: |
           LATEST_RELEASE="$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')"
+          cd fetcher2
           CURRENT_VERSION="$(cargo get version --pretty)"
 
           echo "::set-output name=latest_release::$LATEST_RELEASE"
