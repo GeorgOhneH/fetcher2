@@ -63,13 +63,18 @@ jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
-      latest_release: ${{ steps.latest_version.outputs.LATEST_VERSION }}
-      current_version: ${{ steps.current_version.outputs.CURRENT_VERSION }}
+      latest_release: ${{ steps.release_info.outputs.latest_release }}
+      current_version: ${{ steps.release_info.outputs.current_version }}
     steps:
       - uses: actions/checkout@master
-      - id: latest_version
-        run: echo ::set-output name=LATEST_VERSION::$(curl -s https://api.github.com/repos/GeorgOhneH/fetcher2/releases/latest | jq -r '.tag_name')
-        shell: bash
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: '${{ runner.os }}-cargo-registry-version'
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: '${{ runner.os }}-cargo-index-version'
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -77,6 +82,14 @@ jobs:
       - id: current_version
         run: echo ::set-output name=CURRENT_VERSION::$(cargo get version --pretty)
         shell: bash
+      - id: release_info
+        run: |
+          LATEST_RELEASE="$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')"
+          CURRENT_VERSION="$(cargo get version --pretty)"
+
+          echo "::set-output name=latest_release::$LATEST_RELEASE"
+          echo "::set-output name=current_version::$CURRENT_VERSION"
+        shell: shell
   build:
     needs:
       - version
