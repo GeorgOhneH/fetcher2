@@ -75,6 +75,10 @@ jobs:
         with:
           path: ~/.cargo/git
           key: '${{ runner.os }}-cargo-index-version'
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cargo/bin
+          key: '${{ runner.os }}-cargo-bin-version'
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -82,8 +86,7 @@ jobs:
       - id: release_info
         run: |
           LATEST_RELEASE="$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')"
-          cd fetcher2
-          CURRENT_VERSION="$(cargo get version --pretty)"
+          CURRENT_VERSION="$(cargo get --root ./fetcher2 version --pretty)"
 
           echo "::set-output name=latest_release::$LATEST_RELEASE"
           echo "::set-output name=current_version::$CURRENT_VERSION"
@@ -124,6 +127,10 @@ jobs:
           key: '${{ runner.os }}-cargo-index-${{ hashFiles(''**/Cargo.lock'') }}'
       - uses: actions/cache@v1
         with:
+          path: ~/.cargo/bin
+          key: '${{ runner.os }}-cargo-bin-${{ hashFiles(''**/Cargo.lock'') }}'
+      - uses: actions/cache@v1
+        with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions-rs/toolchain@v1
@@ -160,6 +167,7 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: ${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-pc-windows-msvc
+      - run: ls -R
       - id: create_release
         uses: actions/create-release@v1.0.0
         env:
@@ -174,7 +182,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-unknown-linux-gnu/${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}
+          asset_path: ./${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-unknown-linux-gnu
           asset_name: ${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-unknown-linux-gnu
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1.0.1
@@ -182,7 +190,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-apple-darwin/${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}
+          asset_path: ./${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-apple-darwin
           asset_name: ${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-apple-darwin
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1.0.1
@@ -190,6 +198,6 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           upload_url: '${{ steps.create_release.outputs.upload_url }}'
-          asset_path: ./${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-pc-windows-msvc/${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}.exe
+          asset_path: ./${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-pc-windows-msvc.exe
           asset_name:  ${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}-x86_64-pc-windows-msvc.exe
           asset_content_type: application/octet-stream
