@@ -82,7 +82,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: install
-          args: 'cargo-get'
+          args: 'cargo-get -f'
       - id: release_info
         run: |
           LATEST_RELEASE="$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')"
