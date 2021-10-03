@@ -46,22 +46,17 @@ jobs:
       current_version: ${{ steps.release_info.outputs.current_version }}
     steps:
       - uses: actions/checkout@master
-      - uses: actions/cache@v1
+
+      - uses: actions-rs/toolchain@v1
         with:
-          path: ~/.cargo/registry
-          key: '${{ runner.os }}-cargo-registry-version'
-      - uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: '${{ runner.os }}-cargo-index-version'
-      - uses: actions/cache@v1
-        with:
-          path: ~/.cargo/bin
-          key: '${{ runner.os }}-cargo-bin-version'
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: 'cargo-get -f'
+          profile: minimal
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Install cargo-get
+        run: cargo install cargo-get
+
       - id: release_info
         run: |
           LATEST_RELEASE="$(curl -s https://api.github.com/repos/GeorgOhneH/ethz-document-fetcher/releases/latest | jq -r '.tag_name')"
@@ -101,18 +96,14 @@ jobs:
       - if: ${{ runner.os == 'Linux' }}
         run: sudo apt-get install libgtk-3-dev
 
-      - uses: actions-rs/cargo@v1
-        env:
-          REPOSITORY_NAME: '${{ steps.get_repository_name.outputs.REPOSITORY_NAME }}'
-        with:
-          command: build
-          args: '--release'
+      - name: Build Release
+        run: cargo build --release
 
       - name: Bundle macOS Release
         run: |
           cargo install cargo-bundle
           cargo bundle --release
-        working-directory: psst-gui
+        working-directory: fetcher2_gui
         if: ${{ runner.os == 'macOS' }}
 
       - name: Create .dmg File
