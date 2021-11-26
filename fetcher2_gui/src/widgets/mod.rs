@@ -5,3 +5,4 @@ pub mod split;
 pub mod sub_window_widget;
 pub mod tree;
 pub mod widget_ext;
+pub mod info_view;

@@ -11,7 +11,7 @@ use template::nodes::node::NodeData;
 
 use crate::data::edit::EditWindowData;
 use crate::data::settings::{OptionSettings, Settings};
-use crate::data::template_info::TemplateInfoSelect;
+use crate::data::template_info::{TemplateInfo, TemplateInfoSelect};
 use crate::data::win::{SubWindowInfo, WindowState};
 use crate::data::template::TemplateData;
 
@@ -33,8 +33,8 @@ pub struct AppData {
     #[config(ty = "struct")]
     pub settings_window: SubWindowInfo<OptionSettings>,
 
-    #[config(ty = "enum", default = "Nothing")]
-    pub template_info_select: TemplateInfoSelect,
+    #[config(ty = "struct")]
+    pub template_info: TemplateInfo,
 
     #[data(ignore)]
     #[config(ty = "_<struct>")]

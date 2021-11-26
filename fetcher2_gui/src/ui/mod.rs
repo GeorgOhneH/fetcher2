@@ -1,19 +1,22 @@
-use druid::widget::{Button, Controller, CrossAxisAlignment, Flex, Label, SizedBox, ViewSwitcher};
+use druid::widget::{
+    Button, Controller, CrossAxisAlignment, Flex, Label, SizedBox, ViewSwitcher, WidgetWrapper,
+};
 use druid::{
-    commands, menu, Color, Command, Env, Event, EventCtx, FileInfo, Menu, MenuItem, SingleUse,
-    SysMods, Target, Widget, WidgetExt, WindowId,
+    commands, menu, Color, Command, Env, Event, EventCtx, FileInfo, LensExt, Menu, MenuItem,
+    SingleUse, SysMods, Target, Widget, WidgetExt, WindowId,
 };
 
 use crate::controller::{
     EditController, Msg, SettingController, TemplateController, MSG_THREAD, OPEN_EDIT,
 };
-use crate::data::template_info::TemplateInfoSelect;
+use crate::data::template::TemplateData;
+use crate::data::template_info::{TemplateInfo, TemplateInfoSelect};
 use crate::data::AppData;
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::history_tree::History;
+use crate::widgets::info_view::InfoView;
 use crate::widgets::split::Split;
 use crate::widgets::widget_ext::WidgetExt as _;
-use crate::data::template::TemplateData;
 
 pub fn make_menu(_: Option<WindowId>, data: &AppData, _: &Env) -> Menu<AppData> {
     let mut open_recent = Menu::new("Open Recent");
@@ -125,18 +128,24 @@ fn template_ui() -> impl Widget<AppData> {
             .expand_width(),
             1.,
         )
-        .with_child(info_view_selector_ui().lens(AppData::template_info_select))
+        .with_child(
+            info_view_selector_ui().lens(AppData::template_info.then(TemplateInfo::selected)),
+        )
 }
 
 fn info_view_ui() -> impl Widget<AppData> {
-    ViewSwitcher::new(
-        |data: &AppData, _env| data.template_info_select,
-        |selector, _data, _env| match selector {
-            TemplateInfoSelect::General => info_general().boxed(),
-            TemplateInfoSelect::Folder => info_folder().boxed(),
-            TemplateInfoSelect::History => info_history().boxed(),
-            TemplateInfoSelect::Nothing => SizedBox::empty().boxed(),
+    InfoView::new(
+        |data: &AppData, _env| match data.template_info.selected {
+            TemplateInfoSelect::General => Some(0),
+            TemplateInfoSelect::Folder => Some(1),
+            TemplateInfoSelect::History => Some(2),
+            TemplateInfoSelect::Nothing => None,
         },
+        [
+            info_general().boxed(),
+            info_folder().boxed(),
+            info_history().boxed(),
+        ],
     )
 }
 
@@ -159,6 +168,16 @@ fn info_folder() -> impl Widget<AppData> {
         },
     )
     .controller(FolderController)
+    .on_save(
+        |widget, _ctx, data: &AppData, _env| {
+            if let Ok(sizes) = data.template_info.folder.header_sizes.clone().try_into() {
+                widget.wrapped_mut().set_header_size(sizes);
+            }
+        },
+        |widget, _ctx, data: &mut AppData, _env| {
+            data.template_info.folder.header_sizes = widget.wrapped().get_header_sizes().into()
+        },
+    )
 }
 
 struct FolderController;
@@ -177,7 +196,18 @@ impl Controller<AppData, FileWatcher<AppData>> for FolderController {
 }
 
 fn info_history() -> impl Widget<AppData> {
-    History::new().expand()
+    History::new()
+        .on_save(
+            |widget, _ctx, data: &AppData, _env| {
+                if let Ok(sizes) = data.template_info.history.header_sizes.clone().try_into() {
+                    widget.set_header_size(sizes);
+                }
+            },
+            |widget, _ctx, data: &mut AppData, _env| {
+                data.template_info.history.header_sizes = widget.get_header_sizes().into()
+            },
+        )
+        .expand()
 }
 
 fn info_view_selector_ui() -> impl Widget<TemplateInfoSelect> {

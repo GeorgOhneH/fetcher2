@@ -298,6 +298,14 @@ impl<T> FileWatcher<T> {
         }
     }
 
+    pub fn get_header_sizes(&self) -> [f64; 3] {
+        self.tree.widget().get_sizes()
+    }
+
+    pub fn set_header_size(&mut self, sizes: [f64; 3]) {
+        self.tree.widget_mut().set_sizes(sizes)
+    }
+
     pub fn set_path(&mut self, path: Option<PathBuf>) {
         if self.path == path {
             return;
