@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use druid::im;
 use druid::widget::{Label, ListIter};
 use druid::{Data, Widget};
+use crate::ctypes::CType;
 
-use crate::{CType, State};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, Data)]
 pub enum HashKey {
@@ -57,10 +57,6 @@ impl CHashMap {
 
     pub fn set(&mut self, map: im::OrdMap<HashKey, CType>) {
         self.inner = map;
-    }
-
-    pub fn state(&self) -> State {
-        self.inner.values().map(|ty| ty.state()).collect()
     }
 
     pub fn widget() -> impl Widget<Self> {

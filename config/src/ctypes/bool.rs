@@ -4,70 +4,26 @@ use druid::{
     UpdateCtx, Widget,
 };
 
-use crate::State;
-
 #[derive(Debug, Clone, Data)]
 pub struct CBool {
-    value: bool,
+    pub value: Option<bool>,
     #[data(ignore)]
-    name: Option<String>,
+    name: Option<&'static str>,
 }
 
 impl CBool {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            value: false,
+            value: None,
             name: None,
         }
-    }
-    pub fn get(&self) -> bool {
-        self.value
-    }
-
-    pub fn set_option(&mut self, value: Option<bool>) {
-        self.value = value.unwrap_or(false);
-    }
-
-    pub fn set(&mut self, value: bool) {
-        self.value = value;
-    }
-    pub fn unset(&mut self) {
-        self.value = false
     }
 
     pub fn widget() -> impl Widget<Self> {
         CBoolWidget::new()
     }
-
-    pub fn state(&self) -> State {
-        State::Valid
-    }
 }
 
-pub struct CBoolBuilder {
-    inner: CBool,
-}
-
-impl CBoolBuilder {
-    pub fn new() -> Self {
-        Self {
-            inner: CBool::new(),
-        }
-    }
-    pub fn default(mut self, value: bool) -> Self {
-        self.inner.set(value);
-        self
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
-        self
-    }
-
-    pub fn build(self) -> CBool {
-        self.inner
-    }
-}
 
 pub struct CBoolWidget {
     checkbox: Checkbox,
@@ -79,24 +35,27 @@ impl CBoolWidget {
             checkbox: Checkbox::new(""),
         }
     }
+
 }
 
 impl Widget<CBool> for CBoolWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut CBool, env: &Env) {
-        self.checkbox.event(ctx, event, &mut data.value, env)
+        let mut value = data.value.unwrap_or(false);
+        self.checkbox.event(ctx, event, &mut value, env);
+        data.value = Some(value)
     }
 
     fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &CBool, env: &Env) {
         if let LifeCycle::WidgetAdded = event {
-            if let Some(name) = &data.name {
-                self.checkbox.set_text(name.clone())
+            if let Some(name) = data.name {
+                self.checkbox.set_text(name)
             }
         }
-        self.checkbox.lifecycle(ctx, event, &data.value, env)
+        self.checkbox.lifecycle(ctx, event, &data.value.unwrap_or(false), env)
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CBool, data: &CBool, env: &Env) {
-        self.checkbox.update(ctx, &old_data.value, &data.value, env)
+        self.checkbox.update(ctx, &old_data.value.unwrap_or(false), &data.value.unwrap_or(false), env)
     }
 
     fn layout(
@@ -106,10 +65,10 @@ impl Widget<CBool> for CBoolWidget {
         data: &CBool,
         env: &Env,
     ) -> Size {
-        self.checkbox.layout(ctx, bc, &data.value, env)
+        self.checkbox.layout(ctx, bc, &data.value.unwrap_or(false), env)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &CBool, env: &Env) {
-        self.checkbox.paint(ctx, &data.value, env)
+        self.checkbox.paint(ctx, &data.value.unwrap_or(false), env)
     }
 }

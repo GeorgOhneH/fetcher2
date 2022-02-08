@@ -51,7 +51,8 @@ impl<T: Data, const N: usize> Widget<T> for InfoView<T, N> {
         if child_idx != self.current {
             self.current = child_idx;
             ctx.children_changed();
-        } else if let Some(current) = self.current {
+        }
+        if let Some(current) = self.current {
             self.views[current].update(ctx, data, env)
         }
     }
@@ -68,7 +69,7 @@ impl<T: Data, const N: usize> Widget<T> for InfoView<T, N> {
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
         if let Some(current) = self.current {
-            self.views[current].paint_raw(ctx, data, env)
+            self.views[current].paint(ctx, data, env)
         }
     }
 }

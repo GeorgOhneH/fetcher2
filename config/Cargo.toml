@@ -9,8 +9,9 @@ edition = "2021"
 serde = { version = "1.0", features = ["derive"] }
 config_derive = { path = "./../config_derive" }
 lazy_static = "1"
+valuable = "0.1"
 thiserror = "1.0"
 log = "0.4"
-druid = { git = "https://github.com/linebender/druid.git", features = ["im"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im"], rev = "fc05e965c85fced8720c655685e02478e0530e94" }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }
 druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery" }

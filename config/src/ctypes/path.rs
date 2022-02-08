@@ -5,8 +5,7 @@ use druid::widget::{Button, Flex, Label, Maybe, TextBox};
 use druid::{Data, Lens, LensExt, Widget, WidgetExt};
 use druid::{FileDialogOptions, FileSpec};
 use druid_widget_nursery::WidgetExt as _;
-
-use crate::{InvalidError, State};
+use crate::errors::Error;
 
 #[derive(Debug, Clone)]
 pub enum CPathTypes {
@@ -39,86 +38,51 @@ impl CPath {
         }
     }
 
-    pub fn is_valid(&self, path: &Path) -> Result<(), InvalidError> {
-        if self.must_absolute && path.is_relative() {
-            return Err(InvalidError::new("Path must be absolute"));
-        }
-        if self.must_absolute && self.must_exist && !path.exists() {
-            return Err(InvalidError::new("Path must exist"));
-        }
-        match &self.ty {
-            CPathTypes::Any => Ok(()),
-            CPathTypes::Folder => {
-                if path.is_dir() {
-                    Ok(())
-                } else {
-                    Err(InvalidError::new("Path must be a folder"))
-                }
-            }
-            CPathTypes::File(extensions) => {
-                if !path.is_file() {
-                    return Err(InvalidError::new("Path must be a file"));
-                }
-
-                if !extensions.is_empty() {
-                    if let Some(file_extension) = path.extension() {
-                        let ex = file_extension
-                            .to_str()
-                            .ok_or_else(|| InvalidError::new("Path must have a extension"))?;
-                        if extensions
-                            .iter()
-                            .any(|file_spec| file_spec.extensions.contains(&ex))
-                        {
-                            Ok(())
-                        } else {
-                            Err(InvalidError::new("Path must have a extension"))
-                        }
-                    } else {
-                        Err(InvalidError::new("Path must have a extension"))
-                    }
-                } else {
-                    Ok(())
-                }
-            }
-        }
+    pub fn is_valid(&self, path: &Path) -> Result<(), Error> {
+        todo!()
+        // if self.must_absolute && path.is_relative() {
+        //     return Err(InvalidError::new("Path must be absolute"));
+        // }
+        // if self.must_absolute && self.must_exist && !path.exists() {
+        //     return Err(InvalidError::new("Path must exist"));
+        // }
+        // match &self.ty {
+        //     CPathTypes::Any => Ok(()),
+        //     CPathTypes::Folder => {
+        //         if path.is_dir() {
+        //             Ok(())
+        //         } else {
+        //             Err(InvalidError::new("Path must be a folder"))
+        //         }
+        //     }
+        //     CPathTypes::File(extensions) => {
+        //         if !path.is_file() {
+        //             return Err(InvalidError::new("Path must be a file"));
+        //         }
+        //
+        //         if !extensions.is_empty() {
+        //             if let Some(file_extension) = path.extension() {
+        //                 let ex = file_extension
+        //                     .to_str()
+        //                     .ok_or_else(|| InvalidError::new("Path must have a extension"))?;
+        //                 if extensions
+        //                     .iter()
+        //                     .any(|file_spec| file_spec.extensions.contains(&ex))
+        //                 {
+        //                     Ok(())
+        //                 } else {
+        //                     Err(InvalidError::new("Path must have a extension"))
+        //                 }
+        //             } else {
+        //                 Err(InvalidError::new("Path must have a extension"))
+        //             }
+        //         } else {
+        //             Ok(())
+        //         }
+        //     }
+        // }
     }
 
-    pub fn get(&self) -> Option<&PathBuf> {
-        Option::from(&self.value)
-    }
-
-    pub fn set_raw<T>(&mut self, value: Option<T>) -> Result<(), InvalidError>
-    where
-        PathBuf: From<T>,
-    {
-        if let Some(value) = value {
-            self.set(value)
-        } else {
-            self.value = None;
-            Ok(())
-        }
-    }
-
-    pub fn set<T>(&mut self, path: T) -> Result<(), InvalidError>
-    where
-        PathBuf: From<T>,
-    {
-        let path = PathBuf::from(path);
-        self.is_valid(&path)?;
-        self.value = Some(path);
-        Ok(())
-    }
-
-    pub fn unset(&mut self) {
-        self.value = None;
-    }
-
-    pub fn state(&self) -> State {
-        match &self.value {
-            Some(v) => self.is_valid(v).into(),
-            None => State::None,
-        }
-    }
 
     pub fn widget() -> impl Widget<Self> {
         Flex::row()
@@ -173,44 +137,5 @@ impl CPath {
                         },
                     ),
             )
-    }
-}
-
-pub struct CPathBuilder {
-    inner: CPath,
-}
-
-impl CPathBuilder {
-    pub fn new() -> Self {
-        Self {
-            inner: CPath::new(),
-        }
-    }
-    pub fn default(mut self, value: String) -> Self {
-        self.inner.set(value).unwrap();
-        self
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
-        self
-    }
-
-    pub fn must_exist(mut self, must_exist: bool) -> Self {
-        self.inner.must_exist = must_exist;
-        self
-    }
-
-    pub fn must_absolute(mut self, must_absolute: bool) -> Self {
-        self.inner.must_absolute = must_absolute;
-        self
-    }
-
-    pub fn path_ty(mut self, ty: CPathTypes) -> Self {
-        self.inner.ty = ty;
-        self
-    }
-    pub fn build(self) -> CPath {
-        self.inner
     }
 }

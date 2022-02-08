@@ -297,7 +297,7 @@ impl<T: Data> Widget<DropdownState<T>> for DropdownButton<T> {
             env.get(theme::BORDER_DARK)
         };
 
-        let radius = env.get(theme::BUTTON_BORDER_RADIUS) * 1.5;
+        let radius = env.get(theme::BUTTON_BORDER_RADIUS);
         if data.expanded {
             let rounded_rect =
                 half_rounded_rect(size - Size::new(stroke_width, stroke_width), radius);

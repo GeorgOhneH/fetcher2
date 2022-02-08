@@ -3,7 +3,7 @@
 members = [
     "config",
     "config_derive",
-    "fetcher2",
-    "fetcher2_macro",
+#    "fetcher2",
+#    "fetcher2_macro",
     "fetcher2_gui",
 ]

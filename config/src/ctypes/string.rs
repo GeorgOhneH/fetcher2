@@ -4,12 +4,11 @@ use druid::{
     Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
 
-use crate::State;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CString {
     value: Option<String>,
-    name: Option<String>,
+    name: Option<&'static str>,
 }
 
 impl CString {
@@ -20,36 +19,10 @@ impl CString {
         }
     }
 
-    pub fn get(&self) -> Option<&String> {
-        Option::from(&self.value)
-    }
-
-    pub fn set_raw(&mut self, value: Option<String>) {
-        if let Some(value) = value {
-            self.set(value)
-        } else {
-            self.value = None;
-        }
-    }
-
-    pub fn set(&mut self, value: String) {
-        self.value = Some(value);
-    }
-    pub fn unset(&mut self) {
-        self.value = None
-    }
-
-    pub fn state(&self) -> State {
-        match &self.value {
-            Some(_) => State::Valid,
-            None => State::None,
-        }
-    }
-
     pub fn widget() -> impl Widget<Self> {
         Flex::row()
             .with_child(
-                Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ":"))
+                Maybe::or_empty(|| Label::dynamic(|data: &&'static str, _| format!("{data}:")))
                     .lens(Self::name),
             )
             .with_child(CStringWidget::new().lens(Self::value))
@@ -131,31 +104,5 @@ impl Widget<Option<String>> for CStringWidget {
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Option<String>, env: &Env) {
         self.text_box
             .paint(ctx, data.as_ref().unwrap_or(&"".to_owned()), env)
-    }
-}
-
-pub struct CStringBuilder {
-    inner: CString,
-}
-
-impl CStringBuilder {
-    pub fn new() -> Self {
-        Self {
-            inner: CString::new(),
-        }
-    }
-
-    pub fn default(mut self, value: String) -> Self {
-        self.inner.set(value);
-        self
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
-        self
-    }
-
-    pub fn build(self) -> CString {
-        self.inner
     }
 }

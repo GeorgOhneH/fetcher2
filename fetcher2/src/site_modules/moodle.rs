@@ -4,6 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use druid::Data;
 use lazy_static::lazy_static;
+use regex::Regex;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use tokio::sync::mpsc::Sender;
 use url::Url;
@@ -26,11 +27,20 @@ lazy_static! {
         Url::parse("https://moodle-app2.let.ethz.ch/auth/shibboleth/login.php").unwrap();
     static ref COURSE_URL: Url =
         Url::parse("https://moodle-app2.let.ethz.ch/course/view.php").unwrap();
+
+    static ref SECTION_RE: Regex =
+        Regex::new("section-[0-9]+").unwrap();
 }
 
 #[derive(Config, Debug, Clone, Data, PartialEq)]
 pub struct Moodle {
     pub id: String,
+}
+
+impl Moodle {
+    async fn parse_section(&self) {
+
+    }
 }
 
 #[async_trait]
@@ -41,7 +51,15 @@ impl ModuleExt for Moodle {
         _sender: Sender<Task>,
         _dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
-        todo!()
+        url.set_query(Some(&format!("id={}", self.id)));
+
+        let response = session.get(url).send().await?;
+        let text = response.text().await?;
+        let soup = Soup::new(&text);
+
+        soup.tag("li").attr("id", SECTION_RE).find_all()
+
+
     }
 
     async fn login_impl(&self, session: &Session, dsettings: &DownloadSettings) -> Result<()> {

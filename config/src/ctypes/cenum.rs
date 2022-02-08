@@ -1,3 +1,7 @@
+use crate::ctypes::cstruct::CStruct;
+use crate::ctypes::tuple::CTuple;
+use crate::ctypes::CType;
+use crate::errors::Error;
 use druid::im::{OrdMap, Vector};
 use druid::widget::Label;
 use druid::widget::{Flex, ListIter, Maybe};
@@ -11,15 +15,14 @@ use druid::{Widget, WidgetExt, WidgetPod};
 
 use crate::widgets::warning_label::WarningLabel;
 use crate::widgets::ListSelect;
-use crate::{CType, InvalidError, State};
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CEnum {
     inner: Vector<CArg>,
-    index_map: OrdMap<String, usize>,
-    name_map: OrdMap<usize, String>,
+    index_map: OrdMap<&'static str, usize>,
+    name_map: OrdMap<usize, &'static str>,
     selected: Option<usize>,
-    name: Option<String>,
+    name: Option<&'static str>,
 }
 
 impl ListIter<CArg> for CEnum {
@@ -55,50 +58,40 @@ impl CEnum {
         }
     }
 
-    pub fn get_selected(&self) -> Option<&CArg> {
-        self.selected.map(|idx| &self.inner[idx])
+    pub fn get_selected(&self) -> Result<&CArg, Error> {
+        self.selected
+            .map(|idx| &self.inner[idx])
+            .ok_or(Error::ValueRequired)
     }
 
-    pub fn get_selected_mut(&mut self) -> Option<&mut CArg> {
-        self.selected.map(move |idx| &mut self.inner[idx])
+    pub fn get_selected_mut(&mut self) -> Result<&mut CArg, Error> {
+        self.selected
+            .map(move |idx| &mut self.inner[idx])
+            .ok_or(Error::ValueRequired)
     }
 
-    pub fn unselect(&mut self) {
-        self.selected = None
-    }
-
-    pub fn set_selected(&mut self, idx: &str) -> Result<&CArg, InvalidError> {
-        match self.index_map.get(idx) {
+    pub fn set_selected(&mut self, variant: &str) -> Result<&CArg, Error> {
+        match self.index_map.get(variant) {
             Some(i) => {
                 self.selected = Some(*i);
                 Ok(&self.inner[*i])
             }
-            None => Err(InvalidError::new("Key does not exist")),
+            None => Err(Error::KeyDoesNotExist),
         }
     }
 
-    pub fn set_selected_mut(&mut self, idx: &str) -> Result<&mut CArg, InvalidError> {
+    pub fn set_selected_mut(&mut self, idx: &str) -> Result<&mut CArg, Error> {
         match self.index_map.get(idx) {
             Some(i) => {
                 self.selected = Some(*i);
                 Ok(&mut self.inner[*i])
             }
-            None => Err(InvalidError::new("Key does not exist")),
-        }
-    }
-
-    pub fn state(&self) -> State {
-        match self.get_selected() {
-            Some(carg) => carg.state(),
-            None => State::None,
+            None => Err(Error::KeyDoesNotExist),
         }
     }
 
     pub fn is_leaf(&self) -> bool {
-        match self.get_selected() {
-            None => true,
-            Some(carg) => carg.is_unit(),
-        }
+        todo!()
     }
 
     pub fn widget() -> impl Widget<Self> {
@@ -113,7 +106,7 @@ impl CEnum {
 
         let x = Flex::row()
             .with_child(
-                Maybe::or_empty(|| Label::dynamic(|data: &String, _| data.clone() + ": "))
+                Maybe::or_empty(|| Label::dynamic(|data: &&'static str, _| format!("{data}: ")))
                     .lens(Self::name),
             )
             .with_child(list_select);
@@ -132,24 +125,11 @@ impl CEnumBuilder {
         }
     }
 
-    pub fn arg(mut self, carg: CArg) -> Self {
+    pub fn arg(&mut self, carg: CArg) {
         let idx = self.inner.inner.len();
-        self.inner.index_map.insert(carg.name().clone(), idx);
-        self.inner.name_map.insert(idx, carg.name().clone());
+        self.inner.index_map.insert(carg.name, idx);
+        self.inner.name_map.insert(idx, carg.name);
         self.inner.inner.push_back(carg);
-        self
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
-        self
-    }
-
-    pub fn default<T: Into<String>>(mut self, name: T) -> Self {
-        self.inner
-            .set_selected(&name.into())
-            .expect("Default for EnumConfig doesn't exist");
-        self
     }
 
     pub fn build(self) -> CEnum {
@@ -157,96 +137,87 @@ impl CEnumBuilder {
     }
 }
 
-#[derive(Debug, Clone, Data, Lens)]
-pub struct Parameter {
-    required: bool,
-    ty: CType,
+#[derive(Debug, Clone, Data)]
+pub enum CArgVariant {
+    Unit,
+    NewType(CType),
+    Tuple(CTuple),
+    Struct(CStruct),
+}
+
+impl CArgVariant {
+    pub fn as_unit(&self) -> Result<(), Error> {
+        match self {
+            CArgVariant::Unit => Ok(()),
+            _ => Err(Error::ExpectedUnitVariant),
+        }
+    }
+
+    pub fn as_new_type(&self) -> Result<&CType, Error> {
+        match self {
+            CArgVariant::NewType(ty) => Ok(ty),
+            _ => Err(Error::ExpectedNewTypeVariant),
+        }
+    }
+
+    pub fn as_new_type_mut(&mut self) -> Result<&mut CType, Error> {
+        match self {
+            CArgVariant::NewType(ty) => Ok(ty),
+            _ => Err(Error::ExpectedNewTypeVariant),
+        }
+    }
+
+    pub fn as_tuple(&self) -> Result<&CTuple, Error> {
+        match self {
+            CArgVariant::Tuple(ctuple) => Ok(ctuple),
+            _ => Err(Error::ExpectedTupleVariant),
+        }
+    }
+
+    pub fn as_tuple_mut(&mut self) -> Result<&mut CTuple, Error> {
+        match self {
+            CArgVariant::Tuple(ctuple) => Ok(ctuple),
+            _ => Err(Error::ExpectedTupleVariant),
+        }
+    }
+
+    pub fn as_struct(&self) -> Result<&CStruct, Error> {
+        match self {
+            CArgVariant::Struct(cstruct) => Ok(cstruct),
+            _ => Err(Error::ExpectedStructVariant),
+        }
+    }
+
+    pub fn as_struct_mut(&mut self) -> Result<&mut CStruct, Error> {
+        match self {
+            CArgVariant::Struct(cstruct) => Ok(cstruct),
+            _ => Err(Error::ExpectedStructVariant),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CArg {
     #[data(ignore)]
     #[lens(name = "name_lens")]
-    name: String,
+    pub name: &'static str,
 
-    parameter: Option<Parameter>,
+    pub variant: CArgVariant,
 }
 
 impl CArg {
-    fn new(name: String) -> Self {
-        Self {
-            name,
-            parameter: None,
-        }
-    }
-
-    pub fn name(&self) -> &String {
-        &self.name
-    }
-
-    pub fn get(&self) -> Option<&CType> {
-        self.parameter.as_ref().map(|par| &par.ty)
-    }
-
-    pub fn get_mut(&mut self) -> Option<&mut CType> {
-        self.parameter.as_mut().map(|par| &mut par.ty)
-    }
-
-    pub fn is_unit(&self) -> bool {
-        self.parameter.is_none()
-    }
-
-    pub fn state(&self) -> State {
-        match &self.parameter {
-            Some(parameter) => match parameter.ty.state() {
-                State::Valid => State::Valid,
-                State::None => {
-                    if parameter.required {
-                        State::invalid("Value is required")
-                    } else {
-                        State::Valid
-                    }
-                }
-                State::InValid(msg) => State::InValid(msg),
-            },
-            None => State::Valid,
-        }
+    pub fn new(name: &'static str, variant: CArgVariant) -> Self {
+        Self { name, variant }
     }
 
     fn error_msg(&self) -> Option<String> {
-        match self.state() {
-            State::InValid(str) => Some(str),
-            _ => None,
-        }
+        todo!()
     }
 
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
-            .with_child(
-                Maybe::or_empty(|| CType::widget().lens(Parameter::ty)).lens(Self::parameter),
-            )
+            .with_child(Label::new("TODO"))
             .with_child(WarningLabel::new(|data: &Self| data.error_msg()))
-    }
-}
-
-pub struct CArgBuilder {
-    inner: CArg,
-}
-
-impl CArgBuilder {
-    pub fn new(name: String) -> Self {
-        Self {
-            inner: CArg::new(name),
-        }
-    }
-
-    pub fn value(mut self, ty: CType, required: bool) -> Self {
-        self.inner.parameter = Some(Parameter { ty, required });
-        self
-    }
-
-    pub fn build(self) -> CArg {
-        self.inner
     }
 }
 

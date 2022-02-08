@@ -170,7 +170,7 @@ impl History {
             Entry::expanded,
             EntryRoot::selected,
         )
-        .sizes([400., 400., 400.])
+        .sizes([300., 300., 300.])
         .on_activate(|_ctx, root, _env, idx| {
             let node = root.node(idx);
             open::that_in_background(&node.full_path);

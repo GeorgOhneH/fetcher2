@@ -2,82 +2,31 @@ use std::iter::FromIterator;
 
 use druid::{lens, Data, LensExt, Widget, WidgetExt};
 use druid_enums::Matcher;
-
-pub use crate::ctypes::bool::*;
-pub use crate::ctypes::checkable_struct::*;
-pub use crate::ctypes::float::*;
-pub use crate::ctypes::integer::*;
+use crate::ctypes::bool::CBool;
+use crate::ctypes::cenum::CEnum;
+use crate::ctypes::cstruct::CStruct;
+use crate::ctypes::float::CFloat;
+use crate::ctypes::integer::CInteger;
 use crate::ctypes::map::CHashMap;
-pub use crate::ctypes::map::*;
-pub use crate::ctypes::path::*;
-pub use crate::ctypes::r#enum::*;
-pub use crate::ctypes::r#struct::*;
-pub use crate::ctypes::string::*;
-pub use crate::ctypes::vec::*;
-pub use crate::ctypes::wrapper::*;
-use crate::ctypes::CWrapper;
-use crate::InvalidError;
+use crate::ctypes::option::COption;
+use crate::ctypes::path::CPath;
+use crate::ctypes::string::CString;
+use crate::ctypes::tuple::CTuple;
+use crate::ctypes::vec::CVec;
+use crate::errors::Error;
 
-mod bool;
-mod checkable_struct;
-mod r#enum;
-mod float;
-mod integer;
-mod map;
-mod path;
-mod string;
-mod r#struct;
-mod vec;
-mod wrapper;
+pub mod bool;
+pub mod cenum;
+pub mod float;
+pub mod integer;
+pub mod map;
+pub mod path;
+pub mod string;
+pub mod cstruct;
+pub mod vec;
+pub mod option;
+pub mod tuple;
 
-#[derive(Debug, PartialEq)]
-pub enum State {
-    Valid,
-    None,
-    InValid(String),
-}
-
-impl From<InvalidError> for State {
-    fn from(err: InvalidError) -> Self {
-        State::invalid(err.into_msg())
-    }
-}
-
-impl From<Result<(), InvalidError>> for State {
-    fn from(r: Result<(), InvalidError>) -> Self {
-        match r {
-            Ok(_) => State::Valid,
-            Err(err) => err.into(),
-        }
-    }
-}
-
-impl FromIterator<State> for State {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = State>,
-    {
-        let mut encountered_none = false;
-        for state in iter.into_iter() {
-            match state {
-                State::InValid(_) => return state,
-                State::None => encountered_none = true,
-                State::Valid => (),
-            }
-        }
-        if encountered_none {
-            State::None
-        } else {
-            State::Valid
-        }
-    }
-}
-
-impl State {
-    pub fn invalid(text: impl Into<String>) -> Self {
-        Self::InValid(text.into())
-    }
-}
 
 #[derive(Debug, Clone, Data, Matcher)]
 pub enum CType {
@@ -86,12 +35,12 @@ pub enum CType {
     Integer(CInteger),
     Float(CFloat),
     Path(CPath),
+    Tuple(CTuple),
     CStruct(CStruct),
-    CheckableStruct(CCheckableStruct),
     Vec(CVec),
     HashMap(CHashMap),
     CEnum(CEnum),
-    Wrapper(Box<CWrapper>),
+    Option(Box<COption>),
 }
 
 impl CType {
@@ -99,105 +48,167 @@ impl CType {
         use CType::*;
         match self {
             String(_) | Bool(_) | Integer(_) | Float(_) | Path(_) => true,
-            CStruct(_) | CheckableStruct(_) | Vec(_) | HashMap(_) => false,
-            Wrapper(cwrapper) => cwrapper.is_leaf(),
+            CStruct(_)  | Vec(_) | HashMap(_) => false,
             CEnum(cenum) => cenum.is_leaf(),
+            Option(coption) => coption.ty.is_leaf(),
+            Tuple(ctuple) => todo!(),
         }
     }
 
-    pub fn string_mut(&mut self) -> Option<&mut CString> {
+    pub fn as_string(&self) -> Result<&CString, Error> {
         match self {
-            Self::String(cstring) => Some(cstring),
-            _ => None,
+            Self::String(cstring) => Ok(cstring),
+            _ => Err(Error::ExpectedString),
         }
     }
 
-    pub fn int_mut(&mut self) -> Option<&mut CInteger> {
+    pub fn as_string_mut(&mut self) -> Result<&mut CString, Error> {
         match self {
-            Self::Integer(cint) => Some(cint),
-            _ => None,
+            Self::String(cstring) => Ok(cstring),
+            _ => Err(Error::ExpectedString),
         }
     }
 
-    pub fn float_mut(&mut self) -> Option<&mut CFloat> {
+    pub fn as_int(&self) -> Result<&CInteger, Error> {
         match self {
-            Self::Float(cfloat) => Some(cfloat),
-            _ => None,
+            Self::Integer(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedInteger),
         }
     }
 
-    pub fn bool_mut(&mut self) -> Option<&mut CBool> {
+    pub fn as_int_mut(&mut self) -> Result<&mut CInteger, Error> {
         match self {
-            Self::Bool(v) => Some(v),
-            _ => None,
+            Self::Integer(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedInteger),
         }
     }
 
-    pub fn path_mut(&mut self) -> Option<&mut CPath> {
+    pub fn as_float(&self) -> Result<&CFloat, Error> {
         match self {
-            Self::Path(v) => Some(v),
-            _ => None,
+            Self::Float(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedFloat),
         }
     }
 
-    pub fn struct_mut(&mut self) -> Option<&mut CStruct> {
+    pub fn as_float_mut(&mut self) -> Result<&mut CFloat, Error> {
         match self {
-            Self::CStruct(v) => Some(v),
-            _ => None,
+            Self::Float(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedFloat),
         }
     }
 
-    pub fn check_struct_mut(&mut self) -> Option<&mut CCheckableStruct> {
+    pub fn as_bool(&self) -> Result<&CBool, Error> {
         match self {
-            Self::CheckableStruct(v) => Some(v),
-            _ => None,
+            Self::Bool(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedBoolean),
         }
     }
 
-    pub fn vec_mut(&mut self) -> Option<&mut CVec> {
+    pub fn as_bool_mut(&mut self) -> Result<&mut CBool, Error> {
         match self {
-            Self::Vec(v) => Some(v),
-            _ => None,
+            Self::Bool(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedBoolean),
         }
     }
 
-    pub fn map_mut(&mut self) -> Option<&mut CHashMap> {
+    pub fn as_path(&self) -> Result<&CPath, Error> {
         match self {
-            Self::HashMap(v) => Some(v),
-            _ => None,
+            Self::Path(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedPath),
         }
     }
 
-    pub fn enum_mut(&mut self) -> Option<&mut CEnum> {
+    pub fn as_path_mut(&mut self) -> Result<&mut CPath, Error> {
         match self {
-            Self::CEnum(v) => Some(v),
-            _ => None,
+            Self::Path(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedPath),
         }
     }
 
-    pub fn wrapper_mut(&mut self) -> Option<&mut CWrapper> {
+    pub fn as_option(&self) -> Result<&COption, Error> {
         match self {
-            Self::Wrapper(v) => Some(v),
-            _ => None,
+            Self::Option(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedOption),
         }
     }
 
-    pub fn state(&self) -> State {
-        use CType::*;
+    pub fn as_option_mut(&mut self) -> Result<&mut COption, Error> {
         match self {
-            String(cstring) => cstring.state(),
-            Bool(cbool) => cbool.state(),
-            Integer(cint) => cint.state(),
-            Float(cfloat) => cfloat.state(),
-            Path(cpath) => cpath.state(),
-            CStruct(cstruct) => cstruct.state(),
-            CheckableStruct(checkable_struct) => checkable_struct.state(),
-            Vec(cvec) => cvec.state(),
-            HashMap(cmap) => cmap.state(),
-            CEnum(cenum) => cenum.state(),
-            Wrapper(cwrapper) => cwrapper.state(),
+            Self::Option(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedOption),
         }
     }
+
+    pub fn as_struct(&self) -> Result<&CStruct, Error> {
+        match self {
+            Self::CStruct(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedStruct),
+        }
+    }
+
+    pub fn as_struct_mut(&mut self) -> Result<&mut CStruct, Error> {
+        match self {
+            Self::CStruct(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedStruct),
+        }
+    }
+
+    pub fn as_tuple(&self) -> Result<&CTuple, Error> {
+        match self {
+            Self::Tuple(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedTuple),
+        }
+    }
+
+    pub fn as_tuple_mut(&mut self) -> Result<&mut CTuple, Error> {
+        match self {
+            Self::Tuple(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedTuple),
+        }
+    }
+
+    pub fn as_vec(&self) -> Result<&CVec, Error> {
+        match self {
+            Self::Vec(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedVec),
+        }
+    }
+
+    pub fn as_vec_mut(&mut self) -> Result<&mut CVec, Error> {
+        match self {
+            Self::Vec(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedVec),
+        }
+    }
+
+    pub fn as_map(&self) -> Result<&CHashMap, Error> {
+        match self {
+            Self::HashMap(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedMap),
+        }
+    }
+
+    pub fn as_map_mut(&mut self) -> Result<&mut CHashMap, Error> {
+        match self {
+            Self::HashMap(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedMap),
+        }
+    }
+
+    pub fn as_enum(&self) -> Result<&CEnum, Error> {
+        match self {
+            Self::CEnum(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedEnum),
+        }
+    }
+
+    pub fn as_enum_mut(&mut self) -> Result<&mut CEnum, Error> {
+        match self {
+            Self::CEnum(cvalue) => Ok(cvalue),
+            _ => Err(Error::ExpectedEnum),
+        }
+    }
+
 
     pub fn widget() -> impl Widget<Self> {
         Self::matcher()
@@ -207,10 +218,9 @@ impl CType {
             .float(CFloat::widget())
             .path(CPath::widget())
             .c_struct(CStruct::widget())
-            .checkable_struct(CCheckableStruct::widget())
             .hash_map(CHashMap::widget())
             .vec(CVec::widget())
             .c_enum(CEnum::widget())
-            .wrapper(CWrapper::widget().lens(lens::Identity.deref()))
+            .option(COption::widget().lens(lens::Identity.deref()))
     }
 }

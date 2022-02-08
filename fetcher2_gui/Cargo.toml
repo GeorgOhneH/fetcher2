@@ -12,9 +12,9 @@ identifier = "com.fetcher2.fetcher2_gui"
 icon = ["assets/logo.ico"]
 
 [dependencies]
-fetcher2 = { path = "../fetcher2" }
+#fetcher2 = { path = "../fetcher2" }
 config = { path = "../config" }
-fetcher2_macro = { path = "../fetcher2_macro" }
+#fetcher2_macro = { path = "../fetcher2_macro" }
 #clap = "3.0.0-beta.2"
 serde = { version = "1.0", features = ["derive", "rc"] }
 async-trait = "0.1"
@@ -56,6 +56,6 @@ bytesize = "1"
 timer = "0.2"
 self_update = "0.27"
 
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "fc05e965c85fced8720c655685e02478e0530e94" }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }
 druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery" }

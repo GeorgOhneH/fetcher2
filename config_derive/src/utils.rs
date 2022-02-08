@@ -10,46 +10,6 @@ use syn::{
 };
 use syn::{LifetimeDef, PathSegment};
 
-use crate::config_type::{parse_type, ConfigType};
-
-pub fn gen_field_names(fields: &Punctuated<Field, Comma>) -> Vec<TokenStream> {
-    fields
-        .iter()
-        .filter_map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-            if let ConfigType::Skip(_) = typ {
-                None
-            } else {
-                Some(gen_field_name(field))
-            }
-        })
-        .collect()
-}
-
-pub fn gen_field_name_strs(fields: &Punctuated<Field, Comma>) -> Vec<TokenStream> {
-    fields
-        .iter()
-        .filter_map(|field| {
-            let typ = parse_type(&field.ty, &field.attrs);
-            if let ConfigType::Skip(_) = typ {
-                None
-            } else {
-                Some(gen_field_name_string(field))
-            }
-        })
-        .collect()
-}
-
-pub fn gen_field_name(field: &Field) -> TokenStream {
-    let field_name = field.ident.as_ref().expect("Unreachable");
-    quote! { #field_name }
-}
-
-pub fn gen_field_name_string(field: &Field) -> TokenStream {
-    let field_name = field.ident.as_ref().expect("Unreachable");
-    let name = LitStr::new(&field_name.to_string(), field.span());
-    quote! { #name }
-}
 
 pub fn bound_generics(mut generics: Generics, bound: TraitBound) -> Generics {
     for param in generics.params.iter_mut() {
@@ -63,29 +23,13 @@ pub fn bound_generics(mut generics: Generics, bound: TraitBound) -> Generics {
     generics
 }
 
-pub fn create_path(parts: &[(&str, Option<&str>)], span: Span) -> Path {
+pub fn create_path(parts: &[&str], span: Span) -> Path {
     let mut path = Path {
         leading_colon: None,
         segments: Default::default(),
     };
-    for (part, lifetime) in parts {
-        let segment = if let Some(lifetime) = lifetime {
-            let lifetime = GenericArgument::Lifetime(Lifetime::new(lifetime, span));
-            let mut p = Punctuated::new();
-            p.push(lifetime);
-            let x = AngleBracketedGenericArguments {
-                colon2_token: None,
-                lt_token: Default::default(),
-                args: p,
-                gt_token: Default::default(),
-            };
-            PathSegment {
-                ident: Ident::new("Deserialize", span),
-                arguments: PathArguments::AngleBracketed(x),
-            }
-        } else {
-            Ident::new(part, span).into()
-        };
+    for part in parts {
+        let segment = Ident::new(part, span).into();
         path.segments.push(segment);
     }
     path

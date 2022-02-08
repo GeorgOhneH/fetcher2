@@ -2,8 +2,7 @@ use druid::im::Vector;
 use druid::widget::{Button, Controller, Flex, ListIter};
 use druid::{im, Env, Event, EventCtx, Selector, Widget};
 use druid::{Data, Lens, WidgetExt};
-
-use crate::{CType, State};
+use crate::ctypes::CType;
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CVec {
@@ -69,10 +68,6 @@ impl CVec {
 
     pub fn set(&mut self, vec: im::Vector<CItem>) {
         self.inner = vec;
-    }
-
-    pub fn state(&self) -> State {
-        self.inner.iter().map(|item| item.ty.state()).collect()
     }
 
     pub fn widget() -> impl Widget<Self> {
