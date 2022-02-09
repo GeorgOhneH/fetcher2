@@ -5,17 +5,21 @@
 #![feature(type_alias_impl_trait)]
 #![allow(clippy::new_without_default)]
 
-use std::{fs, thread};
+use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
+use std::{fs, thread};
+use std::time::{Duration, Instant};
 
-use druid::{AppLauncher, LifeCycle, LocalizedString, WidgetExt, WindowDesc};
-use lazy_static::lazy_static;
-use self_update::cargo_crate_version;
-use serde::{Serialize, Deserialize};
 use config::deserializer::ConfigDeserializer;
 use config::serializer::ConfigSerializer;
 use config::traveller::{ConfigTraveller, Travel, Traveller, TravellerEnum};
+use druid::{AppLauncher, LifeCycle, LocalizedString, WidgetExt, WindowDesc};
+use lazy_static::lazy_static;
+use self_update::cargo_crate_version;
+use serde::{Deserialize, Serialize};
+use config::ctypes::integer::RangedInt;
+use config::ctypes::path::{Absolute, AbsoluteExistFile, AnyPath, StrictPath};
 
 // use fetcher2::{Result, TError};
 
@@ -133,7 +137,6 @@ use config::traveller::{ConfigTraveller, Travel, Traveller, TravellerEnum};
 //     handle.join().expect("thread panicked");
 // }
 
-
 #[derive(Serialize, Deserialize, Debug, Travel)]
 struct TestStruct {
     pub field1: i64,
@@ -142,6 +145,13 @@ struct TestStruct {
     pub field4: TestEnum,
     pub field5: (i64, i64),
     pub field6: [i64; 3],
+    pub field7: Vec<i64>,
+    pub field8: HashMap<String, i64>,
+    pub field9: HashMap<PathBuf, i64>,
+    pub field10: String,
+    pub field11: PathBuf,
+    pub field12: RangedInt<-10, 2>,
+    pub field13: StrictPath<AnyPath>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -149,17 +159,17 @@ enum TestEnum {
     Unit,
     One(i64),
     Two(i64, i64),
-    Three {
-        field0: i64,
-        field1: i64,
-    }
+    Three { field0: i64, field1: i64 },
 }
 
 impl Travel for TestEnum {
-    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error> where T: Traveller {
-        use config::traveller::TravellerTupleVariant as _;
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
         use config::traveller::TravellerStructVariant as _;
-        let mut state = traveller.found_enum()?;
+        use config::traveller::TravellerTupleVariant as _;
+        let mut state = traveller.found_enum("TestEnum")?;
         state.found_unit_variant("Unit")?;
         state.found_newtype_variant::<i64>("One")?;
         let mut tuple0 = state.found_tuple_variant("Two")?;
@@ -175,9 +185,7 @@ impl Travel for TestEnum {
 }
 
 pub fn main() {
-
     let mut x = TestStruct::travel(&mut ConfigTraveller::new()).unwrap();
-    dbg!(&x);
     let s = TestStruct {
         field1: 10,
         field2: true,
@@ -187,12 +195,20 @@ pub fn main() {
             field1: 2,
         },
         field5: (1, 2),
-        field6: [0; 3]
+        field6: [0; 3],
+        field7: vec![9, 3, 6],
+        field8: HashMap::from([("hello".to_string(), 10)]),
+        field9: HashMap::from([(PathBuf::from("hello2"), 1), (PathBuf::from("he2"), 6)]),
+        field10: String::from("hidushfi"),
+        field11: PathBuf::from("hidushfi"),
+        field12: RangedInt(0),
+        field13: StrictPath::from("hello.yml")
     };
+    let t = Instant::now();
     s.serialize(&mut ConfigSerializer::new(&mut x)).unwrap();
-    dbg!(&x);
+
+    dbg!(t.elapsed());
     let r = TestStruct::deserialize(&mut ConfigDeserializer::new(&x)).unwrap();
+    dbg!(t.elapsed());
     dbg!(r);
 }
-
-

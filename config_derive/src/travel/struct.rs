@@ -6,12 +6,13 @@ use syn::{self, token::Comma};
 use syn::spanned::Spanned;
 use syn::LitStr;
 
-pub fn gen_travel(fields: &Punctuated<Field, Comma>, _name: &Ident) -> TokenStream {
+pub fn gen_travel(fields: &Punctuated<Field, Comma>, name: &Ident) -> TokenStream {
     let gen_founds = gen_founds(fields);
+    let str_name = LitStr::new(&name.to_string(), name.span());
 
     quote! {
         use ::config::traveller::TravellerStruct as _;
-        let mut state = traveller.found_struct()?;
+        let mut state = traveller.found_struct(#str_name)?;
         #(#gen_founds)*
         state.end()
     }

@@ -5,41 +5,19 @@ use druid::{Data, Lens, WidgetExt};
 use crate::ctypes::CType;
 
 #[derive(Debug, Clone, Data, Lens)]
-pub struct CVec {
-    inner: Vector<CItem>,
+pub struct CSeq {
+    pub inner: Vector<CItem>,
     #[data(ignore)]
-    template_fn: fn() -> CType,
+    pub template: Box<CType>,
     #[data(ignore)]
-    name: Option<String>,
+    name: Option<&'static str>,
 }
 
-impl ListIter<CItem> for CVec {
-    fn for_each(&self, mut cb: impl FnMut(&CItem, usize)) {
-        for (i, item) in self.inner.iter().enumerate() {
-            cb(item, i);
-        }
-    }
-
-    fn for_each_mut(&mut self, mut cb: impl FnMut(&mut CItem, usize)) {
-        for (index, element) in self.inner.clone().iter().enumerate() {
-            let mut new_element = element.to_owned();
-            cb(&mut new_element, index);
-            if !new_element.same(element) {
-                self.inner[index] = new_element;
-            }
-        }
-    }
-
-    fn data_len(&self) -> usize {
-        self.inner.len()
-    }
-}
-
-impl CVec {
-    fn new(template_fn: fn() -> CType) -> Self {
+impl CSeq {
+    pub fn new(template: CType) -> Self {
         Self {
             inner: im::Vector::new(),
-            template_fn,
+            template: Box::new(template),
             name: None,
         }
     }
@@ -62,10 +40,6 @@ impl CVec {
         }
     }
 
-    pub fn get_template(&self) -> CType {
-        (self.template_fn)()
-    }
-
     pub fn set(&mut self, vec: im::Vector<CItem>) {
         self.inner = vec;
     }
@@ -85,9 +59,43 @@ impl CVec {
                 .controller(DeleteController::new()),
             )
             .with_child(Button::new("Add").on_click(|ctx, c_vec: &mut Self, _env| {
-                c_vec.push(c_vec.get_template());
+                c_vec.push(c_vec.template.as_ref().clone());
                 ctx.request_update();
             }))
+    }
+}
+
+#[derive(Debug, Clone, Data, Lens)]
+pub struct CItem {
+    pub index: usize,
+    pub ty: CType,
+}
+
+impl CItem {
+    pub fn new(ty: CType, idx: usize) -> Self {
+        Self { index: idx, ty }
+    }
+}
+
+impl ListIter<CItem> for CSeq {
+    fn for_each(&self, mut cb: impl FnMut(&CItem, usize)) {
+        for (i, item) in self.inner.iter().enumerate() {
+            cb(item, i);
+        }
+    }
+
+    fn for_each_mut(&mut self, mut cb: impl FnMut(&mut CItem, usize)) {
+        for (index, element) in self.inner.clone().iter().enumerate() {
+            let mut new_element = element.to_owned();
+            cb(&mut new_element, index);
+            if !new_element.same(element) {
+                self.inner[index] = new_element;
+            }
+        }
+    }
+
+    fn data_len(&self) -> usize {
+        self.inner.len()
     }
 }
 
@@ -101,13 +109,14 @@ impl DeleteController {
     }
 }
 
-impl<W: Widget<CVec>> Controller<CVec, W> for DeleteController {
+
+impl<W: Widget<CSeq>> Controller<CSeq, W> for DeleteController {
     fn event(
         &mut self,
         child: &mut W,
         ctx: &mut EventCtx,
         event: &Event,
-        data: &mut CVec,
+        data: &mut CSeq,
         env: &Env,
     ) {
         if let Event::Notification(notfi) = event {
@@ -118,38 +127,5 @@ impl<W: Widget<CVec>> Controller<CVec, W> for DeleteController {
             }
         };
         child.event(ctx, event, data, env)
-    }
-}
-
-pub struct CVecBuilder {
-    inner: CVec,
-}
-
-impl CVecBuilder {
-    pub fn new(template: fn() -> CType) -> Self {
-        Self {
-            inner: CVec::new(template),
-        }
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
-        self
-    }
-
-    pub fn build(self) -> CVec {
-        self.inner
-    }
-}
-
-#[derive(Debug, Clone, Data, Lens)]
-pub struct CItem {
-    pub index: usize,
-    pub ty: CType,
-}
-
-impl CItem {
-    pub fn new(ty: CType, idx: usize) -> Self {
-        Self { index: idx, ty }
     }
 }

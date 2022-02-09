@@ -7,12 +7,12 @@ use druid::{
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct CString {
-    value: Option<String>,
+    pub value: Option<String>,
     name: Option<&'static str>,
 }
 
 impl CString {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             value: None,
             name: None,

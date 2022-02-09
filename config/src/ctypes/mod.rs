@@ -7,12 +7,12 @@ use crate::ctypes::cenum::CEnum;
 use crate::ctypes::cstruct::CStruct;
 use crate::ctypes::float::CFloat;
 use crate::ctypes::integer::CInteger;
-use crate::ctypes::map::CHashMap;
+use crate::ctypes::map::CMap;
 use crate::ctypes::option::COption;
 use crate::ctypes::path::CPath;
 use crate::ctypes::string::CString;
 use crate::ctypes::tuple::CTuple;
-use crate::ctypes::vec::CVec;
+use crate::ctypes::seq::CSeq;
 use crate::errors::Error;
 
 pub mod bool;
@@ -23,7 +23,7 @@ pub mod map;
 pub mod path;
 pub mod string;
 pub mod cstruct;
-pub mod vec;
+pub mod seq;
 pub mod option;
 pub mod tuple;
 
@@ -37,22 +37,15 @@ pub enum CType {
     Path(CPath),
     Tuple(CTuple),
     CStruct(CStruct),
-    Vec(CVec),
-    HashMap(CHashMap),
+    Seq(CSeq),
+    Map(CMap),
     CEnum(CEnum),
     Option(Box<COption>),
 }
 
 impl CType {
     pub fn is_leaf(&self) -> bool {
-        use CType::*;
-        match self {
-            String(_) | Bool(_) | Integer(_) | Float(_) | Path(_) => true,
-            CStruct(_)  | Vec(_) | HashMap(_) => false,
-            CEnum(cenum) => cenum.is_leaf(),
-            Option(coption) => coption.ty.is_leaf(),
-            Tuple(ctuple) => todo!(),
-        }
+        todo!()
     }
 
     pub fn as_string(&self) -> Result<&CString, Error> {
@@ -167,30 +160,30 @@ impl CType {
         }
     }
 
-    pub fn as_vec(&self) -> Result<&CVec, Error> {
+    pub fn as_seq(&self) -> Result<&CSeq, Error> {
         match self {
-            Self::Vec(cvalue) => Ok(cvalue),
+            Self::Seq(cvalue) => Ok(cvalue),
             _ => Err(Error::ExpectedVec),
         }
     }
 
-    pub fn as_vec_mut(&mut self) -> Result<&mut CVec, Error> {
+    pub fn as_seq_mut(&mut self) -> Result<&mut CSeq, Error> {
         match self {
-            Self::Vec(cvalue) => Ok(cvalue),
+            Self::Seq(cvalue) => Ok(cvalue),
             _ => Err(Error::ExpectedVec),
         }
     }
 
-    pub fn as_map(&self) -> Result<&CHashMap, Error> {
+    pub fn as_map(&self) -> Result<&CMap, Error> {
         match self {
-            Self::HashMap(cvalue) => Ok(cvalue),
+            Self::Map(cvalue) => Ok(cvalue),
             _ => Err(Error::ExpectedMap),
         }
     }
 
-    pub fn as_map_mut(&mut self) -> Result<&mut CHashMap, Error> {
+    pub fn as_map_mut(&mut self) -> Result<&mut CMap, Error> {
         match self {
-            Self::HashMap(cvalue) => Ok(cvalue),
+            Self::Map(cvalue) => Ok(cvalue),
             _ => Err(Error::ExpectedMap),
         }
     }
@@ -218,8 +211,8 @@ impl CType {
             .float(CFloat::widget())
             .path(CPath::widget())
             .c_struct(CStruct::widget())
-            .hash_map(CHashMap::widget())
-            .vec(CVec::widget())
+            .map(CMap::widget())
+            .seq(CSeq::widget())
             .c_enum(CEnum::widget())
             .option(COption::widget().lens(lens::Identity.deref()))
     }

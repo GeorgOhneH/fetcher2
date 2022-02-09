@@ -1,11 +1,13 @@
 use crate::ctypes::cenum::{CArg, CEnum};
 use crate::ctypes::cstruct::CStruct;
+use crate::ctypes::map::CMap;
+use crate::ctypes::seq::{CItem, CSeq};
 use crate::ctypes::tuple::CTuple;
 use crate::ctypes::CType;
 use crate::errors::Error;
 use serde::de::value::StrDeserializer;
 use serde::de::{
-    Deserialize, DeserializeSeed, EnumAccess, MapAccess, SeqAccess, Unexpected, Visitor,
+    Deserialize, DeserializeSeed, EnumAccess, Error as _, MapAccess, SeqAccess, Unexpected, Visitor,
 };
 use serde::de::{IntoDeserializer, VariantAccess};
 use serde::Deserializer;
@@ -42,21 +44,21 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i8(self.ty.as_int()?.value.ok_or(Error::ValueRequired)? as i8)
+        self.deserialize_i64(visitor)
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i16(self.ty.as_int()?.value.ok_or(Error::ValueRequired)? as i16)
+        self.deserialize_i64(visitor)
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i32(self.ty.as_int()?.value.ok_or(Error::ValueRequired)? as i32)
+        self.deserialize_i64(visitor)
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -119,14 +121,28 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        todo!()
+        match &self.ty {
+            CType::String(cstring) => {
+                visitor.visit_str(cstring.value.as_ref().ok_or(Error::ValueRequired)?)
+            }
+            CType::Path(cpath) => visitor.visit_str(
+                cpath
+                    .value
+                    .as_ref()
+                    .ok_or(Error::ValueRequired)?
+                    .as_os_str()
+                    .to_str()
+                    .ok_or(Error::custom("Path it not utf8"))?,
+            ),
+            _ => return Err(Error::ExpectedStringOrPath),
+        }
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        self.deserialize_str(visitor)
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -159,7 +175,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_unit()
     }
 
     fn deserialize_unit_struct<V>(
@@ -170,7 +186,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        todo!()
+        self.deserialize_unit(visitor)
     }
 
     fn deserialize_newtype_struct<V>(
@@ -181,14 +197,15 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_newtype_struct(self)
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        let cseq = self.ty.as_seq()?;
+        visitor.visit_seq(ConfigDeserializerSeq::new(cseq))
     }
 
     fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
@@ -208,14 +225,16 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        todo!()
+        let ctuple = self.ty.as_tuple()?;
+        visitor.visit_seq(ConfigDeserializerTuple::new(ctuple))
     }
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        let cmap = self.ty.as_map()?;
+        visitor.visit_map(ConfigDeserializerMap::new(cmap))
     }
 
     fn deserialize_struct<V>(
@@ -300,6 +319,46 @@ impl<'de> MapAccess<'de> for ConfigDeserializerStruct<'de> {
     }
 }
 
+pub struct ConfigDeserializerMap<'a> {
+    cmap: &'a CMap,
+    iter: druid::im::ordmap::Iter<'a, String, CType>,
+    next_value: Option<&'a CType>,
+}
+
+impl<'a> ConfigDeserializerMap<'a> {
+    pub fn new(cmap: &'a CMap) -> Self {
+        Self {
+            cmap,
+            iter: cmap.inner.iter(),
+            next_value: None,
+        }
+    }
+}
+
+impl<'de> MapAccess<'de> for ConfigDeserializerMap<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        if let Some((key, value)) = self.iter.next() {
+            self.next_value = Some(value);
+            let str_deserializer: StrDeserializer<'de, Error> = key.as_str().into_deserializer();
+            Ok(Some(seed.deserialize(str_deserializer)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        seed.deserialize(&mut ConfigDeserializer::new(self.next_value.unwrap()))
+    }
+}
+
 pub struct ConfigDeserializerTuple<'a> {
     ctuple: &'a CTuple,
     iter: druid::im::vector::Iter<'a, CType>,
@@ -324,6 +383,34 @@ impl<'de> SeqAccess<'de> for ConfigDeserializerTuple<'de> {
         self.iter
             .next()
             .map(|element| seed.deserialize(&mut ConfigDeserializer::new(element)))
+            .transpose()
+    }
+}
+
+pub struct ConfigDeserializerSeq<'a> {
+    cseq: &'a CSeq,
+    iter: druid::im::vector::Iter<'a, CItem>,
+}
+
+impl<'a> ConfigDeserializerSeq<'a> {
+    pub fn new(cseq: &'a CSeq) -> Self {
+        Self {
+            cseq,
+            iter: cseq.inner.iter(),
+        }
+    }
+}
+
+impl<'de> SeqAccess<'de> for ConfigDeserializerSeq<'de> {
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        self.iter
+            .next()
+            .map(|item| seed.deserialize(&mut ConfigDeserializer::new(&item.ty)))
             .transpose()
     }
 }

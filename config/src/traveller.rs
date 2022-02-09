@@ -6,8 +6,16 @@ use crate::ctypes::option::COption;
 use crate::ctypes::tuple::{CTuple, CTupleBuilder};
 use crate::ctypes::CType;
 use crate::errors::Error;
+use druid::im::Vector;
+use druid::FileSpec;
+use std::collections::HashMap;
 use std::error::Error as StdError;
+use std::path::PathBuf;
 
+use crate::ctypes::map::CMap;
+use crate::ctypes::path::CPath;
+use crate::ctypes::seq::CSeq;
+use crate::ctypes::string::CString;
 pub use config_derive::Travel;
 
 pub trait Travel {
@@ -31,6 +39,33 @@ impl Travel for bool {
         T: Traveller,
     {
         traveller.found_bool()
+    }
+}
+
+impl Travel for String {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
+        traveller.found_str()
+    }
+}
+
+impl Travel for PathBuf {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
+        traveller.found_path(TravelPathConfig::Any)
+    }
+}
+
+impl Travel for () {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
+        traveller.found_unit()
     }
 }
 
@@ -62,13 +97,37 @@ where
     }
 }
 
-impl<U, const N: usize> Travel for [U; N] where U: Travel {
-    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error> where T: Traveller {
+impl<U, const N: usize> Travel for [U; N]
+where
+    U: Travel,
+{
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
         let mut state = traveller.found_tuple()?;
         for _ in 0..N {
             state.found_element::<U>()?;
         }
         state.end()
+    }
+}
+
+impl<U: Travel> Travel for Vec<U> {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
+        traveller.found_seq::<U>()
+    }
+}
+
+impl<K, V: Travel> Travel for HashMap<K, V> {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
+        traveller.found_map::<V>()
     }
 }
 
@@ -81,10 +140,28 @@ pub trait Traveller {
 
     fn found_bool(self) -> Result<Self::Ok, Self::Error>;
     fn found_i64(self) -> Result<Self::Ok, Self::Error>;
+    fn found_ranged_int(self, min: i64, max: i64) -> Result<Self::Ok, Self::Error>;
+    fn found_str(self) -> Result<Self::Ok, Self::Error>;
+    fn found_path(self, path_config: TravelPathConfig) -> Result<Self::Ok, Self::Error>;
+    fn found_unit(self) -> Result<Self::Ok, Self::Error>;
+    fn found_unit_struct(self) -> Result<Self::Ok, Self::Error>;
     fn found_option<T: Travel>(self) -> Result<Self::Ok, Self::Error>;
     fn found_tuple(self) -> Result<Self::TravellerTuple, Self::Error>;
-    fn found_struct(self) -> Result<Self::TravellerStruct, Self::Error>;
-    fn found_enum(self) -> Result<Self::TravellerEnum, Self::Error>;
+    fn found_tuple_struct(self, name: &'static str) -> Result<Self::TravellerTuple, Self::Error>;
+    fn found_seq<T: Travel>(self) -> Result<Self::Ok, Self::Error>;
+    fn found_map<V: Travel>(self) -> Result<Self::Ok, Self::Error>;
+    fn found_struct(self, name: &'static str) -> Result<Self::TravellerStruct, Self::Error>;
+    fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error>;
+}
+
+#[derive(Debug, Clone)]
+pub enum TravelPathConfig {
+    Any,
+    Relative,
+    Absolute,
+    AbsoluteExist,
+    AbsoluteExistDir,
+    AbsoluteExistFile(Vector<FileSpec>),
 }
 
 pub trait TravellerStruct {
@@ -181,7 +258,30 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
     }
 
     fn found_i64(self) -> Result<Self::Ok, Self::Error> {
-        Ok(CType::Integer(CInteger::new()))
+        Ok(CType::Integer(CInteger::new(i64::MIN, i64::MAX)))
+    }
+
+    fn found_ranged_int(self, min: i64, max: i64) -> Result<Self::Ok, Self::Error> {
+        Ok(CType::Integer(CInteger::new(min, max)))
+    }
+
+    fn found_str(self) -> Result<Self::Ok, Self::Error> {
+        Ok(CType::String(CString::new()))
+    }
+
+    fn found_path(
+        self,
+        path_config: TravelPathConfig,
+    ) -> Result<Self::Ok, Self::Error> {
+        Ok(CType::Path(CPath::new(path_config)))
+    }
+
+    fn found_unit(self) -> Result<Self::Ok, Self::Error> {
+        panic!("unit are not supported. Consider skipping this field")
+    }
+
+    fn found_unit_struct(self) -> Result<Self::Ok, Self::Error> {
+        panic!("unit_structs are not supported. Consider skipping this field")
     }
 
     fn found_option<T: Travel>(self) -> Result<Self::Ok, Self::Error> {
@@ -193,11 +293,25 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         Ok(ConfigTravellerTuple::new())
     }
 
-    fn found_struct(self) -> Result<Self::TravellerStruct, Self::Error> {
+    fn found_tuple_struct(self, name: &'static str) -> Result<Self::TravellerTuple, Self::Error> {
+        Ok(ConfigTravellerTuple::new())
+    }
+
+    fn found_seq<T: Travel>(self) -> Result<Self::Ok, Self::Error> {
+        let ty = T::travel(&mut ConfigTraveller::new())?;
+        Ok(CType::Seq(CSeq::new(ty)))
+    }
+
+    fn found_map<V: Travel>(self) -> Result<Self::Ok, Self::Error> {
+        let value = V::travel(&mut ConfigTraveller::new())?;
+        Ok(CType::Map(CMap::new(value)))
+    }
+
+    fn found_struct(self, name: &'static str) -> Result<Self::TravellerStruct, Self::Error> {
         Ok(ConfigTravellerStruct::new())
     }
 
-    fn found_enum(self) -> Result<Self::TravellerEnum, Self::Error> {
+    fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error> {
         Ok(ConfigTravellerEnum::new())
     }
 }

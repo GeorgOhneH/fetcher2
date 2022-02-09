@@ -29,6 +29,7 @@ pub enum Error {
     ExpectedInteger,
     ExpectedFloat,
     ExpectedString,
+    ExpectedStringOrPath,
     ExpectedPath,
     ExpectedOption,
     ExpectedVec,
