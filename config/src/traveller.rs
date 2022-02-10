@@ -215,19 +215,30 @@ pub trait TravellerStruct {
     type Ok;
     type Error: StdError;
 
-    fn found_field<T: ?Sized>(&mut self, key: &'static str) -> Result<(), Self::Error>
+    type TravellerStructField<'a>: TravellerStructField<Error = Self::Error>
+    where
+        Self: 'a;
+
+    fn found_field<'a, T: ?Sized>(
+        &'a mut self,
+        key: &'static str,
+    ) -> Result<Self::TravellerStructField<'a>, Self::Error>
     where
         T: Travel;
 
-    fn found_field_with_default<T>(
-        &mut self,
-        key: &'static str,
-        default: T,
-    ) -> Result<(), Self::Error>
+    fn end(self) -> Result<Self::Ok, Self::Error>;
+}
+
+pub trait TravellerStructField {
+    type Error: StdError;
+
+    fn with_default<T>(&mut self, default: T) -> Result<(), Self::Error>
     where
         T: Travel + Serialize;
 
-    fn end(self) -> Result<Self::Ok, Self::Error>;
+    fn with_name(&mut self, name: &'static str) -> Result<(), Self::Error>;
+
+    fn end(self) -> Result<(), Self::Error>;
 }
 
 pub trait TravellerEnum {
@@ -286,17 +297,16 @@ pub trait TravellerTupleVariant {
 pub trait TravellerStructVariant {
     type Error: StdError;
 
-    fn found_field<T: ?Sized>(&mut self, key: &'static str) -> Result<(), Self::Error>
+    type TravellerStructVariantField<'a>: TravellerStructField<Error = Self::Error>
     where
-        T: Travel;
+        Self: 'a;
 
-    fn found_field_with_default<T>(
+    fn found_field<T: ?Sized>(
         &mut self,
         key: &'static str,
-        default: T,
-    ) -> Result<(), Self::Error>
+    ) -> Result<Self::TravellerStructVariantField, Self::Error>
     where
-        T: Travel + Serialize;
+        T: Travel;
 
     fn end(self) -> Result<(), Self::Error>;
 }
@@ -459,6 +469,36 @@ impl TravellerStruct for ConfigTravellerStruct {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         Ok(CType::CStruct(self.cstruct.build()))
+    }
+}
+
+pub struct ConfigTravellerStructField<'a> {
+    cstruct: &'a mut CStructBuilder,
+    ty: CType,
+}
+
+impl<'a> ConfigTravellerStructField<'a> {
+    fn new(cstruct: &'a mut CStructBuilder, ty: CType) -> Self {
+        Self {
+            cstruct,
+            ty,
+        }
+    }
+}
+
+impl<'a> TravellerStructField for ConfigTravellerStructField<'a>  {
+    type Error = Error;
+
+    fn with_default<T>(&mut self, default: T) -> Result<(), Self::Error> where T: Travel + Serialize {
+        default.serialize(&mut ConfigSerializer::new(&mut self.ty))
+    }
+
+    fn with_name(&mut self, name: &'static str) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn end(self) -> Result<(), Self::Error> {
+        todo!()
     }
 }
 
