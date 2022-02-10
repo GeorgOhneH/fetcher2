@@ -1,4 +1,6 @@
+use crate::config_attr::parse_config_attributes;
 use proc_macro2::{Ident, TokenStream};
+use proc_macro_error::abort;
 use quote::{format_ident, quote};
 use regex::internal::Input;
 use syn::punctuated::Punctuated;
@@ -28,9 +30,16 @@ pub fn gen_travel_tuple_struct(fields: &Punctuated<Field, Comma>, name: &Ident) 
     let str_name = LitStr::new(&name.to_string(), name.span());
 
     if fields.len() == 1 {
-        let field_ty = &fields[0].ty;
-        quote! {
-            traveller.found_newtype_struct::<#field_ty>(#str_name)
+        let field = &fields[0];
+        let field_ty = &field.ty;
+        let attr = parse_config_attributes(&field.attrs);
+        if let Some(skip) = &attr.skip {
+            abort!(skip, "bro, What do you want me to do?")
+        }
+        if let Some((_, default_expr)) = attr.default {
+            quote! { traveller.found_newtype_struct_with_default::<#field_ty>(#str_name, #default_expr) }
+        } else {
+            quote! { traveller.found_newtype_struct::<#field_ty>(#str_name) }
         }
     } else {
         let state_name = format_ident!("state",);
@@ -48,18 +57,25 @@ pub fn gen_travel_tuple_struct(fields: &Punctuated<Field, Comma>, name: &Ident) 
 pub fn gen_found_fields(fields: &Punctuated<Field, Comma>, state_name: &Ident) -> Vec<TokenStream> {
     fields
         .iter()
-        .map(|field| {
-            let field_ty = &field.ty;
-            if let Some(field_name) = field.ident.as_ref() {
-                let name = LitStr::new(&field_name.to_string(), field.span());
-                quote! {
-                    #state_name.found_field::<#field_ty>(#name)?;
-                }
-            } else {
-                quote! {
-                    #state_name.found_element::<#field_ty>()?;
-                }
+        .filter_map(|field| {
+            let attr = parse_config_attributes(&field.attrs);
+            if attr.skip.is_some() {
+                return None;
             }
+            let field_ty = &field.ty;
+            let token_stream = if let Some(field_name) = field.ident.as_ref() {
+                let name = LitStr::new(&field_name.to_string(), field.span());
+                if let Some((_, default_expr)) = attr.default {
+                    quote! { #state_name.found_field_with_default::<#field_ty>(#name, #default_expr)?; }
+                } else {
+                    quote! { #state_name.found_field::<#field_ty>(#name)?; }
+                }
+            } else if let Some((_, default_expr)) = attr.default {
+                quote! { #state_name.found_element_with_default::<#field_ty>(#default_expr)?; }
+            } else {
+                quote! { #state_name.found_element::<#field_ty>()?; }
+            };
+            Some(token_stream)
         })
         .collect()
 }

@@ -138,7 +138,7 @@ use serde::{Deserialize, Serialize};
 // }
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
-struct TestStruct2(pub i64);
+struct TestStruct2(#[travel(default = 9)] pub i64);
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
 struct TestStruct3(pub i64, pub i64);
@@ -148,6 +148,7 @@ struct TestStruct4;
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
 struct TestStruct {
+    #[travel(default = 9)]
     pub field1: i64,
     pub field2: bool,
     pub field3: Option<bool>,
@@ -164,6 +165,8 @@ struct TestStruct {
     pub field14: u64,
     pub field15: TestStruct2,
     pub field16: TestStruct3,
+    pub field17: TestStruct4,
+    pub field18: (),
 }
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
@@ -196,6 +199,8 @@ pub fn main() {
         field14: 19,
         field15: TestStruct2(10),
         field16: TestStruct3(10, 11),
+        field17: TestStruct4,
+        field18: (),
     };
     let t = Instant::now();
     s.serialize(&mut ConfigSerializer::new(&mut x)).unwrap();

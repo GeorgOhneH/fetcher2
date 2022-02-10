@@ -1,13 +1,12 @@
 use std::path::PathBuf;
+use config::traveller::Travel;
 
-use druid::Data;
-
-use config::Config;
 
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
 
-#[derive(Config, Debug, Data, Clone)]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
+#[derive(Travel, Debug, Clone)]
 pub struct DownloadSettings {
     #[config(name = "Username")]
     pub username: Option<String>,

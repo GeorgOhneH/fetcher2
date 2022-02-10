@@ -11,6 +11,7 @@ use crate::ctypes::path::CPath;
 use crate::ctypes::string::CString;
 use crate::ctypes::tuple::CTuple;
 use crate::ctypes::seq::CSeq;
+use crate::ctypes::unit::CUnit;
 use crate::errors::Error;
 
 pub mod bool;
@@ -24,6 +25,7 @@ pub mod cstruct;
 pub mod seq;
 pub mod option;
 pub mod tuple;
+pub mod unit;
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid_enums::Matcher))]
 #[derive(Debug, Clone)]
@@ -39,6 +41,7 @@ pub enum CType {
     Map(CMap),
     CEnum(CEnum),
     Option(Box<COption>),
+    Unit(CUnit),
 }
 
 impl CType {

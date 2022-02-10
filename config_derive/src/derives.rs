@@ -19,7 +19,7 @@ pub fn derive_travel(input: &DeriveInput) -> TokenStream {
             gen_for_struct(ident, &input.generics, &data_struct, &input.attrs)
         }
         Data::Enum(ref e) => gen_for_enum(ident, &input.attrs, e),
-        _ => abort_call_site!("`#[derive(Config)]` only supports non-tuple structs and enums"),
+        Data::Union(_) => abort_call_site!("`#[derive(Travel)]` doesn't support unions"),
     }
 }
 

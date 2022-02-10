@@ -6,17 +6,20 @@ use crate::ctypes::option::COption;
 use crate::ctypes::tuple::{CTuple, CTupleBuilder};
 use crate::ctypes::CType;
 use crate::errors::Error;
+use im::Vector;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::path::PathBuf;
-use im::Vector;
 
+use crate::ctypes::float::CFloat;
 use crate::ctypes::map::CMap;
 use crate::ctypes::path::CPath;
 use crate::ctypes::seq::CSeq;
 use crate::ctypes::string::CString;
+use crate::ctypes::unit::CUnit;
+use crate::serializer::ConfigSerializer;
 pub use config_derive::Travel;
-use crate::ctypes::float::CFloat;
 
 pub trait Travel {
     fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
@@ -26,8 +29,8 @@ pub trait Travel {
 
 impl Travel for bool {
     fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
-        where
-            T: Traveller,
+    where
+        T: Traveller,
     {
         traveller.found_bool()
     }
@@ -42,18 +45,20 @@ impl Travel for i64 {
     }
 }
 
-
 impl Travel for u64 {
     fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
-        where
-            T: Traveller,
+    where
+        T: Traveller,
     {
         traveller.found_u64()
     }
 }
 
 impl Travel for f64 {
-    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error> where T: Traveller {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
         traveller.found_f64()
     }
 }
@@ -171,6 +176,11 @@ pub trait Traveller {
     fn found_map<V: Travel>(self) -> Result<Self::Ok, Self::Error>;
     fn found_struct(self, name: &'static str) -> Result<Self::TravellerStruct, Self::Error>;
     fn found_newtype_struct<T: Travel>(self, name: &'static str) -> Result<Self::Ok, Self::Error>;
+    fn found_newtype_struct_with_default<T: Travel + Serialize>(
+        self,
+        name: &'static str,
+        default: T,
+    ) -> Result<Self::Ok, Self::Error>;
     fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error>;
 }
 
@@ -209,6 +219,14 @@ pub trait TravellerStruct {
     where
         T: Travel;
 
+    fn found_field_with_default<T>(
+        &mut self,
+        key: &'static str,
+        default: T,
+    ) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize;
+
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
@@ -230,6 +248,14 @@ pub trait TravellerEnum {
     where
         T: Travel;
 
+    fn found_newtype_variant_with_default<T>(
+        &mut self,
+        name: &'static str,
+        default: T,
+    ) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize;
+
     fn found_tuple_variant<'a>(
         &'a mut self,
         key: &'static str,
@@ -250,6 +276,10 @@ pub trait TravellerTupleVariant {
     where
         T: Travel;
 
+    fn found_element_with_default<T>(&mut self, default: T) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize;
+
     fn end(self) -> Result<(), Self::Error>;
 }
 
@@ -259,6 +289,14 @@ pub trait TravellerStructVariant {
     fn found_field<T: ?Sized>(&mut self, key: &'static str) -> Result<(), Self::Error>
     where
         T: Travel;
+
+    fn found_field_with_default<T>(
+        &mut self,
+        key: &'static str,
+        default: T,
+    ) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize;
 
     fn end(self) -> Result<(), Self::Error>;
 }
@@ -270,6 +308,10 @@ pub trait TravellerTuple {
     fn found_element<T: ?Sized>(&mut self) -> Result<(), Self::Error>
     where
         T: Travel;
+
+    fn found_element_with_default<T>(&mut self, default: T) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize;
 
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
@@ -318,19 +360,16 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         Ok(CType::String(CString::new()))
     }
 
-    fn found_path(
-        self,
-        path_config: TravelPathConfig,
-    ) -> Result<Self::Ok, Self::Error> {
+    fn found_path(self, path_config: TravelPathConfig) -> Result<Self::Ok, Self::Error> {
         Ok(CType::Path(CPath::new(path_config)))
     }
 
     fn found_unit(self) -> Result<Self::Ok, Self::Error> {
-        panic!("unit is not supported. Consider skipping this field")
+        Ok(CType::Unit(CUnit::new()))
     }
 
     fn found_unit_struct(self) -> Result<Self::Ok, Self::Error> {
-        panic!("unit_structs are not supported. Consider skipping this field")
+        Ok(CType::Unit(CUnit::new()))
     }
 
     fn found_option<T: Travel>(self) -> Result<Self::Ok, Self::Error> {
@@ -364,6 +403,16 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         T::travel(&mut ConfigTraveller::new())
     }
 
+    fn found_newtype_struct_with_default<T: Travel + Serialize>(
+        self,
+        name: &'static str,
+        default: T,
+    ) -> Result<Self::Ok, Self::Error> {
+        let mut ty = T::travel(&mut ConfigTraveller::new())?;
+        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
+        Ok(ty)
+    }
+
     fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error> {
         Ok(ConfigTravellerEnum::new())
     }
@@ -390,6 +439,20 @@ impl TravellerStruct for ConfigTravellerStruct {
         T: Travel,
     {
         let ty = T::travel(&mut ConfigTraveller::new())?;
+        self.cstruct.arg(CKwarg::new(key, ty));
+        Ok(())
+    }
+
+    fn found_field_with_default<T>(
+        &mut self,
+        key: &'static str,
+        default: T,
+    ) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize,
+    {
+        let mut ty = T::travel(&mut ConfigTraveller::new())?;
+        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
         self.cstruct.arg(CKwarg::new(key, ty));
         Ok(())
     }
@@ -428,6 +491,21 @@ impl TravellerEnum for ConfigTravellerEnum {
         T: Travel,
     {
         let ty = T::travel(&mut ConfigTraveller::new())?;
+        let carg = CArg::new(name, CArgVariant::NewType(ty));
+        self.cenum.arg(carg);
+        Ok(())
+    }
+
+    fn found_newtype_variant_with_default<T>(
+        &mut self,
+        name: &'static str,
+        default: T,
+    ) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize,
+    {
+        let mut ty = T::travel(&mut ConfigTraveller::new())?;
+        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
         let carg = CArg::new(name, CArgVariant::NewType(ty));
         self.cenum.arg(carg);
         Ok(())
@@ -480,6 +558,16 @@ impl<'a> TravellerTupleVariant for ConfigTravellerTupleVariant<'a> {
         Ok(())
     }
 
+    fn found_element_with_default<T>(&mut self, default: T) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize,
+    {
+        let mut ty = T::travel(&mut ConfigTraveller::new())?;
+        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
+        self.ctuple.add_element(ty);
+        Ok(())
+    }
+
     fn end(self) -> Result<(), Self::Error> {
         let ctuple = self.ctuple.build();
         self.cenum
@@ -517,6 +605,21 @@ impl<'a> TravellerStructVariant for ConfigTravellerStructVariant<'a> {
         Ok(())
     }
 
+    fn found_field_with_default<T>(
+        &mut self,
+        key: &'static str,
+        default: T,
+    ) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize,
+    {
+        let mut ty = T::travel(&mut ConfigTraveller::new())?;
+        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
+        let kwarg = CKwarg::new(key, ty);
+        self.cstruct.arg(kwarg);
+        Ok(())
+    }
+
     fn end(self) -> Result<(), Self::Error> {
         let cstruct = self.cstruct.build();
         self.cenum
@@ -546,6 +649,16 @@ impl TravellerTuple for ConfigTravellerTuple {
         T: Travel,
     {
         let ty = T::travel(&mut ConfigTraveller::new())?;
+        self.ctuple.add_element(ty);
+        Ok(())
+    }
+
+    fn found_element_with_default<T>(&mut self, default: T) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize,
+    {
+        let mut ty = T::travel(&mut ConfigTraveller::new())?;
+        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
         self.ctuple.add_element(ty);
         Ok(())
     }

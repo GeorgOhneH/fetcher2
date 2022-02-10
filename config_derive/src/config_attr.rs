@@ -8,39 +8,74 @@ use syn::{
 };
 use syn::{MetaNameValue, Token};
 
-#[allow(clippy::large_enum_variant)]
-pub enum ConfigAttr {
-    DocString(LitStr),
+pub struct TravelAttr {
+    pub skip: Option<Ident>,
+    pub name: Option<(Ident, LitStr)>,
+    pub default: Option<(Ident, Expr)>,
+}
 
+impl TravelAttr {
+    pub fn new() -> Self {
+        Self {
+            skip: None,
+            name: None,
+            default: None,
+        }
+    }
+
+    fn got_default(&mut self, ident: Ident, expr: Expr) {
+        if self.default.is_some() {
+            abort! {
+                ident,
+                "default is only allowed once"
+            }
+        }
+        self.default = Some((ident, expr))
+    }
+
+    fn got_name(&mut self, ident: Ident, lit_str: LitStr) {
+        if self.name.is_some() {
+            abort! {
+                ident,
+                "name is only allowed once"
+            }
+        }
+        self.name = Some((ident, lit_str))
+    }
+
+    fn got_skip(&mut self, ident: Ident) {
+        if self.skip.is_some() {
+            abort! {
+                ident,
+                "skip is only allowed once"
+            }
+        }
+        self.skip = Some(ident)
+    }
+}
+
+#[allow(clippy::large_enum_variant)]
+pub enum TravelAttrKind {
+    DocString(LitStr),
     // single-identifier attributes
-    Skip(Expr),
+    Skip(Ident),
     OtherSingle(Ident),
 
     // ident = "string literal"
     Name(Ident, LitStr),
-    // ty = "Vec(_)", ty = "_(HashMap(_, String))"
-    Type(Ident, LitStr),
     OtherLitStr(Ident, LitStr),
 
     // ident = arbitrary_expr
-    ActiveFn(Ident, Expr),
-    InactiveBehavior(Ident, Expr),
+    Default(Ident, Expr),
     Other(Ident, Expr),
 }
 
-impl Parse for ConfigAttr {
+impl Parse for TravelAttrKind {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        use self::ConfigAttr::*;
+        use self::TravelAttrKind::*;
 
         let name: Ident = input.parse()?;
         let name_str = name.to_string();
-
-        if name_str == "required" {
-            abort! {
-                name,
-                "use Option<> to set required to false"
-            }
-        }
 
         if input.peek(Token![=]) {
             // `name = value` attributes.
@@ -51,16 +86,13 @@ impl Parse for ConfigAttr {
 
                 match &*name_str {
                     "name" => Ok(Name(name, lit)),
-                    "ty" => Ok(Type(name, lit)),
 
                     _ => Ok(OtherLitStr(name, lit)),
                 }
             } else {
                 match input.parse::<Expr>() {
                     Ok(expr) => match &*name_str {
-                        "active_fn" => Ok(ActiveFn(name, expr)),
-                        "inactive_behavior" => Ok(InactiveBehavior(name, expr)),
-                        "skip" => Ok(Skip(expr)),
+                        "default" => Ok(Default(name, expr)),
                         _ => Ok(Other(name, expr)),
                     },
 
@@ -75,22 +107,21 @@ impl Parse for ConfigAttr {
             abort!(name, "nested attributes are not valid")
         } else {
             // Attributes represented with a sole identifier.
-            #[allow(clippy::match_single_binding)]
             match &*name_str {
+                "skip" => Ok(Skip(name)),
                 _ => Ok(OtherSingle(name)),
             }
         }
     }
 }
 
-fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute]) {
+fn push_hint_text_comment(config_attrs: &mut Vec<TravelAttrKind>, attrs: &[Attribute]) {
     use syn::Lit::*;
     use syn::Meta::*;
     let doc_parts: Vec<String> = attrs
         .iter()
         .filter_map(|attr| {
             if let Ok(NameValue(MetaNameValue { lit: Str(s), .. })) = attr.parse_meta() {
-                //emit_call_site_warning! { " efigef"}
                 Some(s.value().trim().to_string())
             } else {
                 // non #[doc = "..."] attributes are not our concern
@@ -102,23 +133,33 @@ fn push_hint_text_comment(config_attrs: &mut Vec<ConfigAttr>, attrs: &[Attribute
 
     let doc_str = doc_parts.join("\n").trim().to_string();
     if !doc_str.is_empty() {
-        config_attrs.push(ConfigAttr::DocString(LitStr::new(
+        config_attrs.push(TravelAttrKind::DocString(LitStr::new(
             &doc_str,
             Span::call_site(),
         )));
     }
 }
 
-pub fn parse_config_attributes(all_attrs: &[Attribute]) -> Vec<ConfigAttr> {
-    let mut config_attrs: Vec<ConfigAttr> = all_attrs
+pub fn parse_config_attributes(all_attrs: &[Attribute]) -> TravelAttr {
+    let mut attr = TravelAttr::new();
+    for attr_kind in  all_attrs
         .iter()
-        .filter(|attr| attr.path.is_ident("config"))
+        .filter(|attr| attr.path.is_ident("travel"))
         .flat_map(|attr| {
-            attr.parse_args_with(Punctuated::<ConfigAttr, Token![,]>::parse_terminated)
+            attr.parse_args_with(Punctuated::<TravelAttrKind, Token![,]>::parse_terminated)
                 .unwrap_or_abort()
-        })
-        .collect();
+        }) {
+        match attr_kind {
+            TravelAttrKind::Default(ident, expr) => attr.got_default(ident, expr),
+            TravelAttrKind::Name(ident, lit) => attr.got_name(ident, lit),
+            TravelAttrKind::Skip(ident) => attr.got_skip(ident),
+            TravelAttrKind::Other(ident, _expr) => abort!(ident, "todo: make this sound cool"),
+            TravelAttrKind::OtherSingle(ident) => abort!(ident, "todo: make this sound cool"),
+            TravelAttrKind::OtherLitStr(ident, _lit) => abort!(ident, "todo: make this sound cool"),
+            TravelAttrKind::DocString(_) => (), // TODO
+        }
+    }
 
-    push_hint_text_comment(&mut config_attrs, all_attrs);
-    config_attrs
+    // push_hint_text_comment(&mut config_attrs, all_attrs);
+    attr
 }

@@ -5,6 +5,7 @@ use quote::{format_ident, quote};
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::{self, DataEnum, Field, Fields, FieldsNamed, FieldsUnnamed, LitStr};
+use crate::config_attr::parse_config_attributes;
 
 pub fn gen_travel_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
     let enum_name_str = LitStr::new(&enum_name.to_string(), enum_name.span());
@@ -18,9 +19,16 @@ pub fn gen_travel_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
                 }
             }
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
-                let field_ty = &unnamed[0].ty;
-                quote! {
-                    state.found_newtype_variant::<#field_ty>(#name_str)?;
+                let field = &unnamed[0];
+                let field_ty = &field.ty;
+                let attr = parse_config_attributes(&field.attrs);
+                if let Some(skip) = &attr.skip {
+                    abort!(skip, "bro, What do you want me to do?")
+                }
+                if let Some((_, default_expr)) = attr.default {
+                    quote! { state.found_newtype_variant_with_default::<#field_ty>(#name_str, #default_expr)?; }
+                } else {
+                    quote! { state.found_newtype_variant::<#field_ty>(#name_str)?; }
                 }
             }
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
