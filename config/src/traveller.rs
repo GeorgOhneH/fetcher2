@@ -17,11 +17,21 @@ use crate::ctypes::path::CPath;
 use crate::ctypes::seq::CSeq;
 use crate::ctypes::string::CString;
 pub use config_derive::Travel;
+use crate::ctypes::float::CFloat;
 
 pub trait Travel {
     fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
     where
         T: Traveller;
+}
+
+impl Travel for bool {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+        where
+            T: Traveller,
+    {
+        traveller.found_bool()
+    }
 }
 
 impl Travel for i64 {
@@ -33,12 +43,19 @@ impl Travel for i64 {
     }
 }
 
-impl Travel for bool {
+
+impl Travel for u64 {
     fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
-    where
-        T: Traveller,
+        where
+            T: Traveller,
     {
-        traveller.found_bool()
+        traveller.found_u64()
+    }
+}
+
+impl Travel for f64 {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error> where T: Traveller {
+        traveller.found_f64()
     }
 }
 
@@ -140,7 +157,10 @@ pub trait Traveller {
 
     fn found_bool(self) -> Result<Self::Ok, Self::Error>;
     fn found_i64(self) -> Result<Self::Ok, Self::Error>;
+    fn found_u64(self) -> Result<Self::Ok, Self::Error>;
     fn found_ranged_int(self, min: i64, max: i64) -> Result<Self::Ok, Self::Error>;
+    fn found_f64(self) -> Result<Self::Ok, Self::Error>;
+    fn found_ranged_float(self, min: f64, max: f64) -> Result<Self::Ok, Self::Error>;
     fn found_str(self) -> Result<Self::Ok, Self::Error>;
     fn found_path(self, path_config: TravelPathConfig) -> Result<Self::Ok, Self::Error>;
     fn found_unit(self) -> Result<Self::Ok, Self::Error>;
@@ -261,8 +281,20 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         Ok(CType::Integer(CInteger::new(i64::MIN, i64::MAX)))
     }
 
+    fn found_u64(self) -> Result<Self::Ok, Self::Error> {
+        Ok(CType::Integer(CInteger::new(0, i64::MAX)))
+    }
+
     fn found_ranged_int(self, min: i64, max: i64) -> Result<Self::Ok, Self::Error> {
         Ok(CType::Integer(CInteger::new(min, max)))
+    }
+
+    fn found_f64(self) -> Result<Self::Ok, Self::Error> {
+        Ok(CType::Float(CFloat::new(f64::MIN, f64::MAX)))
+    }
+
+    fn found_ranged_float(self, min: f64, max: f64) -> Result<Self::Ok, Self::Error> {
+        Ok(CType::Float(CFloat::new(min, max)))
     }
 
     fn found_str(self) -> Result<Self::Ok, Self::Error> {
@@ -277,7 +309,7 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
     }
 
     fn found_unit(self) -> Result<Self::Ok, Self::Error> {
-        panic!("unit are not supported. Consider skipping this field")
+        panic!("unit is not supported. Consider skipping this field")
     }
 
     fn found_unit_struct(self) -> Result<Self::Ok, Self::Error> {

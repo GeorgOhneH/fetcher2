@@ -4,6 +4,7 @@
 #![feature(box_patterns)]
 #![allow(clippy::new_without_default)]
 #![feature(generic_associated_types)]
+#![feature(adt_const_params)]
 
 use serde::de::{EnumAccess, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

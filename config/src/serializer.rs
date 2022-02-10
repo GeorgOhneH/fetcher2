@@ -57,31 +57,32 @@ impl<'a: 'b, 'b> Serializer for &'a mut ConfigSerializer<'b> {
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_f64(v as f64)
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.ty.as_float_mut()?.value = Some(v);
+        Ok(())
     }
 
-    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-        todo!()
+    fn serialize_char(self, _v: char) -> Result<Self::Ok, Self::Error> {
+        unimplemented!()
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
@@ -205,7 +206,7 @@ impl<'a: 'b, 'b> Serializer for &'a mut ConfigSerializer<'b> {
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
-        len: usize,
+        _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
         let cenum = self.ty.as_enum_mut()?;
         let cstruct = cenum.set_selected_mut(variant)?.variant.as_struct_mut()?;
@@ -582,7 +583,7 @@ impl Serializer for MapKeySerializer {
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
-        len: usize,
+        _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
         Err(Error::ExpectedString)
     }

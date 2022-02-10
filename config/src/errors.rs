@@ -19,10 +19,7 @@ pub enum Error {
     // field is missing.
     Message(String),
 
-    IntOutOfRange { value: isize, min: isize, max: isize },
-    FloatOutOfRange { value: f64, min: f64, max: f64 },
     KeyDoesNotExist,
-    Syntax,
     ValueRequired,
 
     ExpectedBoolean,

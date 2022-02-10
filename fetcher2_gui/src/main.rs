@@ -8,9 +8,11 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
-use std::{fs, thread};
 use std::time::{Duration, Instant};
+use std::{fs, thread};
 
+use config::ctypes::integer::RangedInt;
+use config::ctypes::path::{Absolute, AbsoluteExistFile, AnyPath, StrictPath};
 use config::deserializer::ConfigDeserializer;
 use config::serializer::ConfigSerializer;
 use config::traveller::{ConfigTraveller, Travel, Traveller, TravellerEnum};
@@ -18,8 +20,6 @@ use druid::{AppLauncher, LifeCycle, LocalizedString, WidgetExt, WindowDesc};
 use lazy_static::lazy_static;
 use self_update::cargo_crate_version;
 use serde::{Deserialize, Serialize};
-use config::ctypes::integer::RangedInt;
-use config::ctypes::path::{Absolute, AbsoluteExistFile, AnyPath, StrictPath};
 
 // use fetcher2::{Result, TError};
 
@@ -138,6 +138,15 @@ use config::ctypes::path::{Absolute, AbsoluteExistFile, AnyPath, StrictPath};
 // }
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
+struct TestStruct2(pub i64);
+
+#[derive(Serialize, Deserialize, Debug, Travel)]
+struct TestStruct3(pub i64, pub i64);
+
+#[derive(Serialize, Deserialize, Debug, Travel)]
+struct TestStruct4;
+
+#[derive(Serialize, Deserialize, Debug, Travel)]
 struct TestStruct {
     pub field1: i64,
     pub field2: bool,
@@ -152,36 +161,18 @@ struct TestStruct {
     pub field11: PathBuf,
     pub field12: RangedInt<-10, 2>,
     pub field13: StrictPath<AnyPath>,
+    pub field14: u64,
+    pub field15: TestStruct2,
+    pub field16: TestStruct3,
+    pub field17: TestStruct4,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Travel)]
 enum TestEnum {
     Unit,
     One(i64),
     Two(i64, i64),
     Three { field0: i64, field1: i64 },
-}
-
-impl Travel for TestEnum {
-    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
-    where
-        T: Traveller,
-    {
-        use config::traveller::TravellerStructVariant as _;
-        use config::traveller::TravellerTupleVariant as _;
-        let mut state = traveller.found_enum("TestEnum")?;
-        state.found_unit_variant("Unit")?;
-        state.found_newtype_variant::<i64>("One")?;
-        let mut tuple0 = state.found_tuple_variant("Two")?;
-        tuple0.found_element::<i64>()?;
-        tuple0.found_element::<i64>()?;
-        tuple0.end()?;
-        let mut struct0 = state.found_struct_variant("Three")?;
-        struct0.found_field::<i64>("field0")?;
-        struct0.found_field::<i64>("field1")?;
-        struct0.end()?;
-        state.end()
-    }
 }
 
 pub fn main() {
@@ -202,7 +193,11 @@ pub fn main() {
         field10: String::from("hidushfi"),
         field11: PathBuf::from("hidushfi"),
         field12: RangedInt(0),
-        field13: StrictPath::from("hello.yml")
+        field13: StrictPath::from("hello.yml"),
+        field14: 19,
+        field15: TestStruct2(10),
+        field16: TestStruct3(10, 11),
+        field17: TestStruct4,
     };
     let t = Instant::now();
     s.serialize(&mut ConfigSerializer::new(&mut x)).unwrap();
