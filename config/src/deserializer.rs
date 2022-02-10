@@ -280,7 +280,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
 
 pub struct ConfigDeserializerStruct<'a> {
     cstruct: &'a CStruct,
-    iter: druid::im::ordmap::Iter<'a, &'static str, usize>,
+    iter: im::ordmap::Iter<'a, &'static str, usize>,
     next_value: Option<usize>,
 }
 
@@ -321,7 +321,7 @@ impl<'de> MapAccess<'de> for ConfigDeserializerStruct<'de> {
 
 pub struct ConfigDeserializerMap<'a> {
     cmap: &'a CMap,
-    iter: druid::im::ordmap::Iter<'a, String, CType>,
+    iter: im::ordmap::Iter<'a, String, CType>,
     next_value: Option<&'a CType>,
 }
 
@@ -361,7 +361,7 @@ impl<'de> MapAccess<'de> for ConfigDeserializerMap<'de> {
 
 pub struct ConfigDeserializerTuple<'a> {
     ctuple: &'a CTuple,
-    iter: druid::im::vector::Iter<'a, CType>,
+    iter: im::vector::Iter<'a, CType>,
 }
 
 impl<'a> ConfigDeserializerTuple<'a> {
@@ -389,7 +389,7 @@ impl<'de> SeqAccess<'de> for ConfigDeserializerTuple<'de> {
 
 pub struct ConfigDeserializerSeq<'a> {
     cseq: &'a CSeq,
-    iter: druid::im::vector::Iter<'a, CItem>,
+    iter: im::vector::Iter<'a, CItem>,
 }
 
 impl<'a> ConfigDeserializerSeq<'a> {

@@ -1,19 +1,17 @@
 use std::hash::Hash;
 use std::path::PathBuf;
 
-use druid::im;
-use druid::widget::{Label, ListIter};
-use druid::{Data, Widget};
 use crate::ctypes::CType;
 
 
-#[derive(Debug, Clone, Data)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Debug, Clone)]
 pub struct CMap {
-    pub inner: im::OrdMap<String, CType>,
-    #[data(ignore)]
-    pub value_template: Box<CType>,
-    #[data(ignore)]
-    name: Option<&'static str>,
+    pub(crate)  inner: im::OrdMap<String, CType>,
+    #[cfg_attr(feature = "druid", data(ignore))]
+    pub(crate)  value_template: Box<CType>,
+    #[cfg_attr(feature = "druid", data(ignore))]
+    pub(crate) name: Option<&'static str>,
 }
 
 impl CMap {
@@ -23,23 +21,5 @@ impl CMap {
             value_template: Box::new(value_template),
             name: None,
         }
-    }
-
-    pub fn widget() -> impl Widget<Self> {
-        Label::new("Map can't really be used as a widget right now")
-    }
-}
-
-impl ListIter<CType> for CMap {
-    fn for_each(&self, cb: impl FnMut(&CType, usize)) {
-        self.inner.for_each(cb)
-    }
-
-    fn for_each_mut(&mut self, cb: impl FnMut(&mut CType, usize)) {
-        self.inner.for_each_mut(cb)
-    }
-
-    fn data_len(&self) -> usize {
-        self.inner.data_len()
     }
 }

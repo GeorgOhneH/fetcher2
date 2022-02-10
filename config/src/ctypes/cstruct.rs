@@ -1,20 +1,17 @@
 use std::sync::Arc;
-use druid::im::Vector;
-use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
-use druid::{im, Color};
-use druid::{Data, Lens, Widget, WidgetExt};
+use im::Vector;
 use crate::ctypes::CType;
 use crate::errors::Error;
 
-use crate::widgets::warning_label::WarningLabel;
 
-#[derive(Debug, Clone, Data, Lens)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Debug, Clone)]
 pub struct CStruct {
-    pub inner: Vector<CKwarg>,
-    #[data(ignore)]
-    pub index_map: im::OrdMap<&'static str, usize>,
-    #[data(ignore)]
-    name: Option<&'static str>,
+    pub(crate)  inner: Vector<CKwarg>,
+    #[cfg_attr(feature = "druid", data(ignore))]
+    pub(crate)  index_map: im::OrdMap<&'static str, usize>,
+    #[cfg_attr(feature = "druid", data(ignore))]
+    pub(crate) name: Option<&'static str>,
 }
 
 impl CStruct {
@@ -38,39 +35,6 @@ impl CStruct {
 
     pub fn get_idx_ty_mut(&mut self, idx: usize) -> Option<&mut CType> {
         self.inner.get_mut(idx).map(|kwarg| &mut kwarg.ty)
-    }
-
-    pub fn widget() -> impl Widget<Self> {
-        Flex::column()
-            .cross_axis_alignment(CrossAxisAlignment::Start)
-            .with_child(
-                Maybe::or_empty(|| Label::dynamic(|str: &&'static str, _| str.to_string()))
-                    .lens(Self::name),
-            )
-            .with_child(
-                Container::new(List::new(CKwarg::widget).with_spacing(5.).padding(5.))
-                    .border(Color::GRAY, 2.),
-            )
-    }
-}
-
-impl ListIter<CKwarg> for CStruct {
-    fn for_each(&self, cb: impl FnMut(&CKwarg, usize)) {
-        self.inner.for_each(cb)
-    }
-
-    fn for_each_mut(&mut self, mut cb: impl FnMut(&mut CKwarg, usize)) {
-        for (index, element) in self.inner.clone().iter().enumerate() {
-            let mut new_element = element.to_owned();
-            cb(&mut new_element, index);
-            if !new_element.same(element) {
-                self.inner[index] = new_element;
-            }
-        }
-    }
-
-    fn data_len(&self) -> usize {
-        self.inner.data_len()
     }
 }
 
@@ -96,14 +60,14 @@ impl CStructBuilder {
 }
 
 
-#[derive(Debug, Clone, Data, Lens)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Debug, Clone)]
 pub struct CKwarg {
-    #[data(ignore)]
-    #[lens(name = "name_lens")]
-    pub name: &'static str,
-    #[data(ignore)]
-    pub hint_text: Option<String>,
-    pub ty: CType,
+    #[cfg_attr(feature = "druid", data(ignore))]
+    pub(crate)  name: &'static str,
+    #[cfg_attr(feature = "druid", data(ignore))]
+    pub(crate)  hint_text: Option<String>,
+    pub(crate)  ty: CType,
 }
 
 impl CKwarg {
@@ -113,16 +77,5 @@ impl CKwarg {
             name,
             hint_text: None,
         }
-    }
-
-
-    fn error_msg(&self) -> Option<String> {
-        todo!()
-    }
-
-    pub fn widget() -> impl Widget<Self> {
-        Flex::column()
-            .with_child(CType::widget().lens(Self::ty))
-            .with_child(WarningLabel::new(|data: &Self| data.error_msg()))
     }
 }

@@ -45,6 +45,10 @@ itertools = "0.10"
 bytesize = "1"
 timer = "0.2"
 
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "232314d5d9ea455c04c384916e4b72a1f85998ec" }
-druid-enums = { git = "https://github.com/finnerale/druid-enums" }
-druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery" }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "fc05e965c85fced8720c655685e02478e0530e94", optional = true }
+druid-enums = { git = "https://github.com/finnerale/druid-enums", optional = true }
+druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery", optional = true }
+
+
+[features]
+druid = ["dep:druid", "dep:druid-enums", "dep:druid-widget-nursery"]

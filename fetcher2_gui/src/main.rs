@@ -164,7 +164,6 @@ struct TestStruct {
     pub field14: u64,
     pub field15: TestStruct2,
     pub field16: TestStruct3,
-    pub field17: TestStruct4,
 }
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
@@ -197,7 +196,6 @@ pub fn main() {
         field14: 19,
         field15: TestStruct2(10),
         field16: TestStruct3(10, 11),
-        field17: TestStruct4,
     };
     let t = Instant::now();
     s.serialize(&mut ConfigSerializer::new(&mut x)).unwrap();

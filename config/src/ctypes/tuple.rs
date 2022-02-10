@@ -1,14 +1,13 @@
-use druid::{Data, Widget, WidgetExt, WidgetPod, Lens, Point};
-use druid::im::Vector;
-use druid::widget::prelude::*;
-use druid::widget::{Checkbox, CrossAxisAlignment, Flex, Label};
+use im::Vector;
 use crate::ctypes::CType;
 use crate::errors::Error;
 
-#[derive(Debug, Clone, Data, Lens)]
+
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Debug, Clone)]
 pub struct CTuple {
-    pub inner: Vector<CType>,
-    name: Option<&'static str>
+    pub(crate)  inner: Vector<CType>,
+    pub(crate) name: Option<&'static str>
 }
 
 impl CTuple {
@@ -29,10 +28,6 @@ impl CTuple {
 
     pub fn len(&self) -> usize {
         self.inner.len()
-    }
-
-    pub fn widget() -> impl Widget<Self> {
-        Label::new("TODO")
     }
 }
 

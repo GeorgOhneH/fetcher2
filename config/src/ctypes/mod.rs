@@ -1,7 +1,5 @@
 use std::iter::FromIterator;
 
-use druid::{lens, Data, LensExt, Widget, WidgetExt};
-use druid_enums::Matcher;
 use crate::ctypes::bool::CBool;
 use crate::ctypes::cenum::CEnum;
 use crate::ctypes::cstruct::CStruct;
@@ -27,8 +25,8 @@ pub mod seq;
 pub mod option;
 pub mod tuple;
 
-
-#[derive(Debug, Clone, Data, Matcher)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid_enums::Matcher))]
+#[derive(Debug, Clone)]
 pub enum CType {
     String(CString),
     Bool(CBool),
@@ -200,20 +198,5 @@ impl CType {
             Self::CEnum(cvalue) => Ok(cvalue),
             _ => Err(Error::ExpectedEnum),
         }
-    }
-
-
-    pub fn widget() -> impl Widget<Self> {
-        Self::matcher()
-            .string(CString::widget())
-            .bool(CBool::widget())
-            .integer(CInteger::widget())
-            .float(CFloat::widget())
-            .path(CPath::widget())
-            .c_struct(CStruct::widget())
-            .map(CMap::widget())
-            .seq(CSeq::widget())
-            .c_enum(CEnum::widget())
-            .option(COption::widget().lens(lens::Identity.deref()))
     }
 }

@@ -6,14 +6,10 @@
 #![feature(generic_associated_types)]
 #![feature(adt_const_params)]
 
-use serde::de::{EnumAccess, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::Formatter;
-use ::valuable::{Valuable, Value, Visit};
-
 pub mod ctypes;
 pub mod errors;
 pub mod serializer;
-mod widgets;
 pub mod deserializer;
 pub mod traveller;
+#[cfg(feature = "druid")]
+mod druid;

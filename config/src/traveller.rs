@@ -6,11 +6,10 @@ use crate::ctypes::option::COption;
 use crate::ctypes::tuple::{CTuple, CTupleBuilder};
 use crate::ctypes::CType;
 use crate::errors::Error;
-use druid::im::Vector;
-use druid::FileSpec;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::path::PathBuf;
+use im::Vector;
 
 use crate::ctypes::map::CMap;
 use crate::ctypes::path::CPath;
@@ -171,6 +170,7 @@ pub trait Traveller {
     fn found_seq<T: Travel>(self) -> Result<Self::Ok, Self::Error>;
     fn found_map<V: Travel>(self) -> Result<Self::Ok, Self::Error>;
     fn found_struct(self, name: &'static str) -> Result<Self::TravellerStruct, Self::Error>;
+    fn found_newtype_struct<T: Travel>(self, name: &'static str) -> Result<Self::Ok, Self::Error>;
     fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error>;
 }
 
@@ -182,6 +182,23 @@ pub enum TravelPathConfig {
     AbsoluteExist,
     AbsoluteExistDir,
     AbsoluteExistFile(Vector<FileSpec>),
+}
+
+#[derive(Clone, Debug)]
+pub struct FileSpec {
+    /// A human readable name, describing this filetype.
+    ///
+    /// This is used in the Windows file dialog, where the user can select
+    /// from a dropdown the type of file they would like to choose.
+    ///
+    /// This should not include the file extensions; they will be added automatically.
+    /// For instance, if we are describing Word documents, the name would be "Word Document",
+    /// and the displayed string would be "Word Document (*.doc)".
+    pub name: &'static str,
+    /// The file extensions used by this file type.
+    ///
+    /// This should not include the leading '.'.
+    pub extensions: &'static [&'static str],
 }
 
 pub trait TravellerStruct {
@@ -341,6 +358,10 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
 
     fn found_struct(self, name: &'static str) -> Result<Self::TravellerStruct, Self::Error> {
         Ok(ConfigTravellerStruct::new())
+    }
+
+    fn found_newtype_struct<T: Travel>(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+        T::travel(&mut ConfigTraveller::new())
     }
 
     fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error> {
