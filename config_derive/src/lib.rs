@@ -5,7 +5,7 @@ use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use syn::{self, parse_macro_input, DeriveInput};
 
-use crate::derives::{derive_travel};
+use crate::derives::derive_travel;
 
 mod config_attr;
 mod derives;

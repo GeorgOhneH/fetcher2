@@ -1,14 +1,13 @@
+use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
+use druid::SingleUse;
+use druid::widget::Controller;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use druid::widget::Controller;
-use druid::SingleUse;
-use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
-
 use crate::background_thread::NEW_TEMPLATE;
+use crate::communication::NODE_EVENT;
 use crate::controller::{Msg, MSG_THREAD};
 use crate::data::AppData;
-use crate::communication::NODE_EVENT;
 use crate::data::template::nodes::root::RootNodeData;
 
 pub struct TemplateController {}

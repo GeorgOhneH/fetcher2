@@ -1,15 +1,8 @@
 use proc_macro2::Span;
-use proc_macro2::TokenStream;
-use quote::quote;
 use syn::spanned::Spanned;
 use syn::GenericParam;
-use syn::LitStr;
-use syn::{
-    self, punctuated::Punctuated, token::Comma, AngleBracketedGenericArguments, Field,
-    GenericArgument, Generics, Ident, Lifetime, Path, PathArguments, TraitBound, TypeParamBound,
-};
-use syn::{LifetimeDef, PathSegment};
-
+use syn::LifetimeDef;
+use syn::{self, Generics, Ident, Lifetime, Path, TraitBound, TypeParamBound};
 
 pub fn bound_generics(mut generics: Generics, bound: TraitBound) -> Generics {
     for param in generics.params.iter_mut() {

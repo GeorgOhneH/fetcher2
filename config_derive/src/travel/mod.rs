@@ -1,2 +1,2 @@
-pub mod variant;
 pub mod fields;
+pub mod variant;

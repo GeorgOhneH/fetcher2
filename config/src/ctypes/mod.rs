@@ -1,5 +1,3 @@
-use std::iter::FromIterator;
-
 use crate::ctypes::bool::CBool;
 use crate::ctypes::cenum::CEnum;
 use crate::ctypes::cstruct::CStruct;
@@ -8,22 +6,22 @@ use crate::ctypes::integer::CInteger;
 use crate::ctypes::map::CMap;
 use crate::ctypes::option::COption;
 use crate::ctypes::path::CPath;
+use crate::ctypes::seq::CSeq;
 use crate::ctypes::string::CString;
 use crate::ctypes::tuple::CTuple;
-use crate::ctypes::seq::CSeq;
 use crate::ctypes::unit::CUnit;
 use crate::errors::Error;
 
 pub mod bool;
 pub mod cenum;
+pub mod cstruct;
 pub mod float;
 pub mod integer;
 pub mod map;
-pub mod path;
-pub mod string;
-pub mod cstruct;
-pub mod seq;
 pub mod option;
+pub mod path;
+pub mod seq;
+pub mod string;
 pub mod tuple;
 pub mod unit;
 

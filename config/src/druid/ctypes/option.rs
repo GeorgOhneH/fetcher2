@@ -1,8 +1,9 @@
-use druid::{Data, Widget, WidgetExt, WidgetPod, Lens, Point};
 use druid::widget::prelude::*;
-use druid::widget::{Checkbox, CrossAxisAlignment, Flex, Label};
-use crate::ctypes::CType;
+use druid::widget::{Checkbox, CrossAxisAlignment, Flex};
+use druid::{Data, Point, Widget, WidgetExt, WidgetPod};
+
 use crate::ctypes::option::COption;
+use crate::ctypes::CType;
 
 impl Data for Box<COption> {
     fn same(&self, other: &Self) -> bool {
@@ -11,18 +12,17 @@ impl Data for Box<COption> {
 }
 
 impl COption {
-
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
             .cross_axis_alignment(CrossAxisAlignment::Start)
             .with_child(CheckboxWrapper::new())
             .with_child(
-                CType::widget().lens(Self::ty)
+                CType::widget()
+                    .lens(Self::ty)
                     .disabled_if(|data: &Self, _env| !data.active),
             )
     }
 }
-
 
 struct CheckboxWrapper {
     checkbox: WidgetPod<bool, Checkbox>,
@@ -41,28 +41,14 @@ impl Widget<COption> for CheckboxWrapper {
         self.checkbox.event(ctx, event, &mut data.active, env)
     }
 
-    fn lifecycle(
-        &mut self,
-        ctx: &mut LifeCycleCtx,
-        event: &LifeCycle,
-        data: &COption,
-        env: &Env,
-    ) {
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &COption, env: &Env) {
         if let (LifeCycle::WidgetAdded, Some(name)) = (event, data.name) {
-            self.checkbox
-                .widget_mut()
-                .set_text(name)
+            self.checkbox.widget_mut().set_text(name)
         }
         self.checkbox.lifecycle(ctx, event, &data.active, env)
     }
 
-    fn update(
-        &mut self,
-        ctx: &mut UpdateCtx,
-        _old_data: &COption,
-        data: &COption,
-        env: &Env,
-    ) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &COption, data: &COption, env: &Env) {
         self.checkbox.update(ctx, &data.active, env)
     }
 

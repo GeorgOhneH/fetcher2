@@ -1,15 +1,14 @@
-use std::sync::Arc;
 use im::Vector;
+
 use crate::ctypes::CType;
 use crate::errors::Error;
-
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CStruct {
-    pub(crate)  inner: Vector<CKwarg>,
+    pub(crate) inner: Vector<CKwarg>,
     #[cfg_attr(feature = "druid", data(ignore))]
-    pub(crate)  index_map: im::OrdMap<&'static str, usize>,
+    pub(crate) index_map: im::OrdMap<&'static str, usize>,
     #[cfg_attr(feature = "druid", data(ignore))]
     pub(crate) name: Option<&'static str>,
 }
@@ -59,15 +58,14 @@ impl CStructBuilder {
     }
 }
 
-
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CKwarg {
     #[cfg_attr(feature = "druid", data(ignore))]
-    pub(crate)  name: &'static str,
+    pub(crate) name: &'static str,
     #[cfg_attr(feature = "druid", data(ignore))]
-    pub(crate)  hint_text: Option<String>,
-    pub(crate)  ty: CType,
+    pub(crate) hint_text: Option<String>,
+    pub(crate) ty: CType,
 }
 
 impl CKwarg {

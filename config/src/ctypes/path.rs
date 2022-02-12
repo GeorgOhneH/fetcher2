@@ -1,20 +1,18 @@
-use std::fmt::Formatter;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+
 use im::Vector;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::errors::Error;
 use crate::traveller::{Travel, TravelPathConfig, Traveller};
-use serde::de::{EnumAccess, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CPath {
     #[cfg_attr(feature = "druid", data(same_fn = "PartialEq::eq"))]
-    pub(crate)  value: Option<PathBuf>,
+    pub(crate) value: Option<PathBuf>,
     #[cfg_attr(feature = "druid", data(ignore))]
     pub(crate) path_config: TravelPathConfig,
     #[cfg_attr(feature = "druid", data(ignore))]
@@ -30,10 +28,9 @@ impl CPath {
         }
     }
 
-    pub fn is_valid(&self, path: &Path) -> Result<(), Error> {
+    pub fn is_valid(&self, _path: &Path) -> Result<(), Error> {
         todo!()
     }
-
 }
 
 pub trait PathConfig {
@@ -88,7 +85,6 @@ impl PathConfig for AbsoluteExistDir {
         TravelPathConfig::AbsoluteExistDir
     }
 }
-
 
 #[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]

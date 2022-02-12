@@ -1,15 +1,18 @@
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use config::traveller::Travel;
+
 use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
+use serde::Deserialize;
+use serde::Serialize;
 use strum_macros::Display;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, MutexGuard};
-use serde::Serialize;
+
+use config::traveller::Travel;
 use fetcher2_macro::{login_locks, LoginLock};
-use serde::Deserialize;
+
 use crate::error::{Result, TErrorKind};
 use crate::session::Session;
 use crate::settings::DownloadSettings;

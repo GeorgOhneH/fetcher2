@@ -1,8 +1,9 @@
 use druid::widget::{Flex, Label, Maybe, TextBox};
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
+    BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Point,
+    Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
+
 use crate::ctypes::string::CString;
 
 impl CString {

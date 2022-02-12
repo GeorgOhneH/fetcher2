@@ -142,13 +142,14 @@ fn push_hint_text_comment(config_attrs: &mut Vec<TravelAttrKind>, attrs: &[Attri
 
 pub fn parse_config_attributes(all_attrs: &[Attribute]) -> TravelAttr {
     let mut attr = TravelAttr::new();
-    for attr_kind in  all_attrs
+    for attr_kind in all_attrs
         .iter()
         .filter(|attr| attr.path.is_ident("travel"))
         .flat_map(|attr| {
             attr.parse_args_with(Punctuated::<TravelAttrKind, Token![,]>::parse_terminated)
                 .unwrap_or_abort()
-        }) {
+        })
+    {
         match attr_kind {
             TravelAttrKind::Default(ident, expr) => attr.got_default(ident, expr),
             TravelAttrKind::Name(ident, lit) => attr.got_name(ident, lit),

@@ -1,3 +1,9 @@
+use druid::{commands, SingleUse};
+use druid::{Env, Event, EventCtx, Widget};
+use druid::widget::Controller;
+use druid_widget_nursery::selectors;
+use fetcher2::settings::DownloadSettings;
+use fetcher2::template::Template;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs;
@@ -5,22 +11,14 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use druid::widget::Controller;
-use druid::{commands, SingleUse};
-use druid::{Env, Event, EventCtx, Widget};
-use druid_widget_nursery::selectors;
-
-use fetcher2::settings::DownloadSettings;
-use fetcher2::template::Template;
-
-use crate::background_thread::{ThreadMsg, MSG_FROM_THREAD};
-use crate::data::win::WindowState;
-use crate::data::AppData;
+use crate::{Result, TError};
+use crate::background_thread::{MSG_FROM_THREAD, ThreadMsg};
 use crate::communication::Communication;
+use crate::data::AppData;
+use crate::data::win::WindowState;
 use crate::utils::show_err;
 use crate::widgets::tree::NodeIndex;
 use crate::WINDOW_STATE_DIR;
-use crate::{Result, TError};
 
 selectors! {
     MSG_THREAD: SingleUse<Msg>

@@ -6,20 +6,16 @@
 #![allow(clippy::new_without_default)]
 
 use std::collections::HashMap;
-use std::path::Path;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
-use std::{fs, thread};
+use std::time::Instant;
+
+use serde::{Deserialize, Serialize};
 
 use config::ctypes::integer::RangedInt;
-use config::ctypes::path::{Absolute, AbsoluteExistFile, AnyPath, StrictPath};
+use config::ctypes::path::{AnyPath, StrictPath};
 use config::deserializer::ConfigDeserializer;
 use config::serializer::ConfigSerializer;
-use config::traveller::{ConfigTraveller, Travel, Traveller, TravellerEnum};
-use druid::{AppLauncher, LifeCycle, LocalizedString, WidgetExt, WindowDesc};
-use lazy_static::lazy_static;
-use self_update::cargo_crate_version;
-use serde::{Deserialize, Serialize};
+use config::traveller::{ConfigTraveller, Travel};
 
 // use fetcher2::{Result, TError};
 

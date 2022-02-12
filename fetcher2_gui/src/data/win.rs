@@ -1,10 +1,8 @@
-use std::fmt::Debug;
-
-use druid::kurbo::Size;
+use config::Config;
 use druid::{Data, Point};
 use druid::{Scalable, WindowHandle};
-
-use config::Config;
+use druid::kurbo::Size;
+use std::fmt::Debug;
 
 #[derive(Config, Debug, Clone, Data)]
 pub struct SubWindowInfo<T> {

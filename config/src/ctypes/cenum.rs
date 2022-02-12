@@ -1,4 +1,5 @@
 use im::{OrdMap, Vector};
+
 use crate::ctypes::cstruct::CStruct;
 use crate::ctypes::tuple::CTuple;
 use crate::ctypes::CType;
@@ -158,5 +159,4 @@ impl CArg {
     pub fn new(name: &'static str, variant: CArgVariant) -> Self {
         Self { name, variant }
     }
-
 }

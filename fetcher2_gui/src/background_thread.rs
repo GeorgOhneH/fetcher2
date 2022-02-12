@@ -1,22 +1,20 @@
+use druid::{ExtEventSink, SingleUse, Target};
+use druid_widget_nursery::selectors;
+use fetcher2::settings::DownloadSettings;
+use fetcher2::template::nodes::node::Status;
+use fetcher2::template::Template;
+use fetcher2::TError;
+use futures::{FutureExt, StreamExt};
+use futures::future::{Abortable, Aborted, AbortHandle};
+use futures::future::BoxFuture;
+use futures::prelude::stream::FuturesUnordered;
 use std::collections::HashSet;
 use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use druid::{ExtEventSink, SingleUse, Target};
-use druid_widget_nursery::selectors;
-use futures::future::BoxFuture;
-use futures::future::{AbortHandle, Abortable, Aborted};
-use futures::prelude::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt};
-
-use fetcher2::settings::DownloadSettings;
-use fetcher2::template::nodes::node::Status;
-use fetcher2::template::Template;
-use fetcher2::TError;
-
-use crate::controller::Msg;
 use crate::communication::{Communication, RawCommunication};
+use crate::controller::Msg;
 use crate::data::template::nodes::root::RootNodeData;
 use crate::data::template_edit::nodes::root::RootNodeEditData;
 use crate::widgets::tree::NodeIndex;

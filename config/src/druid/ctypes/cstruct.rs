@@ -1,12 +1,9 @@
-use std::sync::Arc;
-use druid::im::Vector;
 use druid::widget::{Container, CrossAxisAlignment, Flex, Label, List, ListIter, Maybe};
-use druid::{im, Color};
-use druid::{Data, Lens, Widget, WidgetExt};
+use druid::Color;
+use druid::{Data, Widget, WidgetExt};
+
 use crate::ctypes::cstruct::{CKwarg, CStruct};
 use crate::ctypes::CType;
-use crate::errors::Error;
-
 use crate::druid::widgets::warning_label::WarningLabel;
 
 impl CStruct {
@@ -45,7 +42,6 @@ impl ListIter<CKwarg> for CStruct {
 }
 
 impl CKwarg {
-
     pub fn error_msg(&self) -> Option<String> {
         todo!()
     }

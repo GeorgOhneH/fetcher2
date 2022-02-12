@@ -1,15 +1,12 @@
-pub mod nodes;
-pub mod node_type;
-
+use config::Config;
+use druid::{Data, Lens};
+use druid::im::Vector;
+use nodes::root::RootNodeEditData;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use druid::im::Vector;
-use druid::{Data, Lens};
-
-use config::Config;
-
-use nodes::root::RootNodeEditData;
+pub mod nodes;
+pub mod node_type;
 
 #[derive(Debug, Clone, Data, Lens, Config)]
 pub struct TemplateEditData {

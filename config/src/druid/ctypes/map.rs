@@ -1,12 +1,8 @@
-use std::hash::Hash;
-use std::path::PathBuf;
-
-use druid::im;
 use druid::widget::{Label, ListIter};
-use druid::{Data, Widget};
-use crate::ctypes::CType;
-use crate::ctypes::map::CMap;
+use druid::Widget;
 
+use crate::ctypes::map::CMap;
+use crate::ctypes::CType;
 
 impl CMap {
     pub fn widget() -> impl Widget<Self> {

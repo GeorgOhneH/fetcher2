@@ -1,5 +1,5 @@
-use druid::widget::prelude::*;
 use druid::{Point, Widget, WidgetPod};
+use druid::widget::prelude::*;
 
 use crate::data::win::{SubWindowInfo, WindowState};
 

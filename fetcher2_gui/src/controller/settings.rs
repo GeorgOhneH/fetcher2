@@ -1,6 +1,6 @@
-use druid::widget::Controller;
 use druid::{commands, SingleUse, WidgetExt, WindowConfig, WindowLevel};
 use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
+use druid::widget::Controller;
 
 use crate::controller::{Msg, MSG_THREAD};
 use crate::cstruct_window::c_option_window;

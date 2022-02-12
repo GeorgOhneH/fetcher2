@@ -1,13 +1,13 @@
 use im::Vector;
-use crate::ctypes::CType;
 
+use crate::ctypes::CType;
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CSeq {
-    pub(crate)  inner: Vector<CItem>,
+    pub(crate) inner: Vector<CItem>,
     #[cfg_attr(feature = "druid", data(ignore))]
-    pub(crate)  template: Box<CType>,
+    pub(crate) template: Box<CType>,
     #[cfg_attr(feature = "druid", data(ignore))]
     pub(crate) name: Option<&'static str>,
 }
@@ -43,7 +43,6 @@ impl CSeq {
         self.inner = vec;
     }
 }
-
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]

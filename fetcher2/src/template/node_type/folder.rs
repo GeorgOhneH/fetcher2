@@ -1,6 +1,8 @@
 use std::path::PathBuf;
-use serde::Serialize;
+
 use serde::Deserialize;
+use serde::Serialize;
+
 use config::traveller::Travel;
 
 use crate::error::Result;

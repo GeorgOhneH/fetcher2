@@ -1,22 +1,20 @@
+use config::Config;
+use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
+use druid::{Menu, MenuItem, SingleUse, WidgetExt};
+use druid::im::Vector;
+use druid::widget::{Controller, Label, WidgetWrapper};
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use druid::im::Vector;
-use druid::widget::{Controller, Label, WidgetWrapper};
-use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
-use druid::{Menu, MenuItem, SingleUse, WidgetExt};
-
-use config::Config;
-
 use crate::controller::{Msg, MSG_THREAD};
 use crate::data::AppData;
 use crate::data::template::nodes::node::NodeData;
 use crate::data::template::nodes::root::RootNodeData;
-use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::widgets::tree::root::TreeNodeRoot;
 
 pub mod node_type;
 pub mod nodes;

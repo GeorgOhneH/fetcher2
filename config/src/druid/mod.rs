@@ -1,8 +1,5 @@
-use druid::Widget;
-
-mod widgets;
 mod ctypes;
-
+mod widgets;
 
 impl From<crate::traveller::FileSpec> for druid::FileSpec {
     fn from(file_spec: crate::traveller::FileSpec) -> Self {

@@ -1,7 +1,7 @@
 #[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct CBool {
-    pub(crate)  value: Option<bool>,
+    pub(crate) value: Option<bool>,
     #[cfg_attr(feature = "druid", data(ignore))]
     pub(crate) name: Option<&'static str>,
 }

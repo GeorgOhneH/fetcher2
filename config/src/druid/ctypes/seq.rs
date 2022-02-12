@@ -1,9 +1,9 @@
-use druid::im::Vector;
 use druid::widget::{Button, Controller, Flex, ListIter};
-use druid::{im, Env, Event, EventCtx, Selector, Widget};
-use druid::{Data, Lens, WidgetExt};
-use crate::ctypes::CType;
+use druid::{Data, WidgetExt};
+use druid::{Env, Event, EventCtx, Selector, Widget};
+
 use crate::ctypes::seq::{CItem, CSeq};
+use crate::ctypes::CType;
 
 impl CSeq {
     pub fn widget() -> impl Widget<Self> {
@@ -58,7 +58,6 @@ impl DeleteController {
         Self {}
     }
 }
-
 
 impl<W: Widget<CSeq>> Controller<CSeq, W> for DeleteController {
     fn event(

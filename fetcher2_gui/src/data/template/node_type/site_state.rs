@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
-use druid::im::Vector;
 use druid::Data;
-
+use druid::im::Vector;
 use fetcher2::template::node_type::site::{
     DownloadEvent, LoginEvent, MsgKind, RunEvent, SiteEvent, TaskMsg, UrlFetchEvent,
 };
 use fetcher2::TError;
+use std::sync::Arc;
 
 use crate::data::template::nodes::node::CurrentState;
 

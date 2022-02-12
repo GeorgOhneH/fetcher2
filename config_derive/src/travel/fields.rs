@@ -1,13 +1,13 @@
-use crate::config_attr::{parse_config_attributes, TravelAttr};
 use proc_macro2::{Ident, TokenStream};
 use proc_macro_error::abort;
 use quote::{format_ident, quote};
-use regex::internal::Input;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::LitStr;
 use syn::{self, token::Comma};
 use syn::{Field, Type};
+
+use crate::config_attr::{parse_config_attributes, TravelAttr};
 
 pub fn gen_travel_unit_struct() -> TokenStream {
     quote! { traveller.found_unit_struct() }
@@ -86,8 +86,8 @@ pub fn gen_found_fields(fields: &Punctuated<Field, Comma>, state_name: &Ident) -
 }
 
 pub fn gen_found_named_field(
-    ty: &Type,
-    name: &Ident,
+    _ty: &Type,
+    _name: &Ident,
     attr: &TravelAttr,
     state_name: &Ident,
 ) -> Vec<TokenStream> {

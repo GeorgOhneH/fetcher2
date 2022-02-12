@@ -1,13 +1,9 @@
-use crate::ctypes::cenum::{CArg, CEnum};
-use crate::ctypes::cstruct::CStruct;
-use crate::ctypes::tuple::CTuple;
-use crate::ctypes::CType;
-use crate::druid::widgets::warning_label::WarningLabel;
-use crate::druid::widgets::ListSelect;
-use crate::errors::Error;
 use druid::widget::{prelude::*, Flex, Label, ListIter, Maybe};
 use druid::{Point, Widget, WidgetExt, WidgetPod};
-use im::{OrdMap, Vector};
+
+use crate::ctypes::cenum::{CArg, CEnum};
+use crate::druid::widgets::warning_label::WarningLabel;
+use crate::druid::widgets::ListSelect;
 
 impl CEnum {
     pub fn widget() -> impl Widget<Self> {

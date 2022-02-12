@@ -7,9 +7,9 @@
 #![feature(adt_const_params)]
 
 pub mod ctypes;
-pub mod errors;
-pub mod serializer;
 pub mod deserializer;
-pub mod traveller;
 #[cfg(feature = "druid")]
 mod druid;
+pub mod errors;
+pub mod serializer;
+pub mod traveller;

@@ -1,15 +1,11 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::abort_call_site;
 use quote::quote;
-use syn::spanned::Spanned;
 use syn::DataEnum;
 use syn::TraitBoundModifier;
-use syn::{
-    self, punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field,
-    Fields, Generics, Ident, TraitBound,
-};
+use syn::{self, Attribute, Data, DataStruct, DeriveInput, Fields, Generics, Ident, TraitBound};
 
-use crate::utils::{bound_generics, create_path, lifetime_generics};
+use crate::utils::{bound_generics, create_path};
 
 pub fn derive_travel(input: &DeriveInput) -> TokenStream {
     let ident = &input.ident;
@@ -40,7 +36,9 @@ fn gen_for_struct(
 
     let travel_impl = match &data_struct.fields {
         Fields::Unit => crate::travel::fields::gen_travel_unit_struct(),
-        Fields::Unnamed(fields) => crate::travel::fields::gen_travel_tuple_struct(&fields.unnamed, name),
+        Fields::Unnamed(fields) => {
+            crate::travel::fields::gen_travel_tuple_struct(&fields.unnamed, name)
+        }
         Fields::Named(fields) => crate::travel::fields::gen_travel_struct(&fields.named, name),
     };
 

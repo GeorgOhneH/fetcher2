@@ -1,18 +1,18 @@
-use std::convert::TryFrom;
-use std::sync::Arc;
-
-use druid::kurbo::Size;
-use druid::piet::RenderContext;
-use druid::{theme, Lens, LensExt, Rect};
+use druid::{Lens, LensExt, Rect, theme};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetPod,
 };
+use druid::kurbo::Size;
+use druid::piet::RenderContext;
 use druid_widget_nursery::selectors;
+pub(crate) use impl_simple_tree_node;
+use std::convert::TryFrom;
+use std::sync::Arc;
 
 use crate::widgets::tree::header::HeaderConstrains;
-use crate::widgets::tree::opener::Opener;
 use crate::widgets::tree::NodeIndex;
+use crate::widgets::tree::opener::Opener;
 
 selectors! {
     /// Notification to send from the widget that requires removal
@@ -60,7 +60,6 @@ macro_rules! impl_simple_tree_node {
         }
     };
 }
-pub(crate) use impl_simple_tree_node;
 /// A tree node `Data`. This is the data expected by the tree widget.
 ///
 /// Implementors of this trait must know the number of children of each node

@@ -1,18 +1,18 @@
-use std::convert::TryFrom;
-use std::marker::PhantomData;
-use std::sync::Arc;
-
-use druid::kurbo::Size;
-use druid::{theme, Lens, Rect};
+use druid::{Lens, Rect, theme};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
+use druid::kurbo::Size;
+pub(crate) use impl_simple_tree_root;
+use std::convert::TryFrom;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 use crate::widgets::tree::header::HeaderConstrains;
 use crate::widgets::tree::node::{
-    OpenerFactory, TreeItemFactory, TreeNode, TreeNodeWidget, TREE_CHILD_REMOVE_INTERNAL,
-    TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
+    OpenerFactory, TREE_CHILD_REMOVE_INTERNAL, TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
+    TreeItemFactory, TreeNode, TreeNodeWidget,
 };
 use crate::widgets::tree::NodeIndex;
 
@@ -46,8 +46,6 @@ macro_rules! impl_simple_tree_root {
         }
     };
 }
-pub(crate) use impl_simple_tree_root;
-
 pub trait TreeNodeRoot<T: TreeNode>
 where
     Self: Data + std::fmt::Debug,

@@ -1,3 +1,8 @@
+use serde::de::value::StrDeserializer;
+use serde::de::{DeserializeSeed, EnumAccess, Error as _, MapAccess, SeqAccess, Visitor};
+use serde::de::{IntoDeserializer, VariantAccess};
+use serde::Deserializer;
+
 use crate::ctypes::cenum::{CArg, CEnum};
 use crate::ctypes::cstruct::CStruct;
 use crate::ctypes::map::CMap;
@@ -5,13 +10,6 @@ use crate::ctypes::seq::{CItem, CSeq};
 use crate::ctypes::tuple::CTuple;
 use crate::ctypes::CType;
 use crate::errors::Error;
-use serde::de::value::StrDeserializer;
-use serde::de::{
-    Deserialize, DeserializeSeed, EnumAccess, Error as _, MapAccess, SeqAccess, Unexpected, Visitor,
-};
-use serde::de::{IntoDeserializer, VariantAccess};
-use serde::Deserializer;
-use std::fmt::Formatter;
 
 pub struct ConfigDeserializer<'a> {
     ty: &'a CType,
@@ -263,7 +261,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
         visitor.visit_enum(ConfigEnumAccess::new(cenum))
     }
 
-    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {

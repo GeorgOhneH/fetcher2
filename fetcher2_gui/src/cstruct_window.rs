@@ -1,13 +1,12 @@
-use druid::commands::CLOSE_WINDOW;
-use druid::widget::{Button, Flex};
+use config::{Config, CStruct};
+use config::State;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
+use druid::commands::CLOSE_WINDOW;
+use druid::widget::{Button, Flex};
 use druid_widget_nursery::selectors;
-
-use config::State;
-use config::{CStruct, Config};
 
 selectors! {
     APPLY

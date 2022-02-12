@@ -1,19 +1,12 @@
-use std::fmt::Formatter;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+
+use druid::widget::{Button, Flex, Label, Maybe, TextBox};
+use druid::FileDialogOptions;
+use druid::{LensExt, Widget, WidgetExt};
+use druid_widget_nursery::WidgetExt as _;
 
 use crate::ctypes::path::CPath;
-use crate::errors::Error;
-use crate::traveller::{Travel, TravelPathConfig, Traveller};
-use druid::im::Vector;
-use druid::lens::Field;
-use druid::widget::{Button, Flex, Label, Maybe, TextBox};
-use druid::{Data, Lens, LensExt, Widget, WidgetExt};
-use druid::{FileDialogOptions, FileSpec};
-use druid_widget_nursery::WidgetExt as _;
-use serde::de::{EnumAccess, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use crate::traveller::TravelPathConfig;
 
 impl CPath {
     pub fn widget() -> impl Widget<Self> {

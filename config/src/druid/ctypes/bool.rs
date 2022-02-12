@@ -1,8 +1,9 @@
 use druid::widget::Checkbox;
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
+    BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size,
     UpdateCtx, Widget,
 };
+
 use crate::ctypes::bool::CBool;
 
 impl CBool {
@@ -10,7 +11,6 @@ impl CBool {
         CBoolWidget::new()
     }
 }
-
 
 pub struct CBoolWidget {
     checkbox: Checkbox,
@@ -22,7 +22,6 @@ impl CBoolWidget {
             checkbox: Checkbox::new(""),
         }
     }
-
 }
 
 impl Widget<CBool> for CBoolWidget {
@@ -38,11 +37,17 @@ impl Widget<CBool> for CBoolWidget {
                 self.checkbox.set_text(name)
             }
         }
-        self.checkbox.lifecycle(ctx, event, &data.value.unwrap_or(false), env)
+        self.checkbox
+            .lifecycle(ctx, event, &data.value.unwrap_or(false), env)
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &CBool, data: &CBool, env: &Env) {
-        self.checkbox.update(ctx, &old_data.value.unwrap_or(false), &data.value.unwrap_or(false), env)
+        self.checkbox.update(
+            ctx,
+            &old_data.value.unwrap_or(false),
+            &data.value.unwrap_or(false),
+            env,
+        )
     }
 
     fn layout(
@@ -52,7 +57,8 @@ impl Widget<CBool> for CBoolWidget {
         data: &CBool,
         env: &Env,
     ) -> Size {
-        self.checkbox.layout(ctx, bc, &data.value.unwrap_or(false), env)
+        self.checkbox
+            .layout(ctx, bc, &data.value.unwrap_or(false), env)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &CBool, env: &Env) {

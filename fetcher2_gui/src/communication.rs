@@ -1,9 +1,7 @@
-use std::fmt::{Debug, Formatter};
-
 use druid::{ExtEventSink, Selector, SingleUse, Target};
-
 use fetcher2::template::communication::{CommunicationExt, RawCommunicationExt};
 use fetcher2::template::nodes::node::NodeEvent;
+use std::fmt::{Debug, Formatter};
 
 use crate::widgets::tree::NodeIndex;
 

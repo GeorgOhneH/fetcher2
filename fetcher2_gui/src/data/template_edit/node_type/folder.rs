@@ -1,6 +1,5 @@
-use druid::Data;
-
 use config::Config;
+use druid::Data;
 use fetcher2::template::node_type::Folder;
 
 #[derive(Clone, Data, Debug, Config)]

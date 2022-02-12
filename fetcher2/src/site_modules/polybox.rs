@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use soup::prelude::*;
 use tokio::sync::mpsc::Sender;
 use url::Url;
-use config::traveller::Travel;
 
+use config::traveller::Travel;
 
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;

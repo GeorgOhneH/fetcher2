@@ -1,11 +1,10 @@
-use druid::im::Vector;
 use druid::{Data, Lens};
-
+use druid::im::Vector;
 use fetcher2::template::nodes::node::{Node, RawNode};
 
 use crate::communication::Communication;
-use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 use crate::data::template_edit::node_type::NodeTypeEditData;
+use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
 
 #[derive(Data, Clone, Debug, Lens)]
 pub struct NodeEditData {

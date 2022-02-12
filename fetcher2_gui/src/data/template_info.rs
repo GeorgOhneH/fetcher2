@@ -1,6 +1,5 @@
+use config::{Config, ConfigEnum};
 use druid::{Data, Lens};
-
-use config::{ConfigEnum, Config};
 
 #[derive(Debug, Clone, Data, Lens, Config)]
 pub struct TemplateInfo {

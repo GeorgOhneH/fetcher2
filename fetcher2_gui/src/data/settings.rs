@@ -1,6 +1,5 @@
-use druid::{Data, Lens};
-
 use config::Config;
+use druid::{Data, Lens};
 use fetcher2::settings::DownloadSettings;
 
 #[derive(Clone, Lens, Debug, Data, Config)]

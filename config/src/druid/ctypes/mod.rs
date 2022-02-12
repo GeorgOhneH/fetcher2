@@ -1,4 +1,4 @@
-use std::iter::FromIterator;
+use druid::{lens, LensExt, Widget, WidgetExt};
 
 use crate::ctypes::bool::CBool;
 use crate::ctypes::cenum::CEnum;
@@ -10,11 +10,7 @@ use crate::ctypes::option::COption;
 use crate::ctypes::path::CPath;
 use crate::ctypes::seq::CSeq;
 use crate::ctypes::string::CString;
-use crate::ctypes::tuple::CTuple;
 use crate::ctypes::CType;
-use crate::errors::Error;
-use druid::{lens, Data, LensExt, Widget, WidgetExt};
-use druid_enums::Matcher;
 
 pub mod bool;
 pub mod cenum;

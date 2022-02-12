@@ -1,11 +1,10 @@
-use crate::travel::fields::gen_found_fields;
 use proc_macro2::{Ident, TokenStream};
 use proc_macro_error::abort;
 use quote::{format_ident, quote};
-use syn::punctuated::Punctuated;
-use syn::token::Comma;
-use syn::{self, DataEnum, Field, Fields, FieldsNamed, FieldsUnnamed, LitStr};
+use syn::{self, DataEnum, Fields, FieldsNamed, FieldsUnnamed, LitStr};
+
 use crate::config_attr::parse_config_attributes;
+use crate::travel::fields::gen_found_fields;
 
 pub fn gen_travel_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
     let enum_name_str = LitStr::new(&enum_name.to_string(), enum_name.span());

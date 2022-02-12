@@ -1,17 +1,14 @@
-
-use serde::de::{Error as _, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::{Formatter, Write};
 use std::ops::{Deref, DerefMut};
 
-use crate::errors::Error;
-use crate::traveller::{Travel, Traveller};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::traveller::{Travel, Traveller};
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CInteger {
-    pub(crate)  value: Option<i64>,
+    pub(crate) value: Option<i64>,
     #[cfg_attr(feature = "druid", data(ignore))]
     pub(crate) min: i64,
     #[cfg_attr(feature = "druid", data(ignore))]

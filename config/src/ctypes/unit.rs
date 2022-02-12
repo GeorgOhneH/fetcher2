@@ -1,5 +1,3 @@
-use crate::ctypes::CType;
-
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CUnit {

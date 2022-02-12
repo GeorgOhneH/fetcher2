@@ -1,19 +1,17 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-
+use config::{Config, ConfigEnum};
 use druid::{Data, Lens};
 use druid::im::Vector;
-
-use config::{Config, ConfigEnum};
 use fetcher2::template::node_type::site::TaskMsg;
+use std::path::PathBuf;
+use std::sync::Arc;
 use template::node_type::NodeTypeData;
 use template::nodes::node::NodeData;
 
 use crate::data::edit::EditWindowData;
 use crate::data::settings::{OptionSettings, Settings};
+use crate::data::template::TemplateData;
 use crate::data::template_info::{TemplateInfo, TemplateInfoSelect};
 use crate::data::win::{SubWindowInfo, WindowState};
-use crate::data::template::TemplateData;
 
 pub mod edit;
 pub mod settings;

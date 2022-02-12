@@ -1,6 +1,6 @@
-use druid::widget::prelude::*;
+use druid::{Color, Cursor, Data, Point, Rect, theme, WidgetPod};
 use druid::widget::Axis;
-use druid::{theme, Color, Cursor, Data, Point, Rect, WidgetPod};
+use druid::widget::prelude::*;
 
 #[derive(Clone)]
 pub struct HeaderConstrains<const N: usize> {

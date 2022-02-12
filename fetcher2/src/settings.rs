@@ -1,7 +1,5 @@
-use std::path::PathBuf;
 use config::ctypes::path::{Absolute, StrictPath};
 use config::traveller::Travel;
-
 
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;

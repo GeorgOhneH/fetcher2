@@ -1,25 +1,27 @@
-use crate::ctypes::bool::CBool;
-use crate::ctypes::cenum::{CArg, CArgVariant, CEnumBuilder};
-use crate::ctypes::cstruct::{CKwarg, CStructBuilder};
-use crate::ctypes::integer::CInteger;
-use crate::ctypes::option::COption;
-use crate::ctypes::tuple::{CTuple, CTupleBuilder};
-use crate::ctypes::CType;
-use crate::errors::Error;
-use im::Vector;
-use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::path::PathBuf;
 
+use im::Vector;
+use serde::Serialize;
+
+pub use config_derive::Travel;
+
+use crate::ctypes::bool::CBool;
+use crate::ctypes::cenum::{CArg, CArgVariant, CEnumBuilder};
+use crate::ctypes::cstruct::{CKwarg, CStructBuilder};
 use crate::ctypes::float::CFloat;
+use crate::ctypes::integer::CInteger;
 use crate::ctypes::map::CMap;
+use crate::ctypes::option::COption;
 use crate::ctypes::path::CPath;
 use crate::ctypes::seq::CSeq;
 use crate::ctypes::string::CString;
+use crate::ctypes::tuple::CTupleBuilder;
 use crate::ctypes::unit::CUnit;
+use crate::ctypes::CType;
+use crate::errors::Error;
 use crate::serializer::ConfigSerializer;
-pub use config_derive::Travel;
 
 pub trait Travel {
     fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
@@ -400,7 +402,7 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         Ok(ConfigTravellerTuple::new())
     }
 
-    fn found_tuple_struct(self, name: &'static str) -> Result<Self::TravellerTuple, Self::Error> {
+    fn found_tuple_struct(self, _name: &'static str) -> Result<Self::TravellerTuple, Self::Error> {
         Ok(ConfigTravellerTuple::new())
     }
 
@@ -414,17 +416,17 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         Ok(CType::Map(CMap::new(value)))
     }
 
-    fn found_struct(self, name: &'static str) -> Result<Self::TravellerStruct, Self::Error> {
+    fn found_struct(self, _name: &'static str) -> Result<Self::TravellerStruct, Self::Error> {
         Ok(ConfigTravellerStruct::new())
     }
 
-    fn found_newtype_struct<T: Travel>(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+    fn found_newtype_struct<T: Travel>(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
         T::travel(&mut ConfigTraveller::new())
     }
 
     fn found_newtype_struct_with_default<T: Travel + Serialize>(
         self,
-        name: &'static str,
+        _name: &'static str,
         default: T,
     ) -> Result<Self::Ok, Self::Error> {
         let mut ty = T::travel(&mut ConfigTraveller::new())?;
@@ -432,7 +434,7 @@ impl<'a> Traveller for &'a mut ConfigTraveller {
         Ok(ty)
     }
 
-    fn found_enum(self, name: &'static str) -> Result<Self::TravellerEnum, Self::Error> {
+    fn found_enum(self, _name: &'static str) -> Result<Self::TravellerEnum, Self::Error> {
         Ok(ConfigTravellerEnum::new())
     }
 }
@@ -492,7 +494,7 @@ impl<'a> TravellerStructField for ConfigTravellerStructField<'a> {
         default.serialize(&mut ConfigSerializer::new(&mut self.ty))
     }
 
-    fn with_name(&mut self, name: &'static str) -> Result<(), Self::Error> {
+    fn with_name(&mut self, _name: &'static str) -> Result<(), Self::Error> {
         todo!()
     }
 

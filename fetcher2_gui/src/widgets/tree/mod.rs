@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use druid::{Lens, LensExt, theme, WidgetExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -10,9 +7,10 @@ use druid::im::Vector;
 use druid::kurbo::Size;
 use druid::piet::RenderContext;
 use druid::widget::{Axis, ClipBox, Scroll};
-use itertools::Itertools;
-
 use header::Header;
+use itertools::Itertools;
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::widgets::tree::node::{OpenerFactory, TreeItemFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;

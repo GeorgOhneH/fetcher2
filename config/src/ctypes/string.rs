@@ -1,9 +1,7 @@
-
-
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
 pub struct CString {
-    pub(crate)  value: Option<String>,
+    pub(crate) value: Option<String>,
     pub(crate) name: Option<&'static str>,
 }
 

@@ -1,17 +1,17 @@
+use druid::{
+    Color, Command, commands, Env, Event, EventCtx, FileInfo, LensExt, menu, Menu, MenuItem,
+    SingleUse, SysMods, Target, Widget, WidgetExt, WindowId,
+};
 use druid::widget::{
     Button, Controller, CrossAxisAlignment, Flex, Label, SizedBox, ViewSwitcher, WidgetWrapper,
 };
-use druid::{
-    commands, menu, Color, Command, Env, Event, EventCtx, FileInfo, LensExt, Menu, MenuItem,
-    SingleUse, SysMods, Target, Widget, WidgetExt, WindowId,
-};
 
 use crate::controller::{
-    EditController, Msg, SettingController, TemplateController, MSG_THREAD, OPEN_EDIT,
+    EditController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController,
 };
+use crate::data::AppData;
 use crate::data::template::TemplateData;
 use crate::data::template_info::{TemplateInfo, TemplateInfoSelect};
-use crate::data::AppData;
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::history_tree::History;
 use crate::widgets::info_view::InfoView;

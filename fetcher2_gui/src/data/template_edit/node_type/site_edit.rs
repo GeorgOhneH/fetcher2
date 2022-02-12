@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
-use druid::Data;
-
 use config::Config;
 use config::ConfigEnum;
+use druid::Data;
 use fetcher2::site_modules::Module;
-use fetcher2::template::node_type::{Site, SiteStorage};
 use fetcher2::template::DownloadArgs;
+use fetcher2::template::node_type::{Site, SiteStorage};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Data, Config)]
 pub struct SiteEditData {

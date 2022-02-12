@@ -1,12 +1,10 @@
+use druid::{Data, Lens};
+use druid::im::Vector;
+use fetcher2::template::nodes::node::{Node, NodeEvent, PathEvent};
+use fetcher2::TError;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use druid::im::Vector;
-use druid::{Data, Lens};
-
-use fetcher2::template::nodes::node::{Node, NodeEvent, PathEvent};
-use fetcher2::TError;
 
 use crate::communication::Communication;
 use crate::data::template::node_type::NodeTypeData;
