@@ -12,10 +12,10 @@ identifier = "com.fetcher2.fetcher2_gui"
 icon = ["assets/logo.ico"]
 
 [dependencies]
-#fetcher2 = { path = "../fetcher2" }
+fetcher2 = { path = "../fetcher2", features = ["druid"]}
 config = { path = "../config", features = ["druid"]}
-#fetcher2_macro = { path = "../fetcher2_macro" }
-#clap = "3.0.0-beta.2"
+fetcher2_macro = { path = "../fetcher2_macro" }
+fetcher2_gui_derive = { path = "../fetcher2_gui_derive" }
 serde = { version = "1.0", features = ["derive", "rc"] }
 async-trait = "0.1"
 enum_dispatch = "0.3"
@@ -50,7 +50,7 @@ tracing-subscriber = "0.2"
 notify = "5.0.0-pre.12"
 crossbeam-channel = "0.5.0"
 directories = "3.0"
-ron = "0.6.5"
+ron = "0.7.0"
 itertools = "0.10"
 bytesize = "1"
 timer = "0.2"

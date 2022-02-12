@@ -1,30 +1,28 @@
-use config::Config;
-use config::ConfigEnum;
 use druid::Data;
 use fetcher2::site_modules::Module;
 use fetcher2::template::DownloadArgs;
 use fetcher2::template::node_type::{Site, SiteStorage};
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use config::traveller::Travel;
 
-#[derive(Debug, Clone, Data, Config)]
+#[derive(Debug, Clone, Data, Serialize, Deserialize, Travel)]
 pub struct SiteEditData {
-    #[config(ty = "enum")]
     pub module: Module,
 
-    #[config(ty = "_<struct>")]
     pub download_args: Option<DownloadArgs>,
 
     #[data(ignore)]
-    #[config(skip = None)]
+    #[travel(skip)]
     pub storage: Option<Arc<SiteStorage>>,
 }
 
 impl SiteEditData {
-    pub fn new(site: Site) -> Self {
+    pub fn new(site: &Site) -> Self {
         Self {
-            module: site.module,
-            download_args: site.download_args,
-            storage: Some(site.storage),
+            module: site.module.clone(),
+            download_args: site.download_args.clone(),
+            storage: Some(site.storage.clone()),
         }
     }
     pub fn raw(self) -> Site {

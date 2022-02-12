@@ -2,22 +2,21 @@ use druid::{Data, Lens};
 use druid::im::Vector;
 use fetcher2::template::nodes::root::RootNode;
 
-use crate::communication::Communication;
 use crate::data::template::nodes::node::NodeData;
-use crate::widgets::tree::DataNodeIndex;
-use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
+use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::node::TreeNode;
+use crate::widgets::tree::NodeIndex;
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, Default, TreeNodeRoot)]
 pub struct RootNodeData {
     pub children: Vector<NodeData>,
-    pub selected: Vector<DataNodeIndex>,
+    pub selected: Vector<NodeIndex>,
 }
 
-impl_simple_tree_root! {RootNodeData, NodeData}
 
 impl RootNodeData {
-    pub fn new(root: RootNode<Communication>) -> Self {
-        let children: Vector<_> = root.children.into_iter().map(NodeData::new).collect();
+    pub fn new(root: &RootNode) -> Self {
+        let children: Vector<_> = root.children.iter().map(NodeData::new).collect();
 
         Self {
             children,

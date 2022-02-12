@@ -19,10 +19,10 @@ pub struct SiteData {
 }
 
 impl SiteData {
-    pub fn new(site: Site) -> Self {
+    pub fn new(site: &Site) -> Self {
         Self {
-            module: site.module,
-            download_args: site.download_args,
+            module: site.module.clone(),
+            download_args: site.download_args.clone(),
             history: site.storage.history.lock().unwrap().clone().into(),
             state: SiteState::new(),
         }

@@ -2,23 +2,22 @@ use druid::{Data, Lens};
 use druid::im::Vector;
 use fetcher2::template::nodes::root::{RawRootNode, RootNode};
 
-use crate::communication::Communication;
 use crate::data::template_edit::nodes::node::NodeEditData;
 use crate::edit_window::NodePosition;
-use crate::widgets::tree::DataNodeIndex;
-use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
+use crate::widgets::tree::NodeIndex;
+use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::node::TreeNode;
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, Default, TreeNodeRoot)]
 pub struct RootNodeEditData {
     pub children: Vector<NodeEditData>,
-    pub selected: Vector<DataNodeIndex>,
+    pub selected: Vector<NodeIndex>,
 }
 
-impl_simple_tree_root! {RootNodeEditData, NodeEditData}
 
 impl RootNodeEditData {
-    pub fn new(root: RootNode<Communication>) -> Self {
-        let children: Vector<_> = root.children.into_iter().map(NodeEditData::new).collect();
+    pub fn new(root: &RootNode) -> Self {
+        let children: Vector<_> = root.children.iter().map(NodeEditData::new).collect();
 
         Self {
             children,
@@ -41,15 +40,16 @@ impl RootNodeEditData {
         RawRootNode { children }
     }
 
-    pub fn remove(&mut self, idx: &[usize]) -> NodeEditData {
-        match idx.len() {
+    pub fn remove(&mut self, idx: &NodeIndex) -> NodeEditData {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        match slice.len() {
             0 => panic!("Can't remove the root node"),
-            1 => self.children.remove(idx[0]),
-            _ => self.children[idx[0]].remove(&idx[1..]),
+            1 => self.children.remove(slice[0]),
+            _ => self.children[slice[0]].remove(&slice[1..]),
         }
     }
 
-    pub fn insert_node(&mut self, idx: &[usize], pos: NodePosition) {
+    pub fn insert_node(&mut self, idx: &NodeIndex, pos: NodePosition) {
         match pos {
             NodePosition::Child => self.insert_child(idx),
             NodePosition::Above => self.insert_sibling(idx, 0),
@@ -57,20 +57,22 @@ impl RootNodeEditData {
         }
     }
 
-    pub fn insert_sibling(&mut self, idx: &[usize], offset: usize) {
-        match idx.len() {
+    pub fn insert_sibling(&mut self, idx: &NodeIndex, offset: usize) {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        match slice.len() {
             0 => panic!("Can't do this"),
             1 => self
                 .children
-                .insert(idx[0] + offset, NodeEditData::empty(true)),
-            _ => self.children[idx[0]].insert_sibling(&idx[1..], offset),
+                .insert(slice[0] + offset, NodeEditData::empty(true)),
+            _ => self.children[slice[0]].insert_sibling(&slice[1..], offset),
         }
     }
 
-    pub fn insert_child(&mut self, idx: &[usize]) {
-        match idx.len() {
+    pub fn insert_child(&mut self, idx: &NodeIndex) {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        match slice.len() {
             0 => self.children.push_back(NodeEditData::empty(true)),
-            _ => self.children[idx[0]].insert_child(&idx[1..]),
+            _ => self.children[slice[0]].insert_child(&slice[1..]),
         }
     }
 }

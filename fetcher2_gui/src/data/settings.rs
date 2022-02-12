@@ -1,15 +1,15 @@
-use config::Config;
 use druid::{Data, Lens};
+use serde::{Deserialize, Serialize};
+use config::traveller::Travel;
 use fetcher2::settings::DownloadSettings;
 
-#[derive(Clone, Lens, Debug, Data, Config)]
+#[derive(Clone, Lens, Debug, Data, Serialize, Deserialize, Default)]
 pub struct OptionSettings {
-    #[config(ty = "_<struct>")]
     pub settings: Option<Settings>,
 }
 
-#[derive(Config, Debug, Data, Clone)]
+#[derive(Travel, Debug, Data, Clone, Serialize, Deserialize)]
 pub struct Settings {
-    #[config(ty = "struct", name = "Download")]
+    #[travel(name = "Download")]
     pub download: DownloadSettings,
 }

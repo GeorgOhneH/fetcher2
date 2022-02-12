@@ -1,4 +1,4 @@
-use druid::{Data, Env, Event, EventCtx, LifeCycleCtx, Widget};
+use druid::{Data, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
 use druid::widget::Controller;
 
 pub struct Save<T, W> {
@@ -29,11 +29,11 @@ impl<T: Data, W: Widget<T>> Controller<T, W> for Save<T, W> {
         &mut self,
         child: &mut W,
         ctx: &mut LifeCycleCtx,
-        event: &crate::LifeCycle,
+        event: &LifeCycle,
         data: &T,
         env: &Env,
     ) {
-        if let crate::LifeCycle::WidgetAdded = event {
+        if let LifeCycle::WidgetAdded = event {
             (self.init)(child, ctx, data, env);
         }
         child.lifecycle(ctx, event, data, env)

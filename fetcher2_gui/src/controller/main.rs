@@ -3,17 +3,18 @@ use druid::{Env, Event, EventCtx, Widget};
 use druid::widget::Controller;
 use druid_widget_nursery::selectors;
 use fetcher2::settings::DownloadSettings;
-use fetcher2::template::Template;
+use fetcher2::template::{Template, UnPrepared};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
+use tokio::sync::mpsc::Receiver;
+use fetcher2::template::nodes::node::NodeEvent;
 
 use crate::{Result, TError};
 use crate::background_thread::{MSG_FROM_THREAD, ThreadMsg};
-use crate::communication::Communication;
 use crate::data::AppData;
 use crate::data::win::WindowState;
 use crate::utils::show_err;
@@ -30,7 +31,7 @@ pub enum Msg {
     StartByIndex(HashSet<NodeIndex>),
     Cancel,
     NewSettings(DownloadSettings),
-    NewTemplate(Template<Communication>),
+    NewTemplate((Template<UnPrepared>, Receiver<NodeEvent>)),
     NewTemplateByPath(PathBuf),
     ExitAndSave,
 }

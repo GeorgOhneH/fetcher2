@@ -2,26 +2,24 @@ use druid::{Data, Lens};
 use druid::im::Vector;
 use fetcher2::template::nodes::node::{Node, RawNode};
 
-use crate::communication::Communication;
 use crate::data::template_edit::node_type::NodeTypeEditData;
-use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
+use crate::widgets::tree::node::TreeNode;
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, TreeNode)]
 pub struct NodeEditData {
     pub expanded: bool,
     pub ty: Option<NodeTypeEditData>,
     pub children: Vector<NodeEditData>,
 }
 
-impl_simple_tree_node! {NodeEditData}
 
 impl NodeEditData {
-    pub fn new(node: Node<Communication>) -> Self {
-        let children: Vector<_> = node.children.into_iter().map(NodeEditData::new).collect();
+    pub fn new(node: &Node) -> Self {
+        let children: Vector<_> = node.children.iter().map(NodeEditData::new).collect();
         NodeEditData {
             expanded: true,
             children,
-            ty: Some(NodeTypeEditData::new(node.ty)),
+            ty: Some(NodeTypeEditData::new(&node.ty)),
         }
     }
     pub fn empty(expanded: bool) -> Self {

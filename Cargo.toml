@@ -6,5 +6,6 @@ members = [
     "fetcher2",
     "fetcher2_macro",
     "fetcher2_gui",
+    "fetcher2_gui_derive",
     "fetcher2_cli",
 ]

@@ -1,7 +1,8 @@
-use config::{Config, ConfigEnum};
 use druid::Data;
 use fetcher2::template::node_type::NodeType;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use config::traveller::Travel;
 
 use crate::data::template_edit::node_type::folder::FolderEditData;
 use crate::data::template_edit::node_type::site_edit::SiteEditData;
@@ -9,16 +10,15 @@ use crate::data::template_edit::node_type::site_edit::SiteEditData;
 pub mod folder;
 pub mod site_edit;
 
-#[derive(Debug, Clone, Data, Config)]
+#[derive(Debug, Clone, Data, Serialize, Deserialize, Travel)]
 pub struct NodeTypeEditData {
-    #[config(ty = "enum")]
     pub kind: NodeTypeEditKindData,
 }
 
 impl NodeTypeEditData {
-    pub fn new(ty: NodeType) -> Self {
+    pub fn new(ty: &NodeType) -> Self {
         let kind = match ty {
-            NodeType::Site(site) => NodeTypeEditKindData::Site(SiteEditData::new((*site).clone())),
+            NodeType::Site(site) => NodeTypeEditKindData::Site(SiteEditData::new(&(*site))),
             NodeType::Folder(folder) => NodeTypeEditKindData::Folder(FolderEditData::new(folder)),
         };
         NodeTypeEditData { kind }
@@ -28,11 +28,9 @@ impl NodeTypeEditData {
     }
 }
 
-#[derive(Debug, Clone, Data, ConfigEnum)]
+#[derive(Debug, Clone, Data, Serialize, Deserialize, Travel)]
 pub enum NodeTypeEditKindData {
-    #[config(ty = "struct")]
     Folder(FolderEditData),
-    #[config(ty = "struct")]
     Site(SiteEditData),
 }
 

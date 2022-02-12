@@ -10,9 +10,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::data::AppData;
-use crate::widgets::tree::{DataNodeIndex, Tree};
-use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
-use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
+use crate::widgets::tree::{NodeIndex, Tree};
+use crate::widgets::tree::node::TreeNode;
+use crate::widgets::tree::root::TreeNodeRoot;
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Type {
@@ -59,7 +59,7 @@ impl Type {
     }
 }
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, TreeNode)]
 pub struct Entry {
     children: Vector<Entry>,
     ty: Type,
@@ -70,7 +70,6 @@ pub struct Entry {
     expanded: bool,
 }
 
-impl_simple_tree_node! {Entry}
 
 impl Entry {
     pub fn new(task_msg: TaskMsg) -> Self {
@@ -111,13 +110,11 @@ impl Entry {
     }
 }
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, TreeNodeRoot)]
 pub struct EntryRoot {
     children: Vector<Entry>,
-    selected: Vector<DataNodeIndex>,
+    selected: Vector<NodeIndex>,
 }
-
-impl_simple_tree_root! {EntryRoot, Entry}
 
 impl EntryRoot {
     pub fn empty() -> Self {

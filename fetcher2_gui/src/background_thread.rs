@@ -1,19 +1,22 @@
-use druid::{ExtEventSink, SingleUse, Target};
+use druid::{ExtEventSink, Selector, SingleUse, Target};
 use druid_widget_nursery::selectors;
 use fetcher2::settings::DownloadSettings;
-use fetcher2::template::nodes::node::Status;
-use fetcher2::template::Template;
+use fetcher2::template::nodes::node::{NodeEvent, Status};
+use fetcher2::template::{Prepared, Template, UnPrepared};
 use fetcher2::TError;
-use futures::{FutureExt, StreamExt};
-use futures::future::{Abortable, Aborted, AbortHandle};
 use futures::future::BoxFuture;
+use futures::future::{AbortHandle, Abortable, Aborted};
 use futures::prelude::stream::FuturesUnordered;
+use futures::{FutureExt, StreamExt};
 use std::collections::HashSet;
 use std::future::Future;
+use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
+use futures::io::sink;
+use tokio::sync::mpsc::Receiver;
+use tokio::task::JoinHandle;
 
-use crate::communication::{Communication, RawCommunication};
 use crate::controller::Msg;
 use crate::data::template::nodes::root::RootNodeData;
 use crate::data::template_edit::nodes::root::RootNodeEditData;
@@ -25,6 +28,10 @@ selectors! {
 
     MSG_FROM_THREAD: SingleUse<ThreadMsg>,
 }
+
+// TODO: use tokens for templates to make sure it will work correctly
+pub const NODE_EVENT: Selector<SingleUse<NodeEvent>> =
+    Selector::new("fetcher2.communucation.node_event");
 
 pub enum ThreadMsg {
     SettingsRequired,
@@ -42,6 +49,88 @@ enum PostCommand {
     RunPrepare,
 }
 
+enum TemplateState {
+    Prepared(Template<Prepared>),
+    UnPrepared(Template<UnPrepared>),
+}
+
+impl TemplateState {
+    pub fn is_prepared(&self) -> bool {
+        matches!(self, Self::Prepared(_))
+    }
+
+    pub async fn inform_of_cancel(&self) {
+        match self {
+            Self::Prepared(template) => template.inform_of_cancel().await,
+            Self::UnPrepared(template) => template.inform_of_cancel().await,
+        }
+    }
+
+    pub async fn save(&self) -> Result<(), TError> {
+        match self {
+            Self::Prepared(template) => template.save().await,
+            Self::UnPrepared(template) => template.save().await,
+        }
+    }
+
+    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> bool {
+        if let TemplateState::UnPrepared(template) = self {
+            match mem::take(template).prepare(dsettings.clone()).await {
+                Ok(prepared_template) => {
+                    *self = TemplateState::Prepared(prepared_template);
+                    true
+                }
+                Err(unprepared_template) => {
+                    *self = TemplateState::UnPrepared(unprepared_template);
+                    false
+                }
+            }
+        } else {
+            true
+        }
+    }
+}
+
+struct TemplateData {
+    pub template_state: TemplateState,
+    pub handle: JoinHandle<()>,
+}
+
+impl TemplateData {
+    pub fn empty() -> Self {
+        Self {
+            template_state: TemplateState::UnPrepared(Template::empty()),
+            handle: tokio::spawn(async {}),
+        }
+    }
+
+    pub async fn inform_of_cancel(&self) {
+        self.template_state.inform_of_cancel().await
+    }
+
+    pub async fn save(&self) -> Result<(), TError> {
+        self.template_state.save().await
+    }
+
+    pub fn new(template: Template<UnPrepared>, rx: Receiver<NodeEvent>, sink: ExtEventSink) -> Self {
+        Self {
+            template_state: TemplateState::UnPrepared(template),
+            handle: tokio::spawn(forward_msgs(rx, sink)),
+        }
+    }
+
+    pub async fn replace(&mut self, template: Template<UnPrepared>, tx: Receiver<NodeEvent>, sink: ExtEventSink) {
+        self.template_state = TemplateState::UnPrepared(template);
+
+        let dummy_handle = tokio::spawn(async {});
+        let old_handle = mem::replace(&mut self.handle, dummy_handle);
+        // TODO not unwrap
+        old_handle.await.unwrap();
+        let new_handle = tokio::spawn(forward_msgs(tx, sink));
+        self.handle = new_handle;
+    }
+}
+
 pub fn background_main(rx: flume::Receiver<Msg>, r: crossbeam_channel::Receiver<ExtEventSink>) {
     let sink = r.recv().expect("Should always work");
     tokio::runtime::Builder::new_multi_thread()
@@ -51,8 +140,9 @@ pub fn background_main(rx: flume::Receiver<Msg>, r: crossbeam_channel::Receiver<
         .block_on(manager(rx, sink));
 }
 
-async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
-    let template = tokio::sync::RwLock::new(Template::empty());
+async fn manager(gui_rx: flume::Receiver<Msg>, sink: ExtEventSink) {
+    let template_data = TemplateData::empty();
+    let template_data = tokio::sync::RwLock::new(template_data);
     let mut dsettings: Option<Arc<DownloadSettings>> = None;
 
     let mut futs = FuturesUnordered::new();
@@ -60,12 +150,12 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
 
     loop {
         tokio::select! {
-            Ok(msg) = rx.recv_async() => {
-                println!("{:?}", msg);
+            Ok(msg) = gui_rx.recv_async() => {
+                dbg!("{:?}", &msg);
                 match msg {
                     Msg::StartAll => {
                         with_settings(
-                            |settings| run_template(&template, settings, RunType::Root),
+                            |settings| run_template(&template_data, settings, RunType::Root),
                             dsettings.clone(),
                             &mut futs,
                             &mut abort_handles,
@@ -74,7 +164,7 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
                     },
                     Msg::StartByIndex(indexes) => {
                         with_settings(
-                            |settings| run_template(&template, settings, RunType::Indexes(indexes)),
+                            |settings| run_template(&template_data, settings, RunType::Indexes(indexes)),
                             dsettings.clone(),
                             &mut futs,
                             &mut abort_handles,
@@ -83,27 +173,27 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
                     },
                     Msg::Cancel => {
                         cancel_all(&mut abort_handles);
-                        let fut = async { template.read().await.inform_of_cancel(); PostCommand::None };
+                        let fut = async { template_data.read().await.template_state.inform_of_cancel().await; PostCommand::None };
                         add_new_future(fut, &mut futs, &mut abort_handles);
                     },
                     Msg::NewSettings(new_settings) => {
                         dsettings = Some(Arc::new(new_settings));
                         with_settings(
-                            |settings| prepare_template(&template, settings),
+                            |settings| prepare_template(&template_data, settings),
                             dsettings.clone(),
                             &mut futs,
                             &mut abort_handles,
                             sink.clone()
                         );
                     },
-                    Msg::NewTemplate(new_template) => {
+                    Msg::NewTemplate((new_template, new_rx)) => {
                         cancel_all(&mut abort_handles);
-                        let fut = replace_template(&template, new_template, sink.clone());
+                        let fut = replace_template(&template_data, new_template, new_rx, sink.clone());
                         add_new_future(fut, &mut futs, &mut abort_handles);
                     },
                     Msg::NewTemplateByPath(path) => {
                         cancel_all(&mut abort_handles);
-                        let fut = replace_template_by_path(&template, path, sink.clone());
+                        let fut = replace_template_by_path(&template_data, path, sink.clone());
                         add_new_future(fut, &mut futs, &mut abort_handles);
                     },
                     Msg::ExitAndSave => {
@@ -116,7 +206,7 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
                 if let Ok(cmd) = result {
                     handle_post_cmd(
                         cmd,
-                        &template,
+                        &template_data,
                         dsettings.clone(),
                         &mut futs,
                         &mut abort_handles,
@@ -125,7 +215,7 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
                 }
             },
             else => {
-                println!("BREAK LOOP");
+                dbg!("BREAK LOOP");
                 break
             },
         }
@@ -133,14 +223,23 @@ async fn manager(rx: flume::Receiver<Msg>, sink: ExtEventSink) {
 
     while futs.next().await.is_some() {}
     // We use write so we are sure the other operations are finished
-    template.write().await.save().await.unwrap();
+    template_data.write().await.save().await.unwrap();
 
     println!("GRACEFUL EXIT");
 }
 
+async fn forward_msgs(mut rx: Receiver<NodeEvent>, sink: ExtEventSink) {
+    while let Some(event) = rx.recv().await {
+        dbg!(&event);
+
+        sink.submit_command(NODE_EVENT, SingleUse::new(event), Target::Global)
+            .expect("Main Thread existed before this one");
+    }
+}
+
 fn handle_post_cmd<'a>(
     cmd: PostCommand,
-    template: &'a tokio::sync::RwLock<Template<Communication>>,
+    template_data: &'a tokio::sync::RwLock<TemplateData>,
     dsettings: Option<Arc<DownloadSettings>>,
     mut futs: &mut FuturesUnordered<BoxFuture<'a, std::result::Result<PostCommand, Aborted>>>,
     mut abort_handles: &mut Vec<AbortHandle>,
@@ -150,7 +249,7 @@ fn handle_post_cmd<'a>(
         PostCommand::None => (),
         PostCommand::RunPrepare => {
             with_settings(
-                |settings| prepare_template(template, settings),
+                |settings| prepare_template(template_data, settings),
                 dsettings,
                 &mut futs,
                 &mut abort_handles,
@@ -198,14 +297,15 @@ fn cancel_all(abort_handles: &mut Vec<AbortHandle>) {
 }
 
 async fn replace_template_by_path(
-    old_template: &tokio::sync::RwLock<Template<Communication>>,
+    old_template_data: &tokio::sync::RwLock<TemplateData>,
     path: PathBuf,
     sink: ExtEventSink,
 ) -> PostCommand {
-    let comm = RawCommunication::new(sink.clone());
     dbg!("starting load");
-    match Template::load(path.as_path(), comm).await {
-        Ok(new_template) => replace_template(old_template, new_template, sink).await,
+    match Template::load(path.as_path()).await {
+        Ok((new_template, new_rx)) => {
+            replace_template(old_template_data, new_template, new_rx, sink).await
+        }
         Err(err) => {
             sink.submit_command(
                 MSG_FROM_THREAD,
@@ -219,17 +319,18 @@ async fn replace_template_by_path(
 }
 
 async fn replace_template(
-    old_template: &tokio::sync::RwLock<Template<Communication>>,
-    new_template: Template<Communication>,
+    old_template_data: &tokio::sync::RwLock<TemplateData>,
+    new_template: Template<UnPrepared>,
+    new_rx: Receiver<NodeEvent>,
     sink: ExtEventSink,
 ) -> PostCommand {
     dbg!("replace load");
-    old_template.read().await.inform_of_cancel();
-    let mut wl = old_template.write().await;
+    old_template_data.read().await.inform_of_cancel().await;
+    let mut wl = old_template_data.write().await;
     sink.submit_command(
         NEW_TEMPLATE,
         SingleUse::new((
-            RootNodeData::new(new_template.root.clone()),
+            RootNodeData::new(&new_template.root),
             new_template.save_path.clone(),
         )),
         Target::Global,
@@ -238,7 +339,7 @@ async fn replace_template(
     sink.submit_command(
         NEW_EDIT_TEMPLATE,
         SingleUse::new((
-            RootNodeEditData::new(new_template.root.clone()),
+            RootNodeEditData::new(&new_template.root),
             new_template.save_path.clone(),
         )),
         Target::Global,
@@ -260,42 +361,47 @@ async fn replace_template(
         )
         .unwrap()
     }
-    *wl = new_template;
+    wl.replace(new_template, new_rx, sink).await;
     dbg!("finished");
     PostCommand::RunPrepare
 }
 
 async fn run_template(
-    template: &tokio::sync::RwLock<Template<Communication>>,
+    template_data: &tokio::sync::RwLock<TemplateData>,
     dsettings: Arc<DownloadSettings>,
     ty: RunType,
 ) -> PostCommand {
     loop {
-        let rl = template.read().await;
-        if rl.is_prepared() {
+        let rl = template_data.read().await;
+        if let TemplateState::Prepared(template) = &rl.template_state {
             match ty {
-                RunType::Root => rl.run_root(dsettings.clone()).await,
-                RunType::Indexes(indexes) => rl.run(dsettings.clone(), &indexes).await,
+                RunType::Root => template.run_root(dsettings.clone()).await,
+                RunType::Indexes(ref indexes) => template.run(dsettings.clone(), indexes).await,
             };
             return PostCommand::None;
-        } else {
-            drop(rl);
-            let mut wl = template.write().await;
-            match wl.prepare(dsettings.clone()).await {
-                Status::Success => {}
-                Status::Failure => {
-                    return PostCommand::None;
-                }
-            }
+        }
+        drop(rl);
+        if !template_data
+            .write()
+            .await
+            .template_state
+            .prepare(dsettings.clone())
+            .await
+        {
+            return PostCommand::None;
         }
     }
 }
 async fn prepare_template(
-    template: &tokio::sync::RwLock<Template<Communication>>,
+    template_data: &tokio::sync::RwLock<TemplateData>,
     dsettings: Arc<DownloadSettings>,
 ) -> PostCommand {
     dbg!("start prepare");
-    let mut wl = template.write().await;
-    wl.prepare(dsettings.clone()).await;
+    template_data
+        .write()
+        .await
+        .template_state
+        .prepare(dsettings.clone())
+        .await;
     PostCommand::None
 }

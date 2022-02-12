@@ -1,7 +1,7 @@
 use druid::Data;
 use druid::im::Vector;
 use fetcher2::template::node_type::site::{
-    DownloadEvent, LoginEvent, MsgKind, RunEvent, SiteEvent, TaskMsg, UrlFetchEvent,
+    DownloadEventKind, LoginEventKind, MsgKind, RunEventKind, SiteEventKind, TaskMsg, UrlFetchEventKind,
 };
 use fetcher2::TError;
 use std::sync::Arc;
@@ -39,15 +39,15 @@ impl SiteState {
         self.download.reset();
     }
 
-    pub fn update(&mut self, event: SiteEvent, history: &mut Vector<TaskMsg>) {
+    pub fn update(&mut self, event: SiteEventKind, history: &mut Vector<TaskMsg>) {
         match event {
-            SiteEvent::Run(run_event) => match run_event {
-                RunEvent::Start => self.run += 1,
-                RunEvent::Finish => self.run -= 1,
+            SiteEventKind::Run(run_event) => match run_event {
+                RunEventKind::Start => self.run += 1,
+                RunEventKind::Finish => self.run -= 1,
             },
-            SiteEvent::Login(login_event) => self.login.update(login_event),
-            SiteEvent::UrlFetch(fetch_event) => self.fetch.update(fetch_event),
-            SiteEvent::Download(down_event) => self.download.update(down_event, history),
+            SiteEventKind::Login(login_event) => self.login.update(login_event),
+            SiteEventKind::UrlFetch(fetch_event) => self.fetch.update(fetch_event),
+            SiteEventKind::Download(down_event) => self.download.update(down_event, history),
         }
     }
 
@@ -79,11 +79,11 @@ impl LoginState {
         self.errs.clear();
     }
 
-    pub fn update(&mut self, event: LoginEvent) {
+    pub fn update(&mut self, event: LoginEventKind) {
         match event {
-            LoginEvent::Start => self.count += 1,
-            LoginEvent::Finish => self.count -= 1,
-            LoginEvent::Err(err) => {
+            LoginEventKind::Start => self.count += 1,
+            LoginEventKind::Finish => self.count -= 1,
+            LoginEventKind::Err(err) => {
                 self.errs.push_back(Arc::new(err));
                 self.count -= 1
             }
@@ -120,11 +120,11 @@ impl FetchState {
         self.errs.clear();
     }
 
-    pub fn update(&mut self, event: UrlFetchEvent) {
+    pub fn update(&mut self, event: UrlFetchEventKind) {
         match event {
-            UrlFetchEvent::Start => self.count += 1,
-            UrlFetchEvent::Finish => self.count -= 1,
-            UrlFetchEvent::Err(err) => {
+            UrlFetchEventKind::Start => self.count += 1,
+            UrlFetchEventKind::Finish => self.count -= 1,
+            UrlFetchEventKind::Err(err) => {
                 self.errs.push_back(Arc::new(err));
                 self.count -= 1
             }
@@ -168,13 +168,13 @@ impl DownloadState {
         self.errs.clear();
     }
 
-    pub fn update(&mut self, event: DownloadEvent, history: &mut Vector<TaskMsg>) {
+    pub fn update(&mut self, event: DownloadEventKind, history: &mut Vector<TaskMsg>) {
         match event {
-            DownloadEvent::Start => {
+            DownloadEventKind::Start => {
                 self.count += 1;
                 self.total += 1
             }
-            DownloadEvent::Finish(msg) => {
+            DownloadEventKind::Finish(msg) => {
                 match &msg {
                     TaskMsg {
                         kind: MsgKind::AddedFile,
@@ -189,7 +189,7 @@ impl DownloadState {
                 history.push_back(msg);
                 self.count -= 1;
             }
-            DownloadEvent::Err(err) => {
+            DownloadEventKind::Err(err) => {
                 self.errs.push_back(Arc::new(err));
                 self.count -= 1
             }

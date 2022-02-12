@@ -1,23 +1,22 @@
-use config::Config;
 use druid::{Data, Lens};
 use druid::im::Vector;
 use nodes::root::RootNodeEditData;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 
 pub mod nodes;
 pub mod node_type;
 
-#[derive(Debug, Clone, Data, Lens, Config)]
+#[derive(Debug, Clone, Data, Lens, Serialize, Deserialize, Default)]
 pub struct TemplateEditData {
-    #[config(skip = RootNodeEditData::empty())]
+    #[serde(skip)]
     pub root: RootNodeEditData,
 
     #[data(eq)]
-    #[config(skip = None)]
+    #[serde(skip)]
     pub save_path: Option<PathBuf>,
 
-    #[config(ty = "Vec<_>")]
     pub header_sizes: Vector<f64>,
 }
 

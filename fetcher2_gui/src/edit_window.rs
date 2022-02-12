@@ -11,7 +11,6 @@ use std::convert::TryInto;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::communication::RawCommunication;
 use crate::controller::{Msg, MSG_THREAD};
 use crate::cstruct_window::c_option_window;
 use crate::data::AppData;
@@ -21,7 +20,7 @@ use crate::data::template_edit::nodes::node::NodeEditData;
 use crate::data::template_edit::nodes::root::RootNodeEditData;
 use crate::data::template_edit::TemplateEditData;
 use crate::data::win::WindowState;
-use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::widgets::tree::{NodeIndex, Tree};
 use crate::widgets::tree::root::TreeNodeRoot;
 
 selectors! {
@@ -57,12 +56,11 @@ impl DataBuffer {
     }
 
     fn send_update_msg(ctx: &mut EventCtx, root: RootNodeEditData, save_path: PathBuf) {
-        let comm = RawCommunication::new(ctx.get_external_handle());
-        let template = Template::new(root.raw().transform(comm), save_path);
+        let both = Template::new(root.raw(), save_path);
 
         ctx.submit_command(Command::new(
             MSG_THREAD,
-            SingleUse::new(Msg::NewTemplate(template)),
+            SingleUse::new(Msg::NewTemplate(both)),
             Target::Global,
         ));
     }
@@ -165,7 +163,7 @@ impl<L, S, const N: usize>
     Controller<RootNodeEditData, Tree<RootNodeEditData, NodeEditData, L, S, N>> for NodeController
 where
     L: Lens<NodeEditData, bool> + Clone + 'static,
-    S: Lens<RootNodeEditData, Vector<DataNodeIndex>> + Clone + 'static,
+    S: Lens<RootNodeEditData, Vector<NodeIndex>> + Clone + 'static,
 {
     fn event(
         &mut self,
@@ -238,7 +236,7 @@ impl<W: Widget<EditWindowData>> Controller<EditWindowData, W> for NodeWindowCont
                         .show_titlebar(true)
                         .window_size(size)
                         .set_position(pos)
-                        .set_level(WindowLevel::Modal),
+                        .set_level(WindowLevel::Modal(ctx.window().clone())),
                     node_window(idx),
                     data.clone(),
                     env.clone(),
@@ -314,7 +312,7 @@ where
     W2: WidgetWrapper<Wrapped = W1> + Widget<TemplateEditData>,
     W1: WidgetWrapper<Wrapped = Tree<RootNodeEditData, NodeEditData, L, S, N>>,
     L: Lens<NodeEditData, bool> + Clone + 'static,
-    S: Lens<RootNodeEditData, Vector<DataNodeIndex>> + Clone + 'static,
+    S: Lens<RootNodeEditData, Vector<NodeIndex>> + Clone + 'static,
 {
     fn event(
         &mut self,
@@ -386,7 +384,7 @@ fn _edit_window() -> impl Widget<EditWindowData> {
         )
 }
 
-fn node_window(idx: &[usize]) -> impl Widget<EditWindowData> {
+fn node_window(idx: &NodeIndex) -> impl Widget<EditWindowData> {
     c_option_window(
         Some("Node"),
         Some(Box::new(

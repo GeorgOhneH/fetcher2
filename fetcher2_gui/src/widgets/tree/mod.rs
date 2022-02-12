@@ -32,8 +32,7 @@ enum SelectUpdateMode {
     Sub,
 }
 
-pub type NodeIndex = Vec<usize>;
-pub type DataNodeIndex = Vector<usize>;
+pub type NodeIndex = Vector<usize>;
 type ActivateFn<T> = Box<dyn Fn(&mut EventCtx, &mut T, &Env, &NodeIndex)>;
 
 pub struct Tree<R, T, L, S, const N: usize>
@@ -41,7 +40,7 @@ where
     R: TreeNodeRoot<T>,
     T: TreeNode,
     L: Lens<T, bool>,
-    S: Lens<R, Vector<DataNodeIndex>>,
+    S: Lens<R, Vector<NodeIndex>>,
 {
     header: WidgetPod<R, ClipBox<R, Header<R, N>>>,
     root_node: WidgetPod<R, Scroll<R, TreeNodeRootWidget<R, T, L, N>>>,
@@ -57,7 +56,7 @@ where
     R: TreeNodeRoot<T>,
     T: TreeNode,
     L: Lens<T, bool> + Clone + 'static,
-    S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
+    S: Lens<R, Vector<NodeIndex>> + Clone + 'static,
 {
     pub fn new(
         header_widgets: [impl Widget<R> + 'static; N],
@@ -133,7 +132,7 @@ where
         }
     }
 
-    fn update_selection(&mut self, new_node: &[usize], mode: SelectUpdateMode) -> bool {
+    fn update_selection(&mut self, new_node: &NodeIndex, mode: SelectUpdateMode) -> bool {
         let current_selected = self.root_node.widget().child().get_selected();
         match mode {
             SelectUpdateMode::Single => {
@@ -181,7 +180,7 @@ where
     R: TreeNodeRoot<T>,
     T: TreeNode,
     L: Lens<T, bool> + Clone + 'static,
-    S: Lens<R, Vector<DataNodeIndex>> + Clone + 'static,
+    S: Lens<R, Vector<NodeIndex>> + Clone + 'static,
 {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut R, env: &Env) {
         self.root_node.event(ctx, event, data, env);
@@ -339,7 +338,7 @@ where
     }
 }
 
-fn is_selected_eq(vec: &[NodeIndex], vector: &Vector<DataNodeIndex>) -> bool {
+fn is_selected_eq(vec: &[NodeIndex], vector: &Vector<NodeIndex>) -> bool {
     if vec.len() != vector.len() {
         return false;
     }
@@ -354,7 +353,7 @@ fn is_selected_eq(vec: &[NodeIndex], vector: &Vector<DataNodeIndex>) -> bool {
         })
 }
 
-fn transform_selected(vec: Vec<NodeIndex>) -> Vector<DataNodeIndex> {
+fn transform_selected(vec: Vec<NodeIndex>) -> Vector<NodeIndex> {
     vec.into_iter()
         .map(|nidx| nidx.into_iter().collect())
         .collect()

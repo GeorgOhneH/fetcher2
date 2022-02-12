@@ -1,7 +1,11 @@
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
 
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -11,79 +15,30 @@ use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::template::communication::{CommunicationExt, RawCommunicationExt};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
-use crate::template::nodes::node::Status;
+use crate::template::nodes::node::{NodeEvent, NodeEventKind, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
 
 pub mod communication;
 pub mod node_type;
 pub mod nodes;
 
-pub type NodeIndex = Vec<usize>;
+pub type NodeIndex = im::Vector<usize>;
+
+#[derive(Debug)]
+pub struct UnPrepared;
+#[derive(Debug)]
+pub struct Prepared;
 
 #[derive(Debug)]
 pub struct Template<T> {
-    pub root: RootNode<T>,
+    pub root: RootNode,
     pub save_path: Option<PathBuf>,
-    is_prepared: bool,
+    _m: PhantomData<T>,
 }
 
-impl<T: CommunicationExt> Template<T> {
-    pub fn empty() -> Self {
-        Self {
-            root: RootNode::new(),
-            is_prepared: false,
-            save_path: None,
-        }
-    }
-
-    pub fn new(root: RootNode<T>, save_path: PathBuf) -> Self {
-        Self {
-            root,
-            is_prepared: false,
-            save_path: Some(save_path),
-        }
-    }
-
-    pub async fn load(path: &Path, comm: impl RawCommunicationExt<T>) -> Result<Self> {
-        let x = fs::read(path).await?;
-        let raw_root: RawRootNode = ron::de::from_bytes(&x)?;
-        Ok(Self {
-            root: raw_root.transform(comm),
-            is_prepared: false,
-            save_path: Some(path.to_owned()),
-        })
-    }
-
-    pub fn is_prepared(&self) -> bool {
-        self.is_prepared
-    }
-
-    pub fn inform_of_cancel(&self) {
-        self.root.inform_of_cancel()
-    }
-
-    pub async fn prepare(&mut self, dsettings: Arc<DownloadSettings>) -> Status {
-        // since only one mutable reference is allowed this cant
-        // run in parallel and self.is_prepared is always correct
-        if self.is_prepared {
-            return Status::Success;
-        }
-        let session = Session::new();
-        let status = self.root.prepare(&session, dsettings).await;
-        if let Status::Success = status {
-            self.is_prepared = true;
-        }
-        status
-    }
-
-    pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) {
-        let session = Session::new();
-        self.root.run(&session, dsettings, None).await
-    }
-
-    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: &HashSet<NodeIndex>) {
-        let session = Session::new();
-        self.root.run(&session, dsettings, Some(indexes)).await
+impl<T> Template<T> {
+    pub async fn inform_of_cancel(&self) {
+        self.root.inform_of_cancel().await
     }
 
     pub async fn save(&self) -> Result<()> {
@@ -101,5 +56,70 @@ impl<T: CommunicationExt> Template<T> {
             f.shutdown().await?;
         }
         Ok(())
+    }
+}
+
+impl Template<UnPrepared> {
+    pub fn empty() -> Template<UnPrepared> {
+        Self {
+            root: RootNode::new(),
+            save_path: None,
+            _m: PhantomData,
+        }
+    }
+
+    pub fn new(
+        raw: RawRootNode,
+        save_path: PathBuf,
+    ) -> (Template<UnPrepared>, Receiver<NodeEvent>) {
+        let (tx, rx) = mpsc::channel(1024);
+        let root = raw.transform(tx);
+        let template = Self {
+            root,
+            save_path: Some(save_path),
+            _m: PhantomData,
+        };
+        (template, rx)
+    }
+
+    pub async fn load(path: &Path) -> Result<(Template<UnPrepared>, Receiver<NodeEvent>)> {
+        let x = fs::read(path).await?;
+        let raw_root: RawRootNode = ron::de::from_bytes(&x)?;
+        Ok(Self::new(raw_root, path.to_owned()))
+    }
+
+    pub async fn prepare(
+        mut self,
+        dsettings: Arc<DownloadSettings>,
+    ) -> std::result::Result<Template<Prepared>, Template<UnPrepared>> {
+        let session = Session::new();
+        let status = Pin::new(&mut self.root).prepare(&session, dsettings).await;
+        if let Status::Success = status {
+            Ok(Template::<Prepared> {
+                root: self.root,
+                save_path: self.save_path,
+                _m: PhantomData,
+            })
+        } else {
+            Err(self)
+        }
+    }
+}
+
+impl Template<Prepared> {
+    pub async fn run_root(&self, dsettings: Arc<DownloadSettings>) {
+        let session = Session::new();
+        self.root.run(&session, dsettings, None).await
+    }
+
+    pub async fn run(&self, dsettings: Arc<DownloadSettings>, indexes: &HashSet<NodeIndex>) {
+        let session = Session::new();
+        self.root.run(&session, dsettings, Some(indexes)).await
+    }
+}
+
+impl Default for Template<UnPrepared> {
+    fn default() -> Self {
+        Self::empty()
     }
 }

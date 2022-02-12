@@ -1,14 +1,13 @@
-use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
-use druid::SingleUse;
 use druid::widget::Controller;
+use druid::SingleUse;
+use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::background_thread::NEW_TEMPLATE;
-use crate::communication::NODE_EVENT;
+use crate::background_thread::{NEW_TEMPLATE, NODE_EVENT};
 use crate::controller::{Msg, MSG_THREAD};
-use crate::data::AppData;
 use crate::data::template::nodes::root::RootNodeData;
+use crate::data::AppData;
 
 pub struct TemplateController {}
 
@@ -40,9 +39,9 @@ impl<W: Widget<AppData>> Controller<AppData, W> for TemplateController {
         match event {
             Event::Command(cmd) if cmd.is(NODE_EVENT) => {
                 ctx.set_handled();
-                let (node_event, idx) = cmd.get_unchecked(NODE_EVENT).take().unwrap();
+                let node_event = cmd.get_unchecked(NODE_EVENT).take().unwrap();
                 data.template
-                    .node_mut(&idx, |node, _| node.update_node(node_event));
+                    .node_mut(&node_event.idx, |node, _| node.update_node(node_event.kind));
                 return;
             }
             Event::Command(cmd) if cmd.is(NEW_TEMPLATE) => {

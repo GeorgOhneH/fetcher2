@@ -37,16 +37,27 @@ pub trait PathConfig {
     fn config() -> TravelPathConfig;
 }
 
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct AnyPath;
+
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct Relative;
+
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct Absolute;
+
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct AbsoluteExist;
+
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct AbsoluteExistFile;
+
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Debug, Clone)]
 pub struct AbsoluteExistDir;
 
@@ -240,5 +251,11 @@ where
             path,
             _m0: PhantomData,
         })
+    }
+}
+
+impl<CONFIG> PartialEq for StrictPath<CONFIG> where CONFIG: PathConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
     }
 }

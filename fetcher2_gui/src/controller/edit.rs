@@ -33,7 +33,7 @@ impl EditController {
                 .show_titlebar(true)
                 .window_size(size)
                 .set_position(pos)
-                .set_level(WindowLevel::Modal),
+                .set_level(WindowLevel::Modal(ctx.window().clone())),
             SubWindow::new(window),
             data.clone(),
             env.clone(),

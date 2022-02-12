@@ -12,7 +12,7 @@ pub fn show_err(ctx: &mut EventCtx, data: &AppData, env: &Env, err: TError, titl
             .show_titlebar(true)
             .set_position(pos)
             .window_size(size)
-            .set_level(WindowLevel::Modal),
+            .set_level(WindowLevel::Modal(ctx.window().clone())),
         err_widget(err, title),
         data.clone(),
         env.clone(),

@@ -6,9 +6,11 @@ use druid::{
 use druid::kurbo::Size;
 use druid::piet::RenderContext;
 use druid_widget_nursery::selectors;
-pub(crate) use impl_simple_tree_node;
 use std::convert::TryFrom;
 use std::sync::Arc;
+use druid::im::Vector;
+
+pub use fetcher2_gui_derive::TreeNode;
 
 use crate::widgets::tree::header::HeaderConstrains;
 use crate::widgets::tree::NodeIndex;
@@ -30,36 +32,6 @@ selectors! {
     TREE_ACTIVATE_NODE,
 }
 
-macro_rules! impl_simple_tree_node {
-    ($node_name:ident) => {
-        impl TreeNode for $node_name {
-            fn children_count(&self) -> usize {
-                self.children.len()
-            }
-
-            fn get_child(&self, index: usize) -> &Self {
-                &self.children[index]
-            }
-
-            fn for_child_mut<V>(
-                &mut self,
-                index: usize,
-                cb: impl FnOnce(&mut Self, usize) -> V,
-            ) -> V {
-                let mut new_child = self.children[index].to_owned();
-                let v = cb(&mut new_child, index);
-                if !new_child.same(&self.children[index]) {
-                    self.children[index] = new_child;
-                }
-                v
-            }
-
-            fn rm_child(&mut self, index: usize) {
-                self.children.remove(index);
-            }
-        }
-    };
-}
 /// A tree node `Data`. This is the data expected by the tree widget.
 ///
 /// Implementors of this trait must know the number of children of each node
@@ -232,7 +204,7 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
     pub fn get_selected(&self, selected: &mut Vec<NodeIndex>, current_idx: NodeIndex) {
         for (i, child) in self.children.iter().enumerate() {
             let mut idx = current_idx.clone();
-            idx.push(i);
+            idx.push_back(i);
             child.widget().get_selected(selected, idx)
         }
         if self.selected {
@@ -240,8 +212,8 @@ impl<T: TreeNode, L: Lens<T, bool> + Clone, const N: usize> TreeNodeWidget<T, L,
         }
     }
 
-    pub fn at(&self, p: Point, idx: &mut Vec<usize>) {
-        idx.push(self.index);
+    pub fn at(&self, p: Point, idx: &mut Vector<usize>) {
+        idx.push_back(self.index);
         for child in &self.children {
             let rect = child.layout_rect();
             if rect.contains(p) {

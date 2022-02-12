@@ -28,7 +28,7 @@ impl CInteger {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, PartialEq, Copy, Clone, Eq)]
 pub struct RangedInt<const MIN: i64, const MAX: i64>(pub i64);
 
 impl<const MIN: i64, const MAX: i64> Deref for RangedInt<MIN, MAX> {

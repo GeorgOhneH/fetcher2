@@ -16,9 +16,9 @@ pub enum NodeTypeData {
 }
 
 impl NodeTypeData {
-    pub fn new(ty: NodeType) -> Self {
+    pub fn new(ty: &NodeType) -> Self {
         match ty {
-            NodeType::Site(site) => NodeTypeData::Site(SiteData::new((*site).clone())),
+            NodeType::Site(site) => NodeTypeData::Site(SiteData::new(&(*site))),
             NodeType::Folder(folder) => NodeTypeData::Folder(FolderData::new(folder)),
         }
     }

@@ -7,12 +7,13 @@ use futures::future::join_all;
 use futures::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::sync::mpsc::Sender;
 
 use crate::error::Result;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
-use crate::template::communication::{CommunicationExt, RawCommunicationExt};
-use crate::template::node_type::site::SiteEvent;
+use crate::template::communication::{CommunicationExt, RawCommunicationExt, RootNotifier};
+use crate::template::node_type::site::SiteEventKind;
 use crate::template::node_type::NodeType;
 use crate::template::NodeIndex;
 use crate::utils::spawn_drop;
@@ -33,11 +34,7 @@ pub struct RawNode {
 }
 
 impl RawNode {
-    pub fn transform<T: CommunicationExt>(
-        self,
-        index: NodeIndex,
-        comm: impl RawCommunicationExt<T>,
-    ) -> Node<T> {
+    pub fn transform(self, index: NodeIndex, tx: Sender<NodeEvent>) -> Node {
         Node {
             ty: self.ty,
             children: self
@@ -46,12 +43,12 @@ impl RawNode {
                 .enumerate()
                 .map(|(idx, raw_node)| {
                     let mut new_index = index.clone();
-                    new_index.push(idx);
-                    raw_node.transform(new_index, comm.clone())
+                    new_index.push_back(idx);
+                    raw_node.transform(new_index, tx.clone())
                 })
                 .collect(),
             cached_path_segment: self.cached_path_segment,
-            comm: comm.with_idx(index.clone()),
+            tx: RootNotifier::new(tx, index.clone()),
             path: None,
             index,
         }
@@ -59,16 +56,16 @@ impl RawNode {
 }
 
 #[derive(Debug, Clone)]
-pub struct Node<T> {
+pub struct Node {
     pub ty: NodeType,
-    pub children: Vec<Node<T>>,
+    pub children: Vec<Node>,
     pub cached_path_segment: Option<PathBuf>,
-    pub comm: T,
+    pub tx: RootNotifier,
     pub index: NodeIndex,
     pub path: Option<PathBuf>,
 }
 
-impl<T: CommunicationExt> Node<T> {
+impl Node {
     pub fn raw(self) -> RawNode {
         RawNode {
             ty: self.ty,
@@ -89,10 +86,10 @@ impl<T: CommunicationExt> Node<T> {
                 panic!("segment is not allowed to be absolute")
             }
             let path = base_path.join(segment);
-            self.comm.send_event(PathEvent::Cached(path.clone()));
+            self.tx.notify(PathEventKind::Cached(path.clone())).await;
             path
         } else {
-            match PathEvent::wrapper(
+            match PathEventKind::wrapper(
                 async {
                     self.ty
                         .path_segment(session, &dsettings)
@@ -104,7 +101,7 @@ impl<T: CommunicationExt> Node<T> {
                             base_path.join(segment)
                         })
                 },
-                &self.comm,
+                &self.tx,
             )
             .await
             {
@@ -156,7 +153,7 @@ impl<T: CommunicationExt> Node<T> {
                             .as_ref()
                             .expect("Called run before prepare")
                             .clone(),
-                        self.comm.clone(),
+                        self.tx.clone(),
                     ),
                 );
                 futures.push(Box::pin(async move { handle.await.unwrap() }))
@@ -166,60 +163,76 @@ impl<T: CommunicationExt> Node<T> {
         join_all(futures).await;
     }
 
-    pub fn inform_of_cancel(&self) {
-        for child in &self.children {
-            child.inform_of_cancel()
+    #[async_recursion]
+    pub async fn inform_of_cancel(&self) {
+        self.tx.notify(NodeEventKind::Canceled).await;
+        let futures = self.children.iter().map(|child| child.inform_of_cancel());
+        join_all(futures).await;
+    }
+}
+
+
+#[derive(Debug)]
+pub struct NodeEvent {
+    pub kind: NodeEventKind,
+    pub idx: NodeIndex,
+}
+
+impl NodeEvent {
+    pub fn new(kind: NodeEventKind, idx: NodeIndex) -> Self {
+        Self {
+            kind,
+            idx,
         }
-        self.comm.send_event(NodeEvent::Canceled)
     }
 }
 
 #[derive(Debug)]
-pub enum NodeEvent {
-    Path(PathEvent),
-    Site(SiteEvent),
+pub enum NodeEventKind {
+    Path(PathEventKind),
+    Site(SiteEventKind),
     Canceled,
 }
 
-impl From<PathEvent> for NodeEvent {
-    fn from(path_status: PathEvent) -> Self {
-        NodeEvent::Path(path_status)
+impl From<PathEventKind> for NodeEventKind {
+    fn from(path_status: PathEventKind) -> Self {
+        NodeEventKind::Path(path_status)
     }
 }
 
-impl<T> From<T> for NodeEvent
+impl<T> From<T> for NodeEventKind
 where
-    T: Into<SiteEvent>,
+    T: Into<SiteEventKind>,
 {
     fn from(site_status: T) -> Self {
-        NodeEvent::Site(site_status.into())
+        NodeEventKind::Site(site_status.into())
     }
 }
 
 #[derive(Debug)]
-pub enum PathEvent {
+pub enum PathEventKind {
     Start,
     Cached(PathBuf),
     Finish(PathBuf),
     Err(TError),
 }
 
-impl PathEvent {
+impl PathEventKind {
     pub fn is_start(&self) -> bool {
         matches!(self, Self::Start | Self::Cached(_))
     }
     pub async fn wrapper(
         inner_fn: impl Future<Output = Result<PathBuf>>,
-        comm: &impl CommunicationExt,
+        tx: &RootNotifier,
     ) -> Option<PathBuf> {
-        comm.send_event(Self::Start);
+        tx.notify(Self::Start).await;
         match inner_fn.await {
             Ok(data) => {
-                comm.send_event(Self::Finish(data.clone()));
+                tx.notify(Self::Finish(data.clone())).await;
                 Some(data)
             }
             Err(err) => {
-                comm.send_event(Self::Err(err));
+                tx.notify(Self::Err(err)).await;
                 None
             }
         }

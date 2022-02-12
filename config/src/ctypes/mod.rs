@@ -46,6 +46,13 @@ impl CType {
     pub fn is_leaf(&self) -> bool {
         todo!()
     }
+    pub fn is_valid(&self) -> bool {
+        todo!()
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        todo!()
+    }
 
     pub fn as_string(&self) -> Result<&CString, Error> {
         match self {

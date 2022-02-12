@@ -23,7 +23,7 @@ use crate::task::Task;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Travel, Debug, LoginLock, Clone, Display, PartialEq, Serialize, Deserialize)]
 pub enum Module {
     Minimal(Minimal),

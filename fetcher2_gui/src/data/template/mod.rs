@@ -1,4 +1,3 @@
-use config::Config;
 use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
 use druid::{Menu, MenuItem, SingleUse, WidgetExt};
 use druid::im::Vector;
@@ -8,24 +7,25 @@ use std::convert::TryInto;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 use crate::controller::{Msg, MSG_THREAD};
 use crate::data::AppData;
 use crate::data::template::nodes::node::NodeData;
 use crate::data::template::nodes::root::RootNodeData;
-use crate::widgets::tree::{DataNodeIndex, NodeIndex, Tree};
+use crate::widgets::tree::{NodeIndex, Tree};
 use crate::widgets::tree::root::TreeNodeRoot;
 
 pub mod node_type;
 pub mod nodes;
 
 
-#[derive(Debug, Clone, Data, Lens, Config)]
+#[derive(Debug, Clone, Data, Lens, Serialize, Deserialize, Default)]
 pub struct TemplateData {
-    #[config(skip = RootNodeData::empty())]
+    #[serde(skip)]
     pub root: RootNodeData,
 
-    #[config(skip = None)]
+    #[serde(skip)]
     pub save_path: Option<Arc<PathBuf>>,
 
     #[data(ignore)]
@@ -60,11 +60,11 @@ impl TemplateData {
         .controller(SaveStateController)
     }
 
-    pub fn node(&self, idx: &[usize]) -> &NodeData {
+    pub fn node(&self, idx: &NodeIndex) -> &NodeData {
         self.root.node(idx)
     }
 
-    pub fn node_mut<V>(&mut self, idx: &[usize], cb: impl FnOnce(&mut NodeData, usize) -> V) -> V {
+    pub fn node_mut<V>(&mut self, idx: &NodeIndex, cb: impl FnOnce(&mut NodeData, usize) -> V) -> V {
         self.root.node_mut(idx, cb)
     }
 }
@@ -76,7 +76,7 @@ where
     W2: WidgetWrapper<Wrapped = W1> + Widget<TemplateData>,
     W1: WidgetWrapper<Wrapped = Tree<RootNodeData, NodeData, L, S, N>>,
     L: Lens<NodeData, bool> + Clone + 'static,
-    S: Lens<RootNodeData, Vector<DataNodeIndex>> + Clone + 'static,
+    S: Lens<RootNodeData, Vector<NodeIndex>> + Clone + 'static,
 {
     fn event(
         &mut self,
@@ -114,7 +114,7 @@ impl<L, S, const N: usize> Controller<RootNodeData, Tree<RootNodeData, NodeData,
     for ContextMenuController
 where
     L: Lens<NodeData, bool> + Clone + 'static,
-    S: Lens<RootNodeData, Vector<DataNodeIndex>> + Clone + 'static,
+    S: Lens<RootNodeData, Vector<NodeIndex>> + Clone + 'static,
 {
     fn event(
         &mut self,
@@ -127,7 +127,7 @@ where
         match event {
             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
                 if let Some(idx) = child.node_at(mouse.pos) {
-                    let node = data.node(&idx);
+                    let node : &NodeData = data.node(&idx);
                     let mut indexes = HashSet::new();
                     node.child_indexes(idx.clone(), &mut indexes);
                     ctx.show_context_menu(make_node_menu(idx, indexes), mouse.window_pos);

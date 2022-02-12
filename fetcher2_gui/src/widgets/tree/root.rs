@@ -1,51 +1,22 @@
-use druid::{Lens, Rect, theme};
+use druid::kurbo::Size;
+use druid::{theme, Lens, Rect};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use druid::kurbo::Size;
-pub(crate) use impl_simple_tree_root;
 use std::convert::TryFrom;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use druid::im::Vector;
 
 use crate::widgets::tree::header::HeaderConstrains;
 use crate::widgets::tree::node::{
-    OpenerFactory, TREE_CHILD_REMOVE_INTERNAL, TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
-    TreeItemFactory, TreeNode, TreeNodeWidget,
+    OpenerFactory, TreeItemFactory, TreeNode, TreeNodeWidget, TREE_CHILD_REMOVE_INTERNAL,
+    TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
 };
 use crate::widgets::tree::NodeIndex;
+pub use fetcher2_gui_derive::TreeNodeRoot;
 
-macro_rules! impl_simple_tree_root {
-    ($root_name:ident, $node_name:ident) => {
-        impl TreeNodeRoot<$node_name> for $root_name {
-            fn children_count(&self) -> usize {
-                self.children.len()
-            }
-
-            fn get_child(&self, index: usize) -> &$node_name {
-                &self.children[index]
-            }
-
-            fn for_child_mut<V>(
-                &mut self,
-                index: usize,
-                cb: impl FnOnce(&mut $node_name, usize) -> V,
-            ) -> V {
-                let mut new_child = self.children[index].to_owned();
-                let v = cb(&mut new_child, index);
-                if !new_child.same(&self.children[index]) {
-                    self.children[index] = new_child;
-                }
-                v
-            }
-
-            fn rm_child(&mut self, index: usize) {
-                self.children.remove(index);
-            }
-        }
-    };
-}
 pub trait TreeNodeRoot<T: TreeNode>
 where
     Self: Data + std::fmt::Debug,
@@ -62,19 +33,21 @@ where
     /// Remove the child at `index`
     fn rm_child(&mut self, index: usize);
 
-    fn node(&self, idx: &[usize]) -> &T {
-        if idx.is_empty() {
+    fn node(&self, idx: &NodeIndex) -> &T {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        if slice.is_empty() {
             panic!("Can't access root node")
         } else {
-            self.get_child(idx[0]).node(&idx[1..])
+            self.get_child(slice[0]).node(&slice[1..])
         }
     }
 
-    fn node_mut<V>(&mut self, idx: &[usize], cb: impl FnOnce(&mut T, usize) -> V) -> V {
-        match idx.len() {
+    fn node_mut<V>(&mut self, idx: &NodeIndex, cb: impl FnOnce(&mut T, usize) -> V) -> V {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        match slice.len() {
             0 => panic!("can't access root"),
-            1 => self.for_child_mut(idx[0], cb),
-            _ => self.for_child_mut(idx[0], move |child, _| child.node_mut(&idx[1..], cb)),
+            1 => self.for_child_mut(slice[0], cb),
+            _ => self.for_child_mut(slice[0], move |child, _| child.node_mut(&slice[1..], cb)),
         }
     }
 }
@@ -178,7 +151,9 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
     pub fn get_selected(&self) -> Vec<NodeIndex> {
         let mut r = Vec::new();
         for (i, child) in self.children.iter().enumerate() {
-            child.widget().get_selected(&mut r, vec![i]);
+            let mut idx = Vector::new();
+            idx.push_back(i);
+            child.widget().get_selected(&mut r,  idx);
         }
         r
     }
@@ -187,7 +162,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
         for child in &self.children {
             let rect = child.layout_rect();
             if rect.contains(p) {
-                let mut r = Vec::new();
+                let mut r = Vector::new();
                 child
                     .widget()
                     .at(Point::new(p.x - rect.x0, p.y - rect.y0), &mut r);
@@ -197,19 +172,21 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
         None
     }
 
-    pub fn node(&self, idx: &[usize]) -> &TreeNodeWidget<T, L, N> {
-        if idx.is_empty() {
+    pub fn node(&self, idx: &NodeIndex) -> &TreeNodeWidget<T, L, N> {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        if slice.is_empty() {
             panic!("Empty idx")
         } else {
-            self.children[idx[0]].widget().node(&idx[1..])
+            self.children[idx[0]].widget().node(&slice[1..])
         }
     }
 
-    pub fn node_mut(&mut self, idx: &[usize]) -> &mut TreeNodeWidget<T, L, N> {
-        if idx.is_empty() {
+    pub fn node_mut(&mut self, idx: &NodeIndex) -> &mut TreeNodeWidget<T, L, N> {
+        let slice = idx.iter().map(|i| *i).collect::<Vec<_>>();
+        if slice.is_empty() {
             panic!("Empty idx")
         } else {
-            self.children[idx[0]].widget_mut().node_mut(&idx[1..])
+            self.children[slice[0]].widget_mut().node_mut(&slice[1..])
         }
     }
 }

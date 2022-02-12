@@ -1,19 +1,17 @@
-use config::Config;
 use druid::{Data, Point};
 use druid::{Scalable, WindowHandle};
 use druid::kurbo::Size;
 use std::fmt::Debug;
+use serde::{Deserialize, Serialize};
 
-#[derive(Config, Debug, Clone, Data)]
+#[derive(Serialize, Deserialize, Debug, Clone, Data, Default)]
 pub struct SubWindowInfo<T> {
-    #[config(ty = "struct")]
     pub data: T,
 
-    #[config(ty = "_<struct>")]
     pub win_state: Option<WindowState>,
 }
 
-impl<T: Clone + Debug + Config> SubWindowInfo<T> {
+impl<T> SubWindowInfo<T> {
     pub fn new(data_state: T) -> Self {
         Self {
             data: data_state,
@@ -35,7 +33,7 @@ impl<T: Clone + Debug + Config> SubWindowInfo<T> {
     }
 }
 
-#[derive(Config, Debug, Clone, Data)]
+#[derive(Serialize, Deserialize, Debug, Clone, Data)]
 pub struct WindowState {
     // TODO
     size_w: isize,

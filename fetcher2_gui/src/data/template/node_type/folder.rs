@@ -7,8 +7,8 @@ pub struct FolderData {
 }
 
 impl FolderData {
-    pub fn new(folder: Folder) -> Self {
-        Self { name: folder.name }
+    pub fn new(folder: &Folder) -> Self {
+        Self { name: folder.name.clone() }
     }
 
     pub fn name(&self) -> String {

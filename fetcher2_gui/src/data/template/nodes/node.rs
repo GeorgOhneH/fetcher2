@@ -1,17 +1,16 @@
 use druid::{Data, Lens};
 use druid::im::Vector;
-use fetcher2::template::nodes::node::{Node, NodeEvent, PathEvent};
+use fetcher2::template::nodes::node::{Node, NodeEventKind, PathEventKind};
 use fetcher2::TError;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::communication::Communication;
 use crate::data::template::node_type::NodeTypeData;
-use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
+use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::NodeIndex;
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, TreeNode)]
 pub struct NodeData {
     pub expanded: bool,
     pub ty: NodeTypeData,
@@ -25,16 +24,14 @@ pub struct NodeData {
     pub state: NodeState,
 }
 
-impl_simple_tree_node! {NodeData}
-
 impl NodeData {
-    pub fn new(node: Node<Communication>) -> Self {
-        let children: Vector<_> = node.children.into_iter().map(NodeData::new).collect();
+    pub fn new(node: &Node) -> Self {
+        let children: Vector<_> = node.children.iter().map(NodeData::new).collect();
         Self {
             expanded: true,
             children,
-            cached_path_segment: node.cached_path_segment,
-            ty: NodeTypeData::new(node.ty),
+            cached_path_segment: node.cached_path_segment.clone(),
+            ty: NodeTypeData::new(&node.ty),
             state: NodeState::new(),
             path: None,
         }
@@ -46,7 +43,7 @@ impl NodeData {
     ) {
         for (i, child) in self.children.iter().enumerate() {
             let mut child_idx = current_idx.clone();
-            child_idx.push(i);
+            child_idx.push_back(i);
             child.child_indexes(child_idx, set);
         }
         set.insert(current_idx);
@@ -119,16 +116,16 @@ impl NodeData {
         }
     }
 
-    pub fn update_node(&mut self, event: NodeEvent) {
+    pub fn update_node(&mut self, event: NodeEventKind) {
         match event {
-            NodeEvent::Path(path_event) => {
+            NodeEventKind::Path(path_event) => {
                 if path_event.is_start() {
                     self.state.canceled = false;
                     self.state.reset();
                 }
                 self.state.path.update(path_event, &mut self.path)
             }
-            NodeEvent::Site(site_event) => {
+            NodeEventKind::Site(site_event) => {
                 let site = self.ty.site_mut().unwrap();
                 if site_event.is_start() {
                     self.state.canceled = false;
@@ -136,7 +133,7 @@ impl NodeData {
                 }
                 site.state.update(site_event, &mut site.history)
             }
-            NodeEvent::Canceled => {
+            NodeEventKind::Canceled => {
                 if self.state.path.count != 0 || !self.ty.is_finished() {
                     self.state.canceled = true;
                 }
@@ -199,21 +196,21 @@ impl PathState {
         self.errs.clear();
     }
 
-    pub fn update(&mut self, event: PathEvent, path: &mut Option<PathBuf>) {
+    pub fn update(&mut self, event: PathEventKind, path: &mut Option<PathBuf>) {
         match event {
-            PathEvent::Start => {
+            PathEventKind::Start => {
                 self.count += 1;
             }
-            PathEvent::Finish(new_path) => {
+            PathEventKind::Finish(new_path) => {
                 *path = Some(new_path);
                 self.count -= 1;
             }
-            PathEvent::Err(err) => {
+            PathEventKind::Err(err) => {
                 self.count -= 1;
                 dbg!(&err);
                 self.errs.push_back(Arc::new(err));
             }
-            PathEvent::Cached(new_path) => {
+            PathEventKind::Cached(new_path) => {
                 *path = Some(new_path);
             }
         }

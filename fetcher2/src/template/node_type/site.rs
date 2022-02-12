@@ -27,7 +27,7 @@ use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::site_modules::Module;
 use crate::task::Task;
-use crate::template::communication::CommunicationExt;
+use crate::template::communication::{CommunicationExt, RootNotifier};
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::nodes::node::Status;
 use crate::utils::spawn_drop;
@@ -56,11 +56,11 @@ impl Site {
         session: Session,
         dsettings: Arc<DownloadSettings>,
         base_path: PathBuf,
-        comm: impl CommunicationExt,
+        tx: RootNotifier,
     ) {
-        RunEvent::wrapper(
+        RunEventKind::wrapper(
             async {
-                if LoginEvent::wrapper(self.module.login(&session, &dsettings), &comm)
+                if LoginEventKind::wrapper(self.module.login(&session, &dsettings), &tx)
                     .await
                     .is_none()
                 {
@@ -69,10 +69,10 @@ impl Site {
 
                 let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 
-                let task_stream = UrlFetchEvent::wrapper(
+                let task_stream = UrlFetchEventKind::wrapper(
                     self.module
                         .fetch_urls(session.clone(), sender, Arc::clone(&dsettings)),
-                    &comm,
+                    &tx,
                 );
 
                 let consumers = Arc::clone(&self).handle_receiver(
@@ -80,12 +80,12 @@ impl Site {
                     receiver,
                     Arc::new(base_path),
                     dsettings,
-                    comm.clone(),
+                    tx.clone(),
                 );
 
                 join!(task_stream, consumers);
             },
-            &comm,
+            &tx,
         )
         .await
     }
@@ -96,7 +96,7 @@ impl Site {
         mut receiver: Receiver<Task>,
         base_path: Arc<PathBuf>,
         dsettings: Arc<DownloadSettings>,
-        comm: impl CommunicationExt,
+        tx: RootNotifier,
     ) {
         let mut futs = FuturesUnordered::new();
         loop {
@@ -110,14 +110,14 @@ impl Site {
                 Some(task) = receiver.recv(), if futs.len() < 512 => {
                     let self_clone = Arc::clone(&self);
                     let handle = spawn_drop(
-                        DownloadEvent::wrapper(
+                        DownloadEventKind::wrapper(
                             self_clone.consume_task(
                                 session.clone(),
                                 task,
                                 Arc::clone(&base_path),
                                 Arc::clone(&dsettings),
                             ),
-                            comm.clone(),
+                            tx.clone(),
                             Arc::clone(&self),
                         )
                     );
@@ -457,7 +457,7 @@ impl Extensions {
     }
 }
 
-#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Mode {
     Forbidden,
@@ -504,78 +504,78 @@ impl FileData {
 }
 
 #[derive(Debug)]
-pub enum SiteEvent {
-    Run(RunEvent),
-    Login(LoginEvent),
-    UrlFetch(UrlFetchEvent),
-    Download(DownloadEvent),
+pub enum SiteEventKind {
+    Run(RunEventKind),
+    Login(LoginEventKind),
+    UrlFetch(UrlFetchEventKind),
+    Download(DownloadEventKind),
 }
 
-impl SiteEvent {
+impl SiteEventKind {
     pub fn is_start(&self) -> bool {
-        matches!(self, Self::Run(RunEvent::Start))
+        matches!(self, Self::Run(RunEventKind::Start))
     }
 }
 
-impl From<RunEvent> for SiteEvent {
-    fn from(run_event: RunEvent) -> Self {
-        SiteEvent::Run(run_event)
+impl From<RunEventKind> for SiteEventKind {
+    fn from(run_event: RunEventKind) -> Self {
+        SiteEventKind::Run(run_event)
     }
 }
 
-impl From<LoginEvent> for SiteEvent {
-    fn from(login_status: LoginEvent) -> Self {
-        SiteEvent::Login(login_status)
+impl From<LoginEventKind> for SiteEventKind {
+    fn from(login_status: LoginEventKind) -> Self {
+        SiteEventKind::Login(login_status)
     }
 }
 
-impl From<UrlFetchEvent> for SiteEvent {
-    fn from(fetch_status: UrlFetchEvent) -> Self {
-        SiteEvent::UrlFetch(fetch_status)
+impl From<UrlFetchEventKind> for SiteEventKind {
+    fn from(fetch_status: UrlFetchEventKind) -> Self {
+        SiteEventKind::UrlFetch(fetch_status)
     }
 }
 
-impl From<DownloadEvent> for SiteEvent {
-    fn from(download_status: DownloadEvent) -> Self {
-        SiteEvent::Download(download_status)
+impl From<DownloadEventKind> for SiteEventKind {
+    fn from(download_status: DownloadEventKind) -> Self {
+        SiteEventKind::Download(download_status)
     }
 }
 
 #[derive(Debug)]
-pub enum RunEvent {
+pub enum RunEventKind {
     Start,
     Finish,
 }
 
-impl RunEvent {
-    pub async fn wrapper<T>(inner_fn: impl Future<Output = T>, comm: &impl CommunicationExt) -> T {
-        comm.send_event(Self::Start);
+impl RunEventKind {
+    pub async fn wrapper<T>(inner_fn: impl Future<Output = T>, tx: &RootNotifier) -> T {
+        tx.notify(Self::Start).await;
         let r = inner_fn.await;
-        comm.send_event(Self::Finish);
+        tx.notify(Self::Finish).await;
         r
     }
 }
 
 #[derive(Debug)]
-pub enum LoginEvent {
+pub enum LoginEventKind {
     Start,
     Finish,
     Err(TError),
 }
 
-impl LoginEvent {
+impl LoginEventKind {
     pub async fn wrapper<T>(
         inner_fn: impl Future<Output = Result<T>>,
-        comm: &impl CommunicationExt,
+        tx: &RootNotifier,
     ) -> Option<T> {
-        comm.send_event(Self::Start);
+        tx.notify(Self::Start).await;
         match inner_fn.await {
             Ok(r) => {
-                comm.send_event(Self::Finish);
+                tx.notify(Self::Finish).await;
                 Some(r)
             }
             Err(err) => {
-                comm.send_event(Self::Err(err));
+                tx.notify(Self::Err(err)).await;
                 None
             }
         }
@@ -583,25 +583,25 @@ impl LoginEvent {
 }
 
 #[derive(Debug)]
-pub enum UrlFetchEvent {
+pub enum UrlFetchEventKind {
     Start,
     Finish,
     Err(TError),
 }
 
-impl UrlFetchEvent {
+impl UrlFetchEventKind {
     pub async fn wrapper<T>(
         inner_fn: impl Future<Output = Result<T>>,
-        comm: &impl CommunicationExt,
+        tx: &RootNotifier,
     ) -> Option<T> {
-        comm.send_event(Self::Start);
+        tx.notify(Self::Start).await;
         match inner_fn.await {
             Ok(r) => {
-                comm.send_event(Self::Finish);
+                tx.notify(Self::Finish).await;
                 Some(r)
             }
             Err(err) => {
-                comm.send_event(Self::Err(err));
+                tx.notify(Self::Err(err)).await;
                 None
             }
         }
@@ -609,28 +609,28 @@ impl UrlFetchEvent {
 }
 
 #[derive(Debug)]
-pub enum DownloadEvent {
+pub enum DownloadEventKind {
     Start,
     Finish(TaskMsg),
     Err(TError),
 }
 
-impl DownloadEvent {
+impl DownloadEventKind {
     pub async fn wrapper(
         inner_fn: impl Future<Output = Result<TaskMsg>>,
-        comm: impl CommunicationExt,
+        tx: RootNotifier,
         site: Arc<Site>,
     ) -> Status {
-        comm.send_event(Self::Start);
+        tx.notify(Self::Start).await;
         match inner_fn.await {
             Ok(msg) => {
                 site.storage.history.lock().unwrap().push(msg.clone());
-                println!("{:?}", msg);
-                comm.send_event(Self::Finish(msg));
+                dbg!("{:?}", &msg);
+                tx.notify(Self::Finish(msg)).await;
                 Status::Success
             }
             Err(err) => {
-                comm.send_event(Self::Err(err));
+                tx.notify(Self::Err(err)).await;
                 Status::Failure
             }
         }

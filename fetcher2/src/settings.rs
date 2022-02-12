@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use config::ctypes::path::{Absolute, StrictPath};
 use config::traveller::Travel;
 
@@ -5,7 +6,7 @@ use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;
 
 #[cfg_attr(feature = "druid", derive(druid::Data))]
-#[derive(Travel, Debug, Clone)]
+#[derive(Travel, Serialize, Deserialize, Debug, Clone)]
 pub struct DownloadSettings {
     #[travel(name = "Username")]
     pub username: Option<String>,

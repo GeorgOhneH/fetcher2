@@ -21,10 +21,9 @@ use std::sync::mpsc::channel;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use crate::Result;
-use crate::widgets::tree::{DataNodeIndex, Tree};
-use crate::widgets::tree::node::{impl_simple_tree_node, TreeNode};
-use crate::widgets::tree::root::{impl_simple_tree_root, TreeNodeRoot};
+use crate::widgets::tree::node::TreeNode;
+use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{NodeIndex, Tree};
 
 selectors! {
     NEW_ROOT: SingleUse<EntryRoot>,
@@ -93,7 +92,7 @@ impl UpdateData {
     }
 }
 
-#[derive(Data, Clone, Debug, Lens, Eq, PartialEq)]
+#[derive(Data, Clone, Debug, Lens, Eq, PartialEq, TreeNode)]
 pub struct Entry {
     name: String,
     children: Vector<Entry>,
@@ -120,8 +119,6 @@ impl Ord for Entry {
         }
     }
 }
-
-impl_simple_tree_node! {Entry}
 
 impl Entry {
     pub fn new(name: String, ty: Type, size: String, created: String, path: PathBuf) -> Self {
@@ -182,15 +179,13 @@ impl Entry {
     }
 }
 
-#[derive(Data, Clone, Debug, Lens)]
+#[derive(Data, Clone, Debug, Lens, TreeNodeRoot)]
 pub struct EntryRoot {
     #[data(eq)]
     path: Option<PathBuf>,
     children: Vector<Entry>,
-    selected: Vector<DataNodeIndex>,
+    selected: Vector<NodeIndex>,
 }
-
-impl_simple_tree_root! {EntryRoot, Entry}
 
 impl EntryRoot {
     pub fn empty() -> Self {
