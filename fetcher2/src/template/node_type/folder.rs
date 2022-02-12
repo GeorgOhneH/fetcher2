@@ -1,10 +1,11 @@
 use std::path::PathBuf;
-
-use config::Config;
+use serde::Serialize;
+use serde::Deserialize;
+use config::traveller::Travel;
 
 use crate::error::Result;
 
-#[derive(Config, Debug, Clone, PartialEq)]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Folder {
     pub name: String,
 }

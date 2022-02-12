@@ -9,6 +9,7 @@ edition = "2021"
 config = { path = "../config" }
 fetcher2_macro = { path = "../fetcher2_macro" }
 serde = { version = "1.0", features = ["derive", "rc"] }
+im = "15.0.0"
 async-trait = "0.1"
 enum_dispatch = "0.3"
 tokio = { version = "1", features = ["full"] }

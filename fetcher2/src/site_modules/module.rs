@@ -1,18 +1,15 @@
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-
+use config::traveller::Travel;
 use async_trait::async_trait;
-use druid::Data;
 use enum_dispatch::enum_dispatch;
 use strum_macros::Display;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, MutexGuard};
-
-use config::Config;
-use config::ConfigEnum;
+use serde::Serialize;
 use fetcher2_macro::{login_locks, LoginLock};
-
+use serde::Deserialize;
 use crate::error::{Result, TErrorKind};
 use crate::session::Session;
 use crate::settings::DownloadSettings;
@@ -23,15 +20,13 @@ use crate::task::Task;
 
 #[enum_dispatch(ModuleExt)]
 #[login_locks]
-#[derive(ConfigEnum, Debug, LoginLock, Data, Clone, Display, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Travel, Debug, LoginLock, Clone, Display, PartialEq, Serialize, Deserialize)]
 pub enum Module {
-    #[config(ty = "struct")]
     Minimal(Minimal),
 
-    #[config(ty = "struct")]
     Polybox(Polybox),
 
-    #[config(ty = "struct")]
     Moodle(Moodle),
 }
 

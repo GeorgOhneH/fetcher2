@@ -53,8 +53,10 @@ pub fn gen_travel_enum(e: &DataEnum, enum_name: &Ident) -> TokenStream {
     });
 
     quote! {
+        use config::traveller::TravellerEnum as _;
         use ::config::traveller::TravellerStructVariant as _;
         use ::config::traveller::TravellerTupleVariant as _;
+        use config::traveller::TravellerStructField as _;
         let mut state = traveller.found_enum(#enum_name_str)?;
         #(#gen_found_variants)*
         state.end()

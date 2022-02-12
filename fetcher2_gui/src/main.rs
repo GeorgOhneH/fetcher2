@@ -148,7 +148,8 @@ struct TestStruct4;
 
 #[derive(Serialize, Deserialize, Debug, Travel)]
 struct TestStruct {
-    #[travel(default = 9)]
+    #[travel(default = 9i64)]
+    #[travel(name = "hello")]
     pub field1: i64,
     pub field2: bool,
     pub field3: Option<bool>,

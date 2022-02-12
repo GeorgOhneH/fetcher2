@@ -3,19 +3,18 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use druid::Data;
 use lazy_static::lazy_static;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use regex::Regex;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Method;
+use serde::{Deserialize, Serialize};
 use soup::prelude::*;
 use tokio::sync::mpsc::Sender;
 use url::Url;
+use config::traveller::Travel;
 
-use config::Config;
-use config::ConfigEnum;
 
 use crate::error::{Result, TErrorFast, TErrorKind};
 use crate::session::Session;
@@ -57,15 +56,16 @@ lazy_static! {
     };
 }
 
-#[derive(Config, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Polybox {
     pub id: String,
 
-    #[config(ty = "enum")]
     pub mode: Mode,
 }
 
-#[derive(ConfigEnum, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Mode {
     Shared(Option<String>),
     Private,

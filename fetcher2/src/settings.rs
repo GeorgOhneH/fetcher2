@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use config::ctypes::path::{Absolute, StrictPath};
 use config::traveller::Travel;
 
 
@@ -8,23 +9,20 @@ use crate::template::DownloadArgs;
 #[cfg_attr(feature = "druid", derive(druid::Data))]
 #[derive(Travel, Debug, Clone)]
 pub struct DownloadSettings {
-    #[config(name = "Username")]
+    #[travel(name = "Username")]
     pub username: Option<String>,
 
-    #[config(name = "Password")]
+    #[travel(name = "Password")]
     pub password: Option<String>,
 
-    #[data(same_fn = "PartialEq::eq")]
-    #[config(name = "Save Path")]
-    #[config(must_absolute = false, must_exist = false)]
-    pub save_path: PathBuf,
+    #[travel(name = "Save Path")]
+    pub save_path: StrictPath<Absolute>,
 
-    #[config(ty = "struct")]
-    #[config(name = "Standard Module Setting")]
+    #[travel(name = "Standard Module Setting")]
     pub download_args: DownloadArgs,
 
-    #[config(default = false)]
-    #[config(name = "Force Download")]
+    #[travel(default = false)]
+    #[travel(name = "Force Download")]
     pub force: bool,
 }
 

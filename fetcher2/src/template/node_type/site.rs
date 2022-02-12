@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
-use druid::{im, Data};
 use futures::prelude::*;
 use futures::stream::FuturesUnordered;
 use futures::stream::StreamExt;
@@ -21,7 +20,7 @@ use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinError;
 use url::Url;
 
-use config::{Config, ConfigEnum};
+use config::traveller::Travel;
 
 use crate::error::{Result, TError, TErrorKind};
 use crate::session::Session;
@@ -395,13 +394,13 @@ pub enum Action {
     Replace,
 }
 
-#[derive(Config, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TaskMsg {
-    #[config(ty = "enum")]
     pub kind: MsgKind,
-    #[data(same_fn = "PartialEq::eq")]
+    #[cfg_attr(feature = "druid", data(same_fn = "PartialEq::eq"))]
     pub full_path: PathBuf,
-    #[data(same_fn = "PartialEq::eq")]
+    #[cfg_attr(feature = "druid", data(same_fn = "PartialEq::eq"))]
     pub rel_path: PathBuf,
 }
 
@@ -415,31 +414,34 @@ impl TaskMsg {
     }
 }
 
-#[derive(ConfigEnum, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MsgKind {
     AddedFile,
-    ReplacedFile(#[data(same_fn = "PartialEq::eq")] PathBuf),
+    ReplacedFile(#[cfg_attr(feature = "druid", data(same_fn = "PartialEq::eq"))] PathBuf),
     NotModified,
     FileChecksumSame,
     AlreadyExist,
     ForbiddenExtension(Option<String>),
 }
 
-#[derive(Config, Debug, Data, Clone, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DownloadArgs {
-    #[config(ty = "struct", name = "Extension Filter")]
+    #[travel(name = "Extension Filter")]
     pub extensions: Extensions,
 
-    #[config(default = true, name = "Keep Old Files")]
+    #[travel(default = true, name = "Keep Old Files")]
     pub keep_old_files: bool,
 }
 
-#[derive(Config, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Extensions {
-    #[config(ty = "enum", default = "Forbidden", name = "Mode")]
+    #[travel(default = Mode::Forbidden, name = "Mode")]
     pub mode: Mode,
 
-    #[config(ty = "Vec", name = "Extension")]
+    #[travel(name = "Extension")]
     pub inner: im::HashSet<String>,
 }
 
@@ -455,7 +457,8 @@ impl Extensions {
     }
 }
 
-#[derive(ConfigEnum, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Mode {
     Forbidden,
     Allowed,
@@ -483,7 +486,7 @@ impl Default for SiteStorage {
     }
 }
 
-#[derive(Config, Debug, PartialEq)]
+#[derive(Travel, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FileData {
     pub task_checksum: Option<String>,
     pub file_checksum: String,

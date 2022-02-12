@@ -2,23 +2,22 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use druid::Data;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use tokio::sync::mpsc::Sender;
 use url::Url;
-
-use config::Config;
+use config::traveller::Travel;
 
 use crate::error::TErrorFast;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::site_modules::aai_login::aai_login;
 use crate::site_modules::utils::remove_vz_id;
-use crate::site_modules::ModuleExt;
 use crate::task::Task;
 use crate::Result;
+use crate::site_modules::module::ModuleExt;
 
 static LOGIN_FORM: [(&str, &str); 1] = [("idp", "https://aai-logon.ethz.ch/idp/shibboleth")];
 
@@ -32,7 +31,8 @@ lazy_static! {
         Regex::new("section-[0-9]+").unwrap();
 }
 
-#[derive(Config, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Moodle {
     pub id: String,
 }
@@ -51,13 +51,14 @@ impl ModuleExt for Moodle {
         _sender: Sender<Task>,
         _dsettings: Arc<DownloadSettings>,
     ) -> Result<()> {
-        url.set_query(Some(&format!("id={}", self.id)));
-
-        let response = session.get(url).send().await?;
-        let text = response.text().await?;
-        let soup = Soup::new(&text);
-
-        soup.tag("li").attr("id", SECTION_RE).find_all()
+        todo!()
+        // url.set_query(Some(&format!("id={}", self.id)));
+        //
+        // let response = session.get(url).send().await?;
+        // let text = response.text().await?;
+        // let soup = Soup::new(&text);
+        //
+        // soup.tag("li").attr("id", SECTION_RE).find_all()
 
 
     }

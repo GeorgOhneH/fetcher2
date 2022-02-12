@@ -3,11 +3,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use druid::Data;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
-use config::Config;
+use config::traveller::Travel;
 
 use crate::error::Result;
 use crate::session::Session;
@@ -15,7 +15,8 @@ use crate::settings::DownloadSettings;
 use crate::site_modules::module::ModuleExt;
 use crate::task::{Task, TaskBuilder};
 
-#[derive(Config, Debug, Clone, Data, PartialEq)]
+#[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
+#[derive(Travel, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Minimal {
     pub parameters: Option<String>,
     pub parameters2: Option<String>,

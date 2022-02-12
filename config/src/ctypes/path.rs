@@ -40,17 +40,17 @@ pub trait PathConfig {
     fn config() -> TravelPathConfig;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AnyPath;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Relative;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Absolute;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AbsoluteExist;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AbsoluteExistFile;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AbsoluteExistDir;
 
 impl PathConfig for AnyPath {
@@ -89,11 +89,14 @@ impl PathConfig for AbsoluteExistDir {
     }
 }
 
-#[derive(Debug)]
+
+#[cfg_attr(feature = "druid", derive(druid::Data))]
+#[derive(Debug, Clone)]
 pub struct StrictPath<CONFIG>
 where
     CONFIG: PathConfig,
 {
+    #[cfg_attr(feature = "druid", data(eq))]
     path: PathBuf,
     _m0: PhantomData<CONFIG>,
 }

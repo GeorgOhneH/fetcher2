@@ -66,7 +66,7 @@ pub enum TErrorKind {
     SerdeError(#[from] ron::Error),
 
     #[error("Config Error")]
-    ConfigError(#[from] config::ConfigError),
+    ConfigError(#[from] config::errors::Error),
 }
 
 pub trait TErrorFast<T> {

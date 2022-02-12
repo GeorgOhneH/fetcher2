@@ -152,6 +152,15 @@ impl<K, V: Travel> Travel for HashMap<K, V> {
     }
 }
 
+impl<V: Travel> Travel for im::HashSet<V> {
+    fn travel<T>(traveller: T) -> Result<T::Ok, T::Error>
+    where
+        T: Traveller,
+    {
+        traveller.found_seq::<V>()
+    }
+}
+
 pub trait Traveller {
     type Ok;
     type Error: StdError;
@@ -301,10 +310,10 @@ pub trait TravellerStructVariant {
     where
         Self: 'a;
 
-    fn found_field<T: ?Sized>(
-        &mut self,
+    fn found_field<'a, T: ?Sized>(
+        &'a mut self,
         key: &'static str,
-    ) -> Result<Self::TravellerStructVariantField, Self::Error>
+    ) -> Result<Self::TravellerStructVariantField<'a>, Self::Error>
     where
         T: Travel;
 
@@ -443,28 +452,17 @@ impl ConfigTravellerStruct {
 impl TravellerStruct for ConfigTravellerStruct {
     type Ok = CType;
     type Error = Error;
+    type TravellerStructField<'a> = ConfigTravellerStructField<'a>;
 
-    fn found_field<T: ?Sized>(&mut self, key: &'static str) -> Result<(), Self::Error>
+    fn found_field<'a, T: ?Sized>(
+        &'a mut self,
+        key: &'static str,
+    ) -> Result<Self::TravellerStructField<'a>, Self::Error>
     where
         T: Travel,
     {
         let ty = T::travel(&mut ConfigTraveller::new())?;
-        self.cstruct.arg(CKwarg::new(key, ty));
-        Ok(())
-    }
-
-    fn found_field_with_default<T>(
-        &mut self,
-        key: &'static str,
-        default: T,
-    ) -> Result<(), Self::Error>
-    where
-        T: Travel + Serialize,
-    {
-        let mut ty = T::travel(&mut ConfigTraveller::new())?;
-        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
-        self.cstruct.arg(CKwarg::new(key, ty));
-        Ok(())
+        Ok(ConfigTravellerStructField::new(key, &mut self.cstruct, ty))
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
@@ -473,23 +471,24 @@ impl TravellerStruct for ConfigTravellerStruct {
 }
 
 pub struct ConfigTravellerStructField<'a> {
+    key: &'static str,
     cstruct: &'a mut CStructBuilder,
     ty: CType,
 }
 
 impl<'a> ConfigTravellerStructField<'a> {
-    fn new(cstruct: &'a mut CStructBuilder, ty: CType) -> Self {
-        Self {
-            cstruct,
-            ty,
-        }
+    fn new(key: &'static str, cstruct: &'a mut CStructBuilder, ty: CType) -> Self {
+        Self { key, cstruct, ty }
     }
 }
 
-impl<'a> TravellerStructField for ConfigTravellerStructField<'a>  {
+impl<'a> TravellerStructField for ConfigTravellerStructField<'a> {
     type Error = Error;
 
-    fn with_default<T>(&mut self, default: T) -> Result<(), Self::Error> where T: Travel + Serialize {
+    fn with_default<T>(&mut self, default: T) -> Result<(), Self::Error>
+    where
+        T: Travel + Serialize,
+    {
         default.serialize(&mut ConfigSerializer::new(&mut self.ty))
     }
 
@@ -498,7 +497,8 @@ impl<'a> TravellerStructField for ConfigTravellerStructField<'a>  {
     }
 
     fn end(self) -> Result<(), Self::Error> {
-        todo!()
+        self.cstruct.arg(CKwarg::new(self.key, self.ty));
+        Ok(())
     }
 }
 
@@ -634,30 +634,20 @@ impl<'a> ConfigTravellerStructVariant<'a> {
 
 impl<'a> TravellerStructVariant for ConfigTravellerStructVariant<'a> {
     type Error = Error;
+    type TravellerStructVariantField<'b>
+    where
+        'a: 'b,
+    = ConfigTravellerStructField<'b>;
 
-    fn found_field<T: ?Sized>(&mut self, key: &'static str) -> Result<(), Self::Error>
+    fn found_field<'b, T: ?Sized>(
+        &'b mut self,
+        key: &'static str,
+    ) -> Result<Self::TravellerStructVariantField<'b>, Self::Error>
     where
         T: Travel,
     {
         let ty = T::travel(&mut ConfigTraveller::new())?;
-        let kwarg = CKwarg::new(key, ty);
-        self.cstruct.arg(kwarg);
-        Ok(())
-    }
-
-    fn found_field_with_default<T>(
-        &mut self,
-        key: &'static str,
-        default: T,
-    ) -> Result<(), Self::Error>
-    where
-        T: Travel + Serialize,
-    {
-        let mut ty = T::travel(&mut ConfigTraveller::new())?;
-        default.serialize(&mut ConfigSerializer::new(&mut ty))?;
-        let kwarg = CKwarg::new(key, ty);
-        self.cstruct.arg(kwarg);
-        Ok(())
+        Ok(ConfigTravellerStructField::new(key, &mut self.cstruct, ty))
     }
 
     fn end(self) -> Result<(), Self::Error> {
