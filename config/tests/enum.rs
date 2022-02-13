@@ -1,11 +1,8 @@
-use config::ctypes::integer::RangedInt;
-use config::ctypes::path::{AnyPath, StrictPath};
+use serde::{Deserialize, Serialize};
+
 use config::deserializer::ConfigDeserializer;
 use config::serializer::ConfigSerializer;
 use config::traveller::{ConfigTraveller, Travel};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
 
 #[test]
 fn enum_test() {

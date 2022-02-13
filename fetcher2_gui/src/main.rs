@@ -5,19 +5,19 @@
 #![feature(type_alias_impl_trait)]
 #![allow(clippy::new_without_default)]
 
-use fetcher2::{Result, TError};
+use std::path::{Path, PathBuf};
+use std::thread;
+
+use druid::{AppLauncher, LocalizedString, WidgetExt, WindowDesc};
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
+
+use fetcher2::{Result, TError};
 
 use crate::background_thread::background_main;
 use crate::controller::{MainController, Msg};
 use crate::data::win::WindowState;
 use crate::data::AppData;
 use crate::ui::{build_ui, make_menu};
-use druid::{AppLauncher, LocalizedString, WidgetExt, WindowDesc};
-use self_update::cargo_crate_version;
-use std::path::{Path, PathBuf};
-use std::thread;
 
 mod background_thread;
 pub mod controller;

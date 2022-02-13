@@ -1,25 +1,23 @@
+use std::cmp::Ordering;
+use std::ffi::OsStr;
+use std::fs::Metadata;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::thread;
+use std::time::SystemTime;
+use std::{fs, io};
+
 use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, Select, Sender};
-use druid::im::{OrdMap, Vector};
+use druid::im::Vector;
 use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid_widget_nursery::{selectors, WidgetExt as _};
-use futures::SinkExt;
-use notify::{recommended_watcher, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use std::cmp::Ordering;
-use std::ffi::OsStr;
-use std::fs::{DirEntry, Metadata};
-use std::ops::Index;
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, SystemTime};
-use std::{fs, io};
+use druid_widget_nursery::selectors;
+use notify::{RecursiveMode, Watcher};
 
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;
@@ -280,7 +278,7 @@ impl<T> FileWatcher<T> {
             EntryRoot::selected,
         )
         .sizes([300., 300., 300.])
-        .on_activate(|ctx, root, env, idx| {
+        .on_activate(|_ctx, root, _env, idx| {
             let node = root.node(idx);
             open::that_in_background(&*node.path);
         });

@@ -12,7 +12,7 @@ use tokio::sync::mpsc::Sender;
 use crate::error::Result;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
-use crate::template::communication::{CommunicationExt, RawCommunicationExt, RootNotifier};
+use crate::template::communication::RootNotifier;
 use crate::template::node_type::site::SiteEventKind;
 use crate::template::node_type::NodeType;
 use crate::template::NodeIndex;

@@ -1,9 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::errors::InValid;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::errors::InValid;
 use crate::traveller::{Travel, Traveller};
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]

@@ -10,8 +10,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::session::Session;
 use crate::settings::DownloadSettings;
-use crate::template::communication::{CommunicationExt, RawCommunicationExt};
-use crate::template::nodes::node::{Node, NodeEvent, NodeEventKind, RawNode, Status};
+use crate::template::nodes::node::{Node, NodeEvent, RawNode, Status};
 use crate::template::NodeIndex;
 
 #[derive(Serialize, Deserialize, Debug)]

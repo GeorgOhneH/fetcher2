@@ -1,10 +1,12 @@
-use config::traveller::Travel;
+use std::sync::Arc;
+
 use druid::Data;
+use serde::{Deserialize, Serialize};
+
+use config::traveller::Travel;
 use fetcher2::site_modules::Module;
 use fetcher2::template::node_type::{Site, SiteStorage};
 use fetcher2::template::DownloadArgs;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Data, Serialize, Deserialize, Travel)]
 pub struct SiteEditData {

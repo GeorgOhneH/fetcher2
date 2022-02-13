@@ -1,10 +1,10 @@
 use druid::im::Vector;
 use druid::{Data, Lens};
+
 use fetcher2::template::nodes::root::{RawRootNode, RootNode};
 
 use crate::data::template_edit::nodes::node::NodeEditData;
 use crate::edit_window::NodePosition;
-use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::NodeIndex;
 

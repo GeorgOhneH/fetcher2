@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, abort_call_site};
+use proc_macro_error::abort_call_site;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, PathArguments, Type};
 

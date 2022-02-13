@@ -1,8 +1,3 @@
-use config::ctypes::cstruct::CStruct;
-use config::ctypes::CType;
-use config::deserializer::ConfigDeserializer;
-use config::serializer::ConfigSerializer;
-use config::traveller::{ConfigTraveller, Travel};
 use druid::commands::CLOSE_WINDOW;
 use druid::widget::{Button, Flex};
 use druid::{
@@ -11,7 +6,12 @@ use druid::{
 };
 use druid_widget_nursery::selectors;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use config::ctypes::CType;
+use config::deserializer::ConfigDeserializer;
+use config::serializer::ConfigSerializer;
+use config::traveller::{ConfigTraveller, Travel};
 
 selectors! {
     APPLY

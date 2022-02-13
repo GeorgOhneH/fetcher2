@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 use config::ctypes::path::{Absolute, StrictPath};
 use config::traveller::Travel;
-use serde::{Deserialize, Serialize};
 
 use crate::error::{Result, TErrorKind};
 use crate::template::DownloadArgs;

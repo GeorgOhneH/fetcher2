@@ -1,3 +1,7 @@
+use std::convert::TryInto;
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use druid::commands::{CLOSE_WINDOW, SAVE_FILE_AS};
 use druid::im::Vector;
 use druid::widget::prelude::*;
@@ -6,10 +10,8 @@ use druid::LensExt;
 use druid::{commands, Command, FileDialogOptions, Menu, MenuItem, SingleUse};
 use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
 use druid_widget_nursery::selectors;
+
 use fetcher2::template::Template;
-use std::convert::TryInto;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::controller::{Msg, MSG_THREAD};
 use crate::ctype_window::c_option_window;

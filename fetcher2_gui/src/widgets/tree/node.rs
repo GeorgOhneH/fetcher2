@@ -1,3 +1,6 @@
+use std::convert::TryFrom;
+use std::sync::Arc;
+
 use druid::im::Vector;
 use druid::kurbo::Size;
 use druid::piet::RenderContext;
@@ -7,8 +10,6 @@ use druid::{
     Point, Selector, UpdateCtx, Widget, WidgetPod,
 };
 use druid_widget_nursery::selectors;
-use std::convert::TryFrom;
-use std::sync::Arc;
 
 pub use fetcher2_gui_derive::TreeNode;
 

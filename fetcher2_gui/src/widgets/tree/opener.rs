@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use druid::kurbo::{BezPath, Size};
 use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use druid::{theme, Lens, LensExt};
@@ -5,7 +7,6 @@ use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use std::marker::PhantomData;
 
 use crate::widgets::tree::node::{TreeNode, TREE_ACTIVATE_NODE};
 

@@ -1,17 +1,19 @@
-use druid::widget::Controller;
-use druid::{commands, SingleUse};
-use druid::{Env, Event, EventCtx, Widget};
-use druid_widget_nursery::selectors;
-use fetcher2::settings::DownloadSettings;
-use fetcher2::template::nodes::node::NodeEvent;
-use fetcher2::template::{Template, UnPrepared};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
+
+use druid::widget::Controller;
+use druid::{commands, SingleUse};
+use druid::{Env, Event, EventCtx, Widget};
+use druid_widget_nursery::selectors;
 use tokio::sync::mpsc::Receiver;
+
+use fetcher2::settings::DownloadSettings;
+use fetcher2::template::nodes::node::NodeEvent;
+use fetcher2::template::{Template, UnPrepared};
 
 use crate::background_thread::{ThreadMsg, MSG_FROM_THREAD};
 use crate::data::win::WindowState;

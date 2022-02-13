@@ -1,8 +1,9 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use druid::widget::Controller;
 use druid::SingleUse;
 use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::background_thread::{NEW_TEMPLATE, NODE_EVENT};
 use crate::controller::{Msg, MSG_THREAD};

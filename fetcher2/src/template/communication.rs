@@ -1,6 +1,7 @@
+use tokio::sync::mpsc::Sender;
+
 use crate::template::nodes::node::{NodeEvent, NodeEventKind};
 use crate::template::NodeIndex;
-use tokio::sync::mpsc::Sender;
 
 pub trait RawCommunicationExt<T: CommunicationExt>: Clone {
     fn with_idx(self, idx: NodeIndex) -> T;

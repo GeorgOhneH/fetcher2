@@ -1,6 +1,4 @@
-use druid::widget::{
-    Button, Controller, CrossAxisAlignment, Flex, Label, SizedBox, ViewSwitcher, WidgetWrapper,
-};
+use druid::widget::{Button, Controller, CrossAxisAlignment, Flex, Label, SizedBox, WidgetWrapper};
 use druid::{
     commands, menu, Color, Command, Env, Event, EventCtx, FileInfo, LensExt, Menu, MenuItem,
     SingleUse, SysMods, Target, Widget, WidgetExt, WindowId,

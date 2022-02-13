@@ -4,18 +4,17 @@ use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Receiver;
 
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
 
 use crate::error::Result;
 use crate::session::Session;
 use crate::settings::DownloadSettings;
-use crate::template::communication::{CommunicationExt, RawCommunicationExt};
 pub use crate::template::node_type::{DownloadArgs, Extensions, Mode};
-use crate::template::nodes::node::{NodeEvent, NodeEventKind, Status};
+use crate::template::nodes::node::{NodeEvent, Status};
 use crate::template::nodes::root::{RawRootNode, RootNode};
 
 pub mod communication;

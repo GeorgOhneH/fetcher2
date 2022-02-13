@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
-mod derives;
-
 use proc_macro::TokenStream;
 
-use crate::derives::{derive_node, derive_root_node};
 use proc_macro_error::proc_macro_error;
-use quote::quote;
 use syn::{self, parse_macro_input, DeriveInput};
+
+use crate::derives::{derive_node, derive_root_node};
+
+mod derives;
 
 #[proc_macro_derive(TreeNode, attributes(node))]
 #[proc_macro_error]

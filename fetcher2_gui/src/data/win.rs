@@ -1,8 +1,9 @@
+use std::fmt::Debug;
+
 use druid::kurbo::Size;
 use druid::{Data, Point};
 use druid::{Scalable, WindowHandle};
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Data, Default)]
 pub struct SubWindowInfo<T> {

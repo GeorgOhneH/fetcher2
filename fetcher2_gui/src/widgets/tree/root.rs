@@ -1,3 +1,7 @@
+use std::convert::TryFrom;
+use std::marker::PhantomData;
+use std::sync::Arc;
+
 use druid::im::Vector;
 use druid::kurbo::Size;
 use druid::{theme, Lens, Rect};
@@ -5,9 +9,8 @@ use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use std::convert::TryFrom;
-use std::marker::PhantomData;
-use std::sync::Arc;
+
+pub use fetcher2_gui_derive::TreeNodeRoot;
 
 use crate::widgets::tree::header::HeaderConstrains;
 use crate::widgets::tree::node::{
@@ -15,7 +18,6 @@ use crate::widgets::tree::node::{
     TREE_CHILD_SHOW, TREE_NODE_REMOVE, TREE_OPEN,
 };
 use crate::widgets::tree::NodeIndex;
-pub use fetcher2_gui_derive::TreeNodeRoot;
 
 pub trait TreeNodeRoot<T: TreeNode>
 where

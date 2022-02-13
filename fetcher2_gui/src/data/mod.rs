@@ -1,16 +1,18 @@
-use druid::im::Vector;
-use druid::{Data, Lens};
-use fetcher2::template::node_type::site::TaskMsg;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use druid::im::Vector;
+use druid::{Data, Lens};
+use serde::{Deserialize, Serialize};
+
+use fetcher2::template::node_type::site::TaskMsg;
 use template::node_type::NodeTypeData;
 use template::nodes::node::NodeData;
 
 use crate::data::edit::EditWindowData;
 use crate::data::settings::{OptionSettings, Settings};
 use crate::data::template::TemplateData;
-use crate::data::template_info::{TemplateInfo, TemplateInfoSelect};
+use crate::data::template_info::TemplateInfo;
 use crate::data::win::{SubWindowInfo, WindowState};
 
 pub mod edit;

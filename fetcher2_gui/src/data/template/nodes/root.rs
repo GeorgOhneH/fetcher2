@@ -1,9 +1,9 @@
 use druid::im::Vector;
 use druid::{Data, Lens};
+
 use fetcher2::template::nodes::root::RootNode;
 
 use crate::data::template::nodes::node::NodeData;
-use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;
 use crate::widgets::tree::NodeIndex;
 

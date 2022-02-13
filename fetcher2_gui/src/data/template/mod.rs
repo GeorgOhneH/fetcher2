@@ -1,13 +1,14 @@
-use druid::im::Vector;
-use druid::widget::{Controller, Label, WidgetWrapper};
-use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
-use druid::{Menu, MenuItem, SingleUse, WidgetExt};
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use druid::im::Vector;
+use druid::widget::{Controller, Label, WidgetWrapper};
+use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
+use druid::{Menu, MenuItem, SingleUse, WidgetExt};
+use serde::{Deserialize, Serialize};
 
 use crate::controller::{Msg, MSG_THREAD};
 use crate::data::template::nodes::node::NodeData;

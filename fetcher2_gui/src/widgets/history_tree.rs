@@ -1,13 +1,15 @@
+use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use druid::im::Vector;
 use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
+
 use fetcher2::template::node_type::site::{MsgKind, TaskMsg};
-use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::data::AppData;
 use crate::widgets::tree::node::TreeNode;

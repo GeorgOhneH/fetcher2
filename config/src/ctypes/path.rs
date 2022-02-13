@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use im::Vector;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::errors::{Error, InValid};
+use crate::errors::InValid;
 use crate::traveller::{Travel, TravelPathConfig, Traveller};
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]

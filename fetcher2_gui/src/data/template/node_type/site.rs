@@ -1,5 +1,6 @@
 use druid::im::Vector;
 use druid::Data;
+
 use fetcher2::site_modules::Module;
 use fetcher2::template::node_type::site::TaskMsg;
 use fetcher2::template::DownloadArgs;

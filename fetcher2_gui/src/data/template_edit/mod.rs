@@ -1,9 +1,11 @@
-use druid::im::Vector;
-use druid::{Data, Lens};
-use nodes::root::RootNodeEditData;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::PathBuf;
+
+use druid::im::Vector;
+use druid::{Data, Lens};
+use serde::{Deserialize, Serialize};
+
+use nodes::root::RootNodeEditData;
 
 pub mod node_type;
 pub mod nodes;

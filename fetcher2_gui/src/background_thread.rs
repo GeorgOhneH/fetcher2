@@ -1,21 +1,22 @@
-use druid::{ExtEventSink, Selector, SingleUse, Target};
-use druid_widget_nursery::selectors;
-use fetcher2::settings::DownloadSettings;
-use fetcher2::template::nodes::node::{NodeEvent, Status};
-use fetcher2::template::{Prepared, Template, UnPrepared};
-use fetcher2::TError;
-use futures::future::BoxFuture;
-use futures::future::{AbortHandle, Abortable, Aborted};
-use futures::io::sink;
-use futures::prelude::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt};
 use std::collections::HashSet;
 use std::future::Future;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use druid::{ExtEventSink, Selector, SingleUse, Target};
+use druid_widget_nursery::selectors;
+use futures::future::BoxFuture;
+use futures::future::{AbortHandle, Abortable, Aborted};
+use futures::prelude::stream::FuturesUnordered;
+use futures::{FutureExt, StreamExt};
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
+
+use fetcher2::settings::DownloadSettings;
+use fetcher2::template::nodes::node::NodeEvent;
+use fetcher2::template::{Prepared, Template, UnPrepared};
+use fetcher2::TError;
 
 use crate::controller::Msg;
 use crate::data::template::nodes::root::RootNodeData;

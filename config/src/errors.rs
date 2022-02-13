@@ -1,5 +1,5 @@
 use std;
-use std::fmt::{self, Display, Write};
+use std::fmt::{self, Display};
 
 use serde::{de, ser};
 

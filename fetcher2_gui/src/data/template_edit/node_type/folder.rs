@@ -1,7 +1,8 @@
-use config::traveller::Travel;
 use druid::Data;
-use fetcher2::template::node_type::Folder;
 use serde::{Deserialize, Serialize};
+
+use config::traveller::Travel;
+use fetcher2::template::node_type::Folder;
 
 #[derive(Clone, Data, Debug, Serialize, Deserialize, Travel)]
 pub struct FolderEditData {

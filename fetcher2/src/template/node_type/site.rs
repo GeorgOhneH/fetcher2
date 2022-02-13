@@ -27,7 +27,7 @@ use crate::session::Session;
 use crate::settings::DownloadSettings;
 use crate::site_modules::Module;
 use crate::task::Task;
-use crate::template::communication::{CommunicationExt, RootNotifier};
+use crate::template::communication::RootNotifier;
 use crate::template::node_type::utils::{add_to_file_stem, extension_from_url};
 use crate::template::nodes::node::Status;
 use crate::utils::spawn_drop;
