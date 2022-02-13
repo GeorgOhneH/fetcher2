@@ -1,24 +1,23 @@
-use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
-use druid::{Menu, MenuItem, SingleUse, WidgetExt};
 use druid::im::Vector;
 use druid::widget::{Controller, Label, WidgetWrapper};
+use druid::{Data, Env, Event, EventCtx, Lens, LifeCycle, LifeCycleCtx, Widget};
+use druid::{Menu, MenuItem, SingleUse, WidgetExt};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 
 use crate::controller::{Msg, MSG_THREAD};
-use crate::data::AppData;
 use crate::data::template::nodes::node::NodeData;
 use crate::data::template::nodes::root::RootNodeData;
-use crate::widgets::tree::{NodeIndex, Tree};
+use crate::data::AppData;
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{NodeIndex, Tree};
 
 pub mod node_type;
 pub mod nodes;
-
 
 #[derive(Debug, Clone, Data, Lens, Serialize, Deserialize, Default)]
 pub struct TemplateData {
@@ -64,7 +63,11 @@ impl TemplateData {
         self.root.node(idx)
     }
 
-    pub fn node_mut<V>(&mut self, idx: &NodeIndex, cb: impl FnOnce(&mut NodeData, usize) -> V) -> V {
+    pub fn node_mut<V>(
+        &mut self,
+        idx: &NodeIndex,
+        cb: impl FnOnce(&mut NodeData, usize) -> V,
+    ) -> V {
         self.root.node_mut(idx, cb)
     }
 }
@@ -127,7 +130,7 @@ where
         match event {
             Event::MouseDown(ref mouse) if mouse.button.is_right() => {
                 if let Some(idx) = child.node_at(mouse.pos) {
-                    let node : &NodeData = data.node(&idx);
+                    let node: &NodeData = data.node(&idx);
                     let mut indexes = HashSet::new();
                     node.child_indexes(idx.clone(), &mut indexes);
                     ctx.show_context_menu(make_node_menu(idx, indexes), mouse.window_pos);

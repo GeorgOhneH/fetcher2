@@ -1,5 +1,5 @@
 use std;
-use std::fmt::{self, Display};
+use std::fmt::{self, Display, Write};
 
 use serde::{de, ser};
 
@@ -60,3 +60,35 @@ impl Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+#[derive(Debug)]
+pub enum InValid {
+    Value(String),
+    Required,
+}
+
+impl InValid {
+    pub fn value(msg: impl Into<String>) -> Self {
+        Self::Value(msg.into())
+    }
+}
+
+impl Display for InValid {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Value(msg) => formatter.write_str(msg),
+            Self::Required => formatter.write_str("Value is required"),
+        }
+    }
+}
+
+impl de::Error for InValid {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        Self::Value(msg.to_string())
+    }
+}
+
+impl std::error::Error for InValid {}

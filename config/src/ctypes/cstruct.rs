@@ -1,7 +1,7 @@
 use im::Vector;
 
 use crate::ctypes::CType;
-use crate::errors::Error;
+use crate::errors::{Error, InValid};
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
@@ -20,6 +20,14 @@ impl CStruct {
             index_map: im::OrdMap::new(),
             name: None,
         }
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        Ok(())
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
     }
 
     pub fn get(&self, name: &str) -> Result<&CKwarg, Error> {

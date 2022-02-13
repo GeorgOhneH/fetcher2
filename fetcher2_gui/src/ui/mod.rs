@@ -1,17 +1,17 @@
-use druid::{
-    Color, Command, commands, Env, Event, EventCtx, FileInfo, LensExt, menu, Menu, MenuItem,
-    SingleUse, SysMods, Target, Widget, WidgetExt, WindowId,
-};
 use druid::widget::{
     Button, Controller, CrossAxisAlignment, Flex, Label, SizedBox, ViewSwitcher, WidgetWrapper,
 };
+use druid::{
+    commands, menu, Color, Command, Env, Event, EventCtx, FileInfo, LensExt, Menu, MenuItem,
+    SingleUse, SysMods, Target, Widget, WidgetExt, WindowId,
+};
 
 use crate::controller::{
-    EditController, Msg, MSG_THREAD, OPEN_EDIT, SettingController, TemplateController,
+    EditController, Msg, SettingController, TemplateController, MSG_THREAD, OPEN_EDIT,
 };
-use crate::data::AppData;
 use crate::data::template::TemplateData;
 use crate::data::template_info::{TemplateInfo, TemplateInfoSelect};
+use crate::data::AppData;
 use crate::widgets::file_watcher::FileWatcher;
 use crate::widgets::history_tree::History;
 use crate::widgets::info_view::InfoView;
@@ -120,9 +120,11 @@ fn template_ui() -> impl Widget<AppData> {
             )
             .draggable(true)
             .on_save(
-                |split, _ctx, data: &AppData, _env| split.set_split_point(data.split_point),
+                |split, _ctx, data: &AppData, _env| {
+                    split.set_split_point(data.split_point.unwrap_or(0.5))
+                },
                 |split, _ctx, data: &mut AppData, _env| {
-                    data.split_point = split.current_split_point()
+                    data.split_point = Some(split.current_split_point())
                 },
             )
             .expand_width(),

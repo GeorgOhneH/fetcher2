@@ -1,18 +1,18 @@
+use druid::im::Vector;
+use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Size, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
-use druid::im::Vector;
-use druid::widget::Label;
 use fetcher2::template::node_type::site::{MsgKind, TaskMsg};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::data::AppData;
-use crate::widgets::tree::{NodeIndex, Tree};
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{NodeIndex, Tree};
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Type {
@@ -69,7 +69,6 @@ pub struct Entry {
     full_path: PathBuf,
     expanded: bool,
 }
-
 
 impl Entry {
     pub fn new(task_msg: TaskMsg) -> Self {

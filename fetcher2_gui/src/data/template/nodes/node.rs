@@ -1,5 +1,5 @@
-use druid::{Data, Lens};
 use druid::im::Vector;
+use druid::{Data, Lens};
 use fetcher2::template::nodes::node::{Node, NodeEventKind, PathEventKind};
 use fetcher2::TError;
 use std::borrow::Cow;

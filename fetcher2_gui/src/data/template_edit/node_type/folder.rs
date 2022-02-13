@@ -1,7 +1,7 @@
-use druid::Data;
-use serde::{Deserialize, Serialize};
 use config::traveller::Travel;
+use druid::Data;
 use fetcher2::template::node_type::Folder;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Data, Debug, Serialize, Deserialize, Travel)]
 pub struct FolderEditData {
@@ -10,7 +10,9 @@ pub struct FolderEditData {
 
 impl FolderEditData {
     pub fn new(folder: &Folder) -> Self {
-        Self { name: folder.name.clone() }
+        Self {
+            name: folder.name.clone(),
+        }
     }
     pub fn raw(self) -> Folder {
         Folder { name: self.name }

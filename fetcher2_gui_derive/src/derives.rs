@@ -71,7 +71,7 @@ pub fn derive_root_node(input: &DeriveInput) -> TokenStream {
 
 fn find_child_node_ty(input: &DeriveInput) -> TokenStream {
     if let Data::Struct(data_struct) = &input.data {
-        if let Fields::Named(fields) =  &data_struct.fields {
+        if let Fields::Named(fields) = &data_struct.fields {
             if let Some(child_field) = fields.named.iter().find(|field| {
                 if let Some(name) = &field.ident {
                     name == "children"
@@ -79,7 +79,7 @@ fn find_child_node_ty(input: &DeriveInput) -> TokenStream {
                     false
                 }
             }) {
-                if let Type::Path(path) =  &child_field.ty {
+                if let Type::Path(path) = &child_field.ty {
                     if let PathArguments::AngleBracketed(x) = &path.path.segments[0].arguments {
                         let name = &x.args;
                         quote! {#name}

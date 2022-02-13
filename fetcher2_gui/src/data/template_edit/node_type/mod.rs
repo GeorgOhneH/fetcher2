@@ -1,8 +1,8 @@
+use config::traveller::Travel;
 use druid::Data;
 use fetcher2::template::node_type::NodeType;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use config::traveller::Travel;
+use std::sync::Arc;
 
 use crate::data::template_edit::node_type::folder::FolderEditData;
 use crate::data::template_edit::node_type::site_edit::SiteEditData;

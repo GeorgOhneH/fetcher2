@@ -1,25 +1,25 @@
 use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, Select, Sender};
+use druid::im::{OrdMap, Vector};
+use druid::widget::Label;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, ExtEventSink, LayoutCtx, Lens, LifeCycle,
     LifeCycleCtx, PaintCtx, Point, SingleUse, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetId,
     WidgetPod,
 };
-use druid::im::{OrdMap, Vector};
-use druid::widget::Label;
 use druid_widget_nursery::{selectors, WidgetExt as _};
 use futures::SinkExt;
-use notify::{Config, EventKind, recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
-use std::{fs, io};
+use notify::{recommended_watcher, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::fs::{DirEntry, Metadata};
 use std::ops::Index;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime};
+use std::{fs, io};
 
 use crate::widgets::tree::node::TreeNode;
 use crate::widgets::tree::root::TreeNodeRoot;

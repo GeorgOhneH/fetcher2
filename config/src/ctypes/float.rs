@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
+use crate::errors::InValid;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -25,6 +26,18 @@ impl CFloat {
             max,
             name: None,
         }
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        if self.value.is_some() {
+            Ok(())
+        } else {
+            Err(InValid::Required)
+        }
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
     }
 }
 

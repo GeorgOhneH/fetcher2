@@ -1,20 +1,20 @@
-use druid::{Lens, LensExt, Rect, theme};
+use druid::im::Vector;
+use druid::kurbo::Size;
+use druid::piet::RenderContext;
+use druid::{theme, Lens, LensExt, Rect};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, Selector, UpdateCtx, Widget, WidgetPod,
 };
-use druid::kurbo::Size;
-use druid::piet::RenderContext;
 use druid_widget_nursery::selectors;
 use std::convert::TryFrom;
 use std::sync::Arc;
-use druid::im::Vector;
 
 pub use fetcher2_gui_derive::TreeNode;
 
 use crate::widgets::tree::header::HeaderConstrains;
-use crate::widgets::tree::NodeIndex;
 use crate::widgets::tree::opener::Opener;
+use crate::widgets::tree::NodeIndex;
 
 selectors! {
     /// Notification to send from the widget that requires removal

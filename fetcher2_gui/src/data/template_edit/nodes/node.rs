@@ -1,5 +1,5 @@
-use druid::{Data, Lens};
 use druid::im::Vector;
+use druid::{Data, Lens};
 use fetcher2::template::nodes::node::{Node, RawNode};
 
 use crate::data::template_edit::node_type::NodeTypeEditData;
@@ -11,7 +11,6 @@ pub struct NodeEditData {
     pub ty: Option<NodeTypeEditData>,
     pub children: Vector<NodeEditData>,
 }
-
 
 impl NodeEditData {
     pub fn new(node: &Node) -> Self {

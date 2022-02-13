@@ -1,5 +1,5 @@
-use druid::{Data, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
 use druid::widget::Controller;
+use druid::{Data, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
 
 pub struct Save<T, W> {
     init: Box<dyn Fn(&mut W, &mut LifeCycleCtx, &T, &Env)>,

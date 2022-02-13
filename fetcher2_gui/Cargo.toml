@@ -1,6 +1,6 @@
 [package]
 name = "fetcher2_gui"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["GeorgOhneH <georg.schwan@vtxnet.ch>"]
 description = "A fetcher Application"
 edition = "2021"

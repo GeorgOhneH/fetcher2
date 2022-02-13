@@ -171,7 +171,6 @@ impl Node {
     }
 }
 
-
 #[derive(Debug)]
 pub struct NodeEvent {
     pub kind: NodeEventKind,
@@ -180,10 +179,7 @@ pub struct NodeEvent {
 
 impl NodeEvent {
     pub fn new(kind: NodeEventKind, idx: NodeIndex) -> Self {
-        Self {
-            kind,
-            idx,
-        }
+        Self { kind, idx }
     }
 }
 

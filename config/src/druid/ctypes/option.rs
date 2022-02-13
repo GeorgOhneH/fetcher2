@@ -4,6 +4,7 @@ use druid::{Data, Point, Widget, WidgetExt, WidgetPod};
 
 use crate::ctypes::option::COption;
 use crate::ctypes::CType;
+use crate::druid::widgets::lazy::Lazy;
 
 impl Data for Box<COption> {
     fn same(&self, other: &Self) -> bool {
@@ -17,7 +18,7 @@ impl COption {
             .cross_axis_alignment(CrossAxisAlignment::Start)
             .with_child(CheckboxWrapper::new())
             .with_child(
-                CType::widget()
+                Lazy::new(|| CType::widget())
                     .lens(Self::ty)
                     .disabled_if(|data: &Self, _env| !data.active),
             )

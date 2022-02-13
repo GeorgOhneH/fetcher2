@@ -1,7 +1,7 @@
-use druid::{Data, Lens};
-use serde::{Deserialize, Serialize};
 use config::traveller::Travel;
+use druid::{Data, Lens};
 use fetcher2::settings::DownloadSettings;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Lens, Debug, Data, Serialize, Deserialize, Default)]
 pub struct OptionSettings {

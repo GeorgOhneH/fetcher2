@@ -1,12 +1,12 @@
-use druid::{Data, Lens};
 use druid::im::Vector;
+use druid::{Data, Lens};
 use nodes::root::RootNodeEditData;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 
-pub mod nodes;
 pub mod node_type;
+pub mod nodes;
 
 #[derive(Debug, Clone, Data, Lens, Serialize, Deserialize, Default)]
 pub struct TemplateEditData {

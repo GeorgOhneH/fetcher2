@@ -10,7 +10,7 @@ use crate::ctypes::seq::CSeq;
 use crate::ctypes::string::CString;
 use crate::ctypes::tuple::CTuple;
 use crate::ctypes::unit::CUnit;
-use crate::errors::Error;
+use crate::errors::{Error, InValid};
 
 pub mod bool;
 pub mod cenum;
@@ -46,12 +46,38 @@ impl CType {
     pub fn is_leaf(&self) -> bool {
         todo!()
     }
-    pub fn is_valid(&self) -> bool {
-        todo!()
+    pub fn valid(&self) -> Result<(), InValid> {
+        match self {
+            Self::String(string) => string.valid(),
+            Self::Bool(bool) => bool.valid(),
+            Self::Integer(integer) => integer.valid(),
+            Self::Float(float) => float.valid(),
+            Self::Path(path) => path.valid(),
+            Self::Tuple(tuple) => tuple.valid(),
+            Self::CStruct(cstruct) => cstruct.valid(),
+            Self::Seq(seq) => seq.valid(),
+            Self::Map(map) => map.valid(),
+            Self::CEnum(cenum) => cenum.valid(),
+            Self::Option(option) => option.valid(),
+            Self::Unit(unit) => unit.valid(),
+        }
     }
 
     pub fn set_name(&mut self, name: &'static str) {
-        todo!()
+        match self {
+            Self::String(string) => string.set_name(name),
+            Self::Bool(bool) => bool.set_name(name),
+            Self::Integer(integer) => integer.set_name(name),
+            Self::Float(float) => float.set_name(name),
+            Self::Path(path) => path.set_name(name),
+            Self::Tuple(tuple) => tuple.set_name(name),
+            Self::CStruct(cstruct) => cstruct.set_name(name),
+            Self::Seq(seq) => seq.set_name(name),
+            Self::Map(map) => map.set_name(name),
+            Self::CEnum(cenum) => cenum.set_name(name),
+            Self::Option(option) => option.set_name(name),
+            Self::Unit(unit) => unit.set_name(name),
+        }
     }
 
     pub fn as_string(&self) -> Result<&CString, Error> {

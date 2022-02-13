@@ -1,12 +1,12 @@
-use druid::{Lens, LensExt, theme, WidgetExt};
-use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-    Point, UpdateCtx, Widget, WidgetPod,
-};
 use druid::im::Vector;
 use druid::kurbo::Size;
 use druid::piet::RenderContext;
 use druid::widget::{Axis, ClipBox, Scroll};
+use druid::{theme, Lens, LensExt, WidgetExt};
+use druid::{
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
+    Point, UpdateCtx, Widget, WidgetPod,
+};
 use header::Header;
 use itertools::Itertools;
 use std::sync::Arc;
@@ -16,10 +16,10 @@ use crate::widgets::tree::node::{OpenerFactory, TreeItemFactory, TreeNode};
 use crate::widgets::tree::opener::make_wedge;
 use crate::widgets::tree::root::{TreeNodeRoot, TreeNodeRootWidget};
 
+pub mod header;
 pub mod node;
 pub mod opener;
 pub mod root;
-pub mod header;
 
 pub enum SelectionMode {
     Single,

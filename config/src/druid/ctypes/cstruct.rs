@@ -43,7 +43,7 @@ impl ListIter<CKwarg> for CStruct {
 
 impl CKwarg {
     pub fn error_msg(&self) -> Option<String> {
-        todo!()
+        self.ty.valid().err().map(|invalid| invalid.to_string())
     }
     pub fn widget() -> impl Widget<Self> {
         Flex::column()

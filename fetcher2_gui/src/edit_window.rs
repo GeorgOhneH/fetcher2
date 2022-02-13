@@ -1,10 +1,10 @@
-use druid::{Command, commands, FileDialogOptions, Menu, MenuItem, SingleUse};
-use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
 use druid::commands::{CLOSE_WINDOW, SAVE_FILE_AS};
 use druid::im::Vector;
-use druid::LensExt;
-use druid::widget::{Button, Controller, Flex, Label, WidgetWrapper};
 use druid::widget::prelude::*;
+use druid::widget::{Button, Controller, Flex, Label, WidgetWrapper};
+use druid::LensExt;
+use druid::{commands, Command, FileDialogOptions, Menu, MenuItem, SingleUse};
+use druid::{Lens, Point, Target, Widget, WidgetExt, WidgetPod, WindowConfig, WindowLevel};
 use druid_widget_nursery::selectors;
 use fetcher2::template::Template;
 use std::convert::TryInto;
@@ -12,16 +12,16 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::controller::{Msg, MSG_THREAD};
-use crate::cstruct_window::c_option_window;
-use crate::data::AppData;
+use crate::ctype_window::c_option_window;
 use crate::data::edit::EditWindowData;
 use crate::data::template_edit::node_type::NodeTypeEditData;
 use crate::data::template_edit::nodes::node::NodeEditData;
 use crate::data::template_edit::nodes::root::RootNodeEditData;
 use crate::data::template_edit::TemplateEditData;
 use crate::data::win::WindowState;
-use crate::widgets::tree::{NodeIndex, Tree};
+use crate::data::AppData;
 use crate::widgets::tree::root::TreeNodeRoot;
+use crate::widgets::tree::{NodeIndex, Tree};
 
 selectors! {
     SAVE_EDIT,

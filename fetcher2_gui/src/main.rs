@@ -5,23 +5,23 @@
 #![feature(type_alias_impl_trait)]
 #![allow(clippy::new_without_default)]
 
+use fetcher2::{Result, TError};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use fetcher2::{Result, TError};
 
 use crate::background_thread::background_main;
 use crate::controller::{MainController, Msg};
-use crate::data::AppData;
 use crate::data::win::WindowState;
-use std::path::{PathBuf, Path};
-use std::thread;
+use crate::data::AppData;
+use crate::ui::{build_ui, make_menu};
 use druid::{AppLauncher, LocalizedString, WidgetExt, WindowDesc};
 use self_update::cargo_crate_version;
-use crate::ui::{build_ui, make_menu};
+use std::path::{Path, PathBuf};
+use std::thread;
 
 mod background_thread;
 pub mod controller;
-mod cstruct_window;
+mod ctype_window;
 pub mod data;
 pub mod edit_window;
 pub mod ui;
@@ -64,19 +64,19 @@ fn build_window(
 }
 
 pub fn main() {
-    let update_thread = thread::spawn(|| {
-        let status = self_update::backends::github::Update::configure()
-            .repo_owner("GeorgOhneH")
-            .repo_name("fetcher2")
-            .bin_name("github")
-            .show_download_progress(true)
-            .no_confirm(true)
-            .current_version(cargo_crate_version!())
-            .build()
-            .unwrap()
-            .update();
-        println!("Update status: `{:?}`!", status);
-    });
+    // let update_thread = thread::spawn(|| {
+    //     let status = self_update::backends::github::Update::configure()
+    //         .repo_owner("GeorgOhneH")
+    //         .repo_name("fetcher2")
+    //         .bin_name("github")
+    //         .show_download_progress(true)
+    //         .no_confirm(true)
+    //         .current_version(cargo_crate_version!())
+    //         .build()
+    //         .unwrap()
+    //         .update();
+    //     println!("Update status: `{:?}`!", status);
+    // });
 
     let (tx, rx) = flume::unbounded();
     let (s, r) = crossbeam_channel::bounded(5);
@@ -86,10 +86,7 @@ pub fn main() {
 
     let (app_data, load_err) = match load_window_state() {
         Ok(data) => (data, None),
-        Err(err) => (
-            AppData::default(),
-            Some(err),
-        ),
+        Err(err) => (AppData::default(), Some(err)),
     };
     let main_window = build_window(load_err, tx.clone(), &app_data.main_window);
 
@@ -120,6 +117,6 @@ pub fn main() {
         .expect("launch failed");
 
     let _ = tx.send(Msg::ExitAndSave);
-    update_thread.join().expect("thread panicked");
+    // update_thread.join().expect("thread panicked");
     handle.join().expect("thread panicked");
 }

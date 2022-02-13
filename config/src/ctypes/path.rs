@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use im::Vector;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::errors::Error;
+use crate::errors::{Error, InValid};
 use crate::traveller::{Travel, TravelPathConfig, Traveller};
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
@@ -28,8 +28,15 @@ impl CPath {
         }
     }
 
-    pub fn is_valid(&self, _path: &Path) -> Result<(), Error> {
-        todo!()
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        match &self.value {
+            None => Err(InValid::Required),
+            Some(v) => self.path_config.is_valid(v.as_path()),
+        }
     }
 }
 
@@ -118,66 +125,6 @@ where
             _m0: PhantomData,
         }
     }
-
-    pub fn is_valid<E: serde::de::Error>(
-        path: &Path,
-        path_config: &TravelPathConfig,
-    ) -> Result<(), E> {
-        match path_config {
-            TravelPathConfig::Any => (),
-            TravelPathConfig::Relative => {
-                if !path.is_relative() {
-                    return Err(E::custom("Expected relative Path"));
-                }
-            }
-            TravelPathConfig::Absolute => {
-                if !path.is_absolute() {
-                    return Err(E::custom("Expected absolute Path"));
-                }
-            }
-            TravelPathConfig::AbsoluteExist
-            | TravelPathConfig::AbsoluteExistFile(_)
-            | TravelPathConfig::AbsoluteExistDir => {
-                if !path.is_absolute() {
-                    return Err(E::custom("Expected absolute Path"));
-                }
-                if let Ok(metadata) = path.metadata() {
-                    match path_config {
-                        TravelPathConfig::AbsoluteExistDir => {
-                            if !metadata.is_dir() {
-                                return Err(E::custom("Expected a directory"));
-                            }
-                        }
-                        TravelPathConfig::AbsoluteExistFile(extensions) => {
-                            if metadata.is_file() {
-                                return Err(E::custom("Expected a file"));
-                            }
-
-                            if !extensions.is_empty() {
-                                if let Some(file_extension) = path.extension() {
-                                    let ex = file_extension
-                                        .to_str()
-                                        .ok_or_else(|| E::custom("Expected Path with extension"))?;
-                                    if !extensions
-                                        .iter()
-                                        .any(|file_spec| file_spec.extensions.contains(&ex))
-                                    {
-                                        return Err(E::custom("Path extension didn't match"));
-                                    }
-                                } else {
-                                    return Err(E::custom("Expected Path with extension"));
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
-                } else {
-                    return Err(E::custom("Expected a existing Path"));
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 impl<T, CONFIG> From<T> for StrictPath<CONFIG>
@@ -246,7 +193,7 @@ where
         D: Deserializer<'de>,
     {
         let path = PathBuf::deserialize(deserializer)?;
-        Self::is_valid(&path, &CONFIG::config())?;
+        CONFIG::config().is_valid(&path)?;
         Ok(Self {
             path,
             _m0: PhantomData,
@@ -254,7 +201,10 @@ where
     }
 }
 
-impl<CONFIG> PartialEq for StrictPath<CONFIG> where CONFIG: PathConfig {
+impl<CONFIG> PartialEq for StrictPath<CONFIG>
+where
+    CONFIG: PathConfig,
+{
     fn eq(&self, other: &Self) -> bool {
         self.path == other.path
     }

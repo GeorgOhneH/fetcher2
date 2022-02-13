@@ -6,6 +6,7 @@ use fetcher2::template::{Prepared, Template, UnPrepared};
 use fetcher2::TError;
 use futures::future::BoxFuture;
 use futures::future::{AbortHandle, Abortable, Aborted};
+use futures::io::sink;
 use futures::prelude::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use std::collections::HashSet;
@@ -13,7 +14,6 @@ use std::future::Future;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
-use futures::io::sink;
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 
@@ -112,14 +112,23 @@ impl TemplateData {
         self.template_state.save().await
     }
 
-    pub fn new(template: Template<UnPrepared>, rx: Receiver<NodeEvent>, sink: ExtEventSink) -> Self {
+    pub fn new(
+        template: Template<UnPrepared>,
+        rx: Receiver<NodeEvent>,
+        sink: ExtEventSink,
+    ) -> Self {
         Self {
             template_state: TemplateState::UnPrepared(template),
             handle: tokio::spawn(forward_msgs(rx, sink)),
         }
     }
 
-    pub async fn replace(&mut self, template: Template<UnPrepared>, tx: Receiver<NodeEvent>, sink: ExtEventSink) {
+    pub async fn replace(
+        &mut self,
+        template: Template<UnPrepared>,
+        tx: Receiver<NodeEvent>,
+        sink: ExtEventSink,
+    ) {
         self.template_state = TemplateState::UnPrepared(template);
 
         let dummy_handle = tokio::spawn(async {});

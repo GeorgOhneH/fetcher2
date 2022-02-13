@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
+use crate::errors::InValid;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -25,6 +26,25 @@ impl CInteger {
             max,
             name: None,
         }
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        if let Some(v) = self.value {
+            if v <= self.max && v >= self.min {
+                Ok(())
+            } else {
+                Err(InValid::value(format!(
+                    "Number must be between {} and {}",
+                    self.min, self.max
+                )))
+            }
+        } else {
+            Err(InValid::Required)
+        }
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
     }
 }
 

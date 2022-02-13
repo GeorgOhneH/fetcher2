@@ -1,6 +1,6 @@
+use druid::widget::Controller;
 use druid::{commands, WindowConfig, WindowLevel};
 use druid::{Env, Event, EventCtx, Widget};
-use druid::widget::Controller;
 use druid_widget_nursery::selectors;
 
 use crate::background_thread::NEW_EDIT_TEMPLATE;

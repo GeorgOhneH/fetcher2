@@ -1,11 +1,11 @@
-use druid::Data;
 use druid::im::Vector;
+use druid::Data;
 use fetcher2::site_modules::Module;
-use fetcher2::template::DownloadArgs;
 use fetcher2::template::node_type::site::TaskMsg;
+use fetcher2::template::DownloadArgs;
 
-use crate::data::template::node_type::Site;
 use crate::data::template::node_type::site_state::SiteState;
+use crate::data::template::node_type::Site;
 
 #[derive(Debug, Clone, Data)]
 pub struct SiteData {

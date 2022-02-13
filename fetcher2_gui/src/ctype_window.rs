@@ -1,5 +1,7 @@
 use config::ctypes::cstruct::CStruct;
 use config::ctypes::CType;
+use config::deserializer::ConfigDeserializer;
+use config::serializer::ConfigSerializer;
 use config::traveller::{ConfigTraveller, Travel};
 use druid::commands::CLOSE_WINDOW;
 use druid::widget::{Button, Flex};
@@ -8,10 +10,8 @@ use druid::{
     Point, Size, Target, UpdateCtx, Widget, WidgetExt, WidgetPod,
 };
 use druid_widget_nursery::selectors;
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
-use config::deserializer::ConfigDeserializer;
-use config::serializer::ConfigSerializer;
+use serde::{Deserialize, Serialize};
 
 selectors! {
     APPLY
@@ -80,7 +80,8 @@ impl<T: Travel + Data + DeserializeOwned + Serialize> Widget<Option<T>> for CTyp
         if let LifeCycle::WidgetAdded = event {
             if let Some(init) = data {
                 // TODO: not unwrap
-                init.serialize(&mut ConfigSerializer::new(&mut self.ty)).unwrap();
+                init.serialize(&mut ConfigSerializer::new(&mut self.ty))
+                    .unwrap();
                 ctx.request_layout();
                 ctx.request_paint();
             }
@@ -122,7 +123,9 @@ pub fn c_option_window<T: Travel + Serialize + DeserializeOwned + Data>(
                         .on_click(|ctx, _: &mut CType, _| {
                             ctx.submit_command(APPLY.to(Target::Window(ctx.window_id())));
                         })
-                        .disabled_if(|data: &CType, _| data.is_valid()),
+                        .disabled_if(|data: &CType, _| {
+                            T::deserialize(&mut ConfigDeserializer::new(data)).is_err()
+                        }),
                 )
                 .with_child(Button::new("Cancel").on_click(|ctx, _: &mut CType, _| {
                     ctx.submit_command(CLOSE_WINDOW);

@@ -1,4 +1,5 @@
 use crate::ctypes::CType;
+use crate::errors::InValid;
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
@@ -15,5 +16,16 @@ impl COption {
             active: true,
             name: None,
         }
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        match self.ty.valid() {
+            Err(InValid::Required) => Ok(()),
+            result => result,
+        }
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
     }
 }

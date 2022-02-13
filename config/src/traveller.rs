@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error as StdError;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use im::Vector;
 use serde::Serialize;
@@ -203,6 +203,65 @@ pub enum TravelPathConfig {
     AbsoluteExist,
     AbsoluteExistDir,
     AbsoluteExistFile(Vector<FileSpec>),
+}
+
+impl TravelPathConfig {
+    pub fn is_valid<E: serde::de::Error>(&self, path: &Path) -> Result<(), E> {
+        match self {
+            TravelPathConfig::Any => (),
+            TravelPathConfig::Relative => {
+                if !path.is_relative() {
+                    return Err(E::custom("Expected relative Path"));
+                }
+            }
+            TravelPathConfig::Absolute => {
+                if !path.is_absolute() {
+                    return Err(E::custom("Expected absolute Path"));
+                }
+            }
+            TravelPathConfig::AbsoluteExist
+            | TravelPathConfig::AbsoluteExistFile(_)
+            | TravelPathConfig::AbsoluteExistDir => {
+                if !path.is_absolute() {
+                    return Err(E::custom("Expected absolute Path"));
+                }
+                if let Ok(metadata) = path.metadata() {
+                    match self {
+                        TravelPathConfig::AbsoluteExistDir => {
+                            if !metadata.is_dir() {
+                                return Err(E::custom("Expected a directory"));
+                            }
+                        }
+                        TravelPathConfig::AbsoluteExistFile(extensions) => {
+                            if metadata.is_file() {
+                                return Err(E::custom("Expected a file"));
+                            }
+
+                            if !extensions.is_empty() {
+                                if let Some(file_extension) = path.extension() {
+                                    let ex = file_extension
+                                        .to_str()
+                                        .ok_or_else(|| E::custom("Expected Path with extension"))?;
+                                    if !extensions
+                                        .iter()
+                                        .any(|file_spec| file_spec.extensions.contains(&ex))
+                                    {
+                                        return Err(E::custom("Path extension didn't match"));
+                                    }
+                                } else {
+                                    return Err(E::custom("Expected Path with extension"));
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
+                } else {
+                    return Err(E::custom("Expected a existing Path"));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -494,8 +553,9 @@ impl<'a> TravellerStructField for ConfigTravellerStructField<'a> {
         default.serialize(&mut ConfigSerializer::new(&mut self.ty))
     }
 
-    fn with_name(&mut self, _name: &'static str) -> Result<(), Self::Error> {
-        todo!()
+    fn with_name(&mut self, name: &'static str) -> Result<(), Self::Error> {
+        self.ty.set_name(name);
+        Ok(())
     }
 
     fn end(self) -> Result<(), Self::Error> {

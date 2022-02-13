@@ -3,7 +3,7 @@ use im::{OrdMap, Vector};
 use crate::ctypes::cstruct::CStruct;
 use crate::ctypes::tuple::CTuple;
 use crate::ctypes::CType;
-use crate::errors::Error;
+use crate::errors::{Error, InValid};
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
@@ -24,6 +24,18 @@ impl CEnum {
             selected: None,
             name: None,
         }
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        if self.selected.is_some() {
+            Ok(())
+        } else {
+            Err(InValid::Required)
+        }
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
     }
 
     pub fn get_selected(&self) -> Result<&CArg, Error> {
@@ -56,10 +68,6 @@ impl CEnum {
             }
             None => Err(Error::KeyDoesNotExist),
         }
-    }
-
-    pub fn is_leaf(&self) -> bool {
-        todo!()
     }
 }
 

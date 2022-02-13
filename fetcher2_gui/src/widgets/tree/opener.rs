@@ -1,13 +1,13 @@
-use druid::{Lens, LensExt, theme};
+use druid::kurbo::{BezPath, Size};
+use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
+use druid::{theme, Lens, LensExt};
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, UpdateCtx, Widget, WidgetPod,
 };
-use druid::kurbo::{BezPath, Size};
-use druid::piet::{LineCap, LineJoin, RenderContext, StrokeStyle};
 use std::marker::PhantomData;
 
-use crate::widgets::tree::node::{TREE_ACTIVATE_NODE, TreeNode};
+use crate::widgets::tree::node::{TreeNode, TREE_ACTIVATE_NODE};
 
 /// A tree widget for a collection of items organized in a hierarchical way.
 

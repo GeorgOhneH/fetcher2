@@ -1,3 +1,4 @@
+use druid::im::Vector;
 use druid::kurbo::Size;
 use druid::{theme, Lens, Rect};
 use druid::{
@@ -7,7 +8,6 @@ use druid::{
 use std::convert::TryFrom;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use druid::im::Vector;
 
 use crate::widgets::tree::header::HeaderConstrains;
 use crate::widgets::tree::node::{
@@ -153,7 +153,7 @@ impl<R: TreeNodeRoot<T>, T: TreeNode, L: Lens<T, bool> + Clone, const N: usize>
         for (i, child) in self.children.iter().enumerate() {
             let mut idx = Vector::new();
             idx.push_back(i);
-            child.widget().get_selected(&mut r,  idx);
+            child.widget().get_selected(&mut r, idx);
         }
         r
     }

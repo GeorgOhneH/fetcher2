@@ -30,15 +30,21 @@ fn enum_test() {
     let unit_r = TestEnum::deserialize(&mut ConfigDeserializer::new(&ty)).unwrap();
     assert_eq!(unit, unit_r);
 
-    single.serialize(&mut ConfigSerializer::new(&mut ty)).unwrap();
+    single
+        .serialize(&mut ConfigSerializer::new(&mut ty))
+        .unwrap();
     let single_r = TestEnum::deserialize(&mut ConfigDeserializer::new(&ty)).unwrap();
     assert_eq!(single, single_r);
 
-    tuple.serialize(&mut ConfigSerializer::new(&mut ty)).unwrap();
+    tuple
+        .serialize(&mut ConfigSerializer::new(&mut ty))
+        .unwrap();
     let tuple_r = TestEnum::deserialize(&mut ConfigDeserializer::new(&ty)).unwrap();
     assert_eq!(tuple, tuple_r);
 
-    field.serialize(&mut ConfigSerializer::new(&mut ty)).unwrap();
+    field
+        .serialize(&mut ConfigSerializer::new(&mut ty))
+        .unwrap();
     let field_r = TestEnum::deserialize(&mut ConfigDeserializer::new(&ty)).unwrap();
     assert_eq!(field, field_r);
 }

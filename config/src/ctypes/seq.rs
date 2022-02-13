@@ -1,6 +1,7 @@
 use im::Vector;
 
 use crate::ctypes::CType;
+use crate::errors::InValid;
 
 #[cfg_attr(feature = "druid", derive(druid::Data, druid::Lens))]
 #[derive(Debug, Clone)]
@@ -19,6 +20,14 @@ impl CSeq {
             template: Box::new(template),
             name: None,
         }
+    }
+
+    pub fn valid(&self) -> Result<(), InValid> {
+        Ok(())
+    }
+
+    pub fn set_name(&mut self, name: &'static str) {
+        self.name = Some(name)
     }
 
     pub fn get(&self) -> &im::Vector<CItem> {

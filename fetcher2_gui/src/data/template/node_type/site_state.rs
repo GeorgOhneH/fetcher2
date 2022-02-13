@@ -1,7 +1,8 @@
-use druid::Data;
 use druid::im::Vector;
+use druid::Data;
 use fetcher2::template::node_type::site::{
-    DownloadEventKind, LoginEventKind, MsgKind, RunEventKind, SiteEventKind, TaskMsg, UrlFetchEventKind,
+    DownloadEventKind, LoginEventKind, MsgKind, RunEventKind, SiteEventKind, TaskMsg,
+    UrlFetchEventKind,
 };
 use fetcher2::TError;
 use std::sync::Arc;

@@ -1,8 +1,8 @@
-use druid::{Env, EventCtx, Widget, WidgetExt, WindowConfig, WindowLevel};
 use druid::widget::{Flex, Label, LineBreaking};
+use druid::{Env, EventCtx, Widget, WidgetExt, WindowConfig, WindowLevel};
 
-use crate::data::AppData;
 use crate::data::win::WindowState;
+use crate::data::AppData;
 use crate::TError;
 
 pub fn show_err(ctx: &mut EventCtx, data: &AppData, env: &Env, err: TError, title: &str) {

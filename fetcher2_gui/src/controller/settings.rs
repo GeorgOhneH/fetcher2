@@ -1,9 +1,9 @@
+use druid::widget::Controller;
 use druid::{commands, SingleUse, WidgetExt, WindowConfig, WindowLevel};
 use druid::{Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Widget};
-use druid::widget::Controller;
 
 use crate::controller::{Msg, MSG_THREAD};
-use crate::cstruct_window::c_option_window;
+use crate::ctype_window::c_option_window;
 use crate::data::settings::{OptionSettings, Settings};
 use crate::data::win::SubWindowInfo;
 use crate::widgets::sub_window_widget::SubWindow;
@@ -31,9 +31,11 @@ impl SettingController {
             )),
         )
         .lens(OptionSettings::settings);
+
         ctx.new_sub_window(
             WindowConfig::default()
                 .show_titlebar(true)
+                .resizable(true)
                 .window_size(size)
                 .set_position(pos)
                 .set_level(WindowLevel::Modal(ctx.window().clone())),

@@ -50,7 +50,7 @@ impl ListIter<CArg> for CEnum {
 
 impl CArg {
     fn error_msg(&self) -> Option<String> {
-        todo!()
+        Some("TODO".to_string())
     }
     pub fn widget() -> impl Widget<Self> {
         Flex::column()

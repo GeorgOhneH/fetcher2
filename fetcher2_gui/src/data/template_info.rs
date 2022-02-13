@@ -10,7 +10,7 @@ pub struct TemplateInfo {
     pub history: HistoryInfo,
 
     #[serde(default)]
-    pub selected: TemplateInfoSelect
+    pub selected: TemplateInfoSelect,
 }
 
 #[derive(Debug, Clone, Lens, Serialize, Deserialize, Default)]

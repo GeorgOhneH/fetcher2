@@ -4,19 +4,18 @@ use druid::{Env, Event, EventCtx, Selector, Widget};
 
 use crate::ctypes::seq::{CItem, CSeq};
 use crate::ctypes::CType;
+use crate::druid::widgets::warning_label::WarningLabel;
 
 impl CSeq {
     pub fn widget() -> impl Widget<Self> {
         Flex::column()
             .with_child(
                 druid::widget::List::new(|| {
-                    Flex::row()
-                        .with_child(CType::widget().lens(CItem::ty))
-                        .with_child(Button::new("Delete").on_click(
-                            |ctx, item: &mut CItem, _env| {
-                                ctx.submit_notification(DELETE.with(item.index))
-                            },
-                        ))
+                    Flex::row().with_child(CItem::widget()).with_child(
+                        Button::new("Delete").on_click(|ctx, item: &mut CItem, _env| {
+                            ctx.submit_notification(DELETE.with(item.index))
+                        }),
+                    )
                 })
                 .controller(DeleteController::new()),
             )
@@ -24,6 +23,17 @@ impl CSeq {
                 c_vec.push(c_vec.template.as_ref().clone());
                 ctx.request_update();
             }))
+    }
+}
+
+impl CItem {
+    fn widget() -> impl Widget<Self> {
+        Flex::column()
+            .with_child(CType::widget().lens(Self::ty))
+            .with_child(WarningLabel::new(|data: &Self| data.error_msg()))
+    }
+    fn error_msg(&self) -> Option<String> {
+        self.ty.valid().err().map(|invalid| invalid.to_string())
     }
 }
 

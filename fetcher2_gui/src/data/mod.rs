@@ -1,9 +1,9 @@
-use druid::{Data, Lens};
 use druid::im::Vector;
+use druid::{Data, Lens};
 use fetcher2::template::node_type::site::TaskMsg;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 use template::node_type::NodeTypeData;
 use template::nodes::node::NodeData;
 
@@ -15,10 +15,10 @@ use crate::data::win::{SubWindowInfo, WindowState};
 
 pub mod edit;
 pub mod settings;
-pub mod template_info;
-pub mod win;
 pub mod template;
 pub mod template_edit;
+pub mod template_info;
+pub mod win;
 
 #[derive(Clone, Lens, Debug, Data, Serialize, Deserialize, Default)]
 pub struct AppData {
@@ -35,7 +35,7 @@ pub struct AppData {
 
     pub edit_window: SubWindowInfo<EditWindowData>,
 
-    pub split_point: f64,
+    pub split_point: Option<f64>,
 
     #[data(ignore)]
     pub folder_header_sizes: Vec<f64>,

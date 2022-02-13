@@ -1,5 +1,5 @@
-use druid::{Point, WidgetPod};
 use druid::widget::prelude::*;
+use druid::{Point, WidgetPod};
 
 pub struct InfoView<T, const N: usize> {
     current: Option<usize>,
