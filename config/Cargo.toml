@@ -13,9 +13,9 @@ valuable = "0.1"
 thiserror = "1.0"
 log = "0.4"
 im = "15.0.0"
-druid = { git = "https://github.com/linebender/druid.git", features = ["im"], rev = "fc05e965c85fced8720c655685e02478e0530e94", optional = true }
+druid = { path = "../druid/druid", features = ["im"], optional = true }
 druid-enums = { git = "https://github.com/finnerale/druid-enums", optional = true }
-druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery", optional = true }
+druid-widget-nursery = { path = "../druid-widget-nursery", optional = true }
 
 
 [features]

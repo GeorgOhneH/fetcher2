@@ -37,6 +37,11 @@ impl CTuple {
     pub fn len(&self) -> usize {
         self.inner.len()
     }
+
+    // should always be 0
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 pub struct CTupleBuilder {

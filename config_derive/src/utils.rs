@@ -6,11 +6,8 @@ use syn::{self, Generics, Ident, Lifetime, Path, TraitBound, TypeParamBound};
 
 pub fn bound_generics(mut generics: Generics, bound: TraitBound) -> Generics {
     for param in generics.params.iter_mut() {
-        match param {
-            GenericParam::Type(ty_param) => {
-                ty_param.bounds.push(TypeParamBound::Trait(bound.clone()))
-            }
-            _ => (),
+        if let GenericParam::Type(ty_param) = param {
+            ty_param.bounds.push(TypeParamBound::Trait(bound.clone()))
         }
     }
     generics

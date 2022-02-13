@@ -1,0 +1,6 @@
+[submodule "druid"]
+	path = druid
+	url = https://github.com/GeorgOhneH/druid
+[submodule "druid-widget-nursery"]
+	path = druid-widget-nursery
+	url = https://github.com/GeorgOhneH/druid-widget-nursery

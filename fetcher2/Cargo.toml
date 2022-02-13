@@ -9,7 +9,7 @@ edition = "2021"
 config = { path = "../config" }
 fetcher2_macro = { path = "../fetcher2_macro" }
 serde = { version = "1.0", features = ["derive", "rc"] }
-im = "15.0.0"
+im = { version = "15.0.0", features = ["serde"] }
 async-trait = "0.1"
 enum_dispatch = "0.3"
 tokio = { version = "1", features = ["full"] }
@@ -46,9 +46,9 @@ itertools = "0.10"
 bytesize = "1"
 timer = "0.2"
 
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "fc05e965c85fced8720c655685e02478e0530e94", optional = true }
+druid = { path = "../druid/druid", features = ["im"], optional = true }
 druid-enums = { git = "https://github.com/finnerale/druid-enums", optional = true }
-druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery", optional = true }
+druid-widget-nursery = { path = "../druid-widget-nursery", optional = true }
 
 
 [features]

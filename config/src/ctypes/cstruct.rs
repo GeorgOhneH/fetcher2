@@ -57,7 +57,7 @@ impl CStructBuilder {
     }
     pub fn arg(&mut self, arg: CKwarg) {
         let idx = self.inner.inner.len();
-        self.inner.index_map.insert(&arg.name, idx);
+        self.inner.index_map.insert(arg.name, idx);
         self.inner.inner.push_back(arg);
     }
 

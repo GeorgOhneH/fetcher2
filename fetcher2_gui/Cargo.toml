@@ -56,6 +56,6 @@ bytesize = "1"
 timer = "0.2"
 self_update = "0.27"
 
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "serde"], rev = "fc05e965c85fced8720c655685e02478e0530e94" }
+druid = { path = "../druid/druid", features = ["im", "serde"] }
 druid-enums = { git = "https://github.com/finnerale/druid-enums" }
-druid-widget-nursery = { git = "https://github.com/linebender/druid-widget-nursery" }
+druid-widget-nursery = { path = "../druid-widget-nursery" }

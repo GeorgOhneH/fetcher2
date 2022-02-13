@@ -10,7 +10,7 @@ impl CEnum {
         let list_select = ListSelect::new(
             |data: &Self, idx| {
                 let name = data.name_map.get(&idx).unwrap();
-                Label::new(name.clone())
+                Label::new(*name)
             },
             Self::selected,
         )

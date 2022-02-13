@@ -18,7 +18,7 @@ impl COption {
             .cross_axis_alignment(CrossAxisAlignment::Start)
             .with_child(CheckboxWrapper::new())
             .with_child(
-                Lazy::new(|| CType::widget())
+                Lazy::new(CType::widget)
                     .lens(Self::ty)
                     .disabled_if(|data: &Self, _env| !data.active),
             )

@@ -130,9 +130,9 @@ impl<'a, 'de> Deserializer<'de> for &'a mut ConfigDeserializer<'de> {
                     .ok_or(Error::ValueRequired)?
                     .as_os_str()
                     .to_str()
-                    .ok_or(Error::custom("Path it not utf8"))?,
+                    .ok_or_else(|| Error::custom("Path it not utf8"))?,
             ),
-            _ => return Err(Error::ExpectedStringOrPath),
+            _ => Err(Error::ExpectedStringOrPath),
         }
     }
 

@@ -1,6 +1,11 @@
 [workspace]
 
 members = [
+    "druid/druid",
+    "druid/druid-derive",
+    "druid/druid-shell",
+    "druid-widget-nursery",
+    "druid-widget-nursery/druid-widget-nursery-derive",
     "config",
     "config_derive",
     "fetcher2",
